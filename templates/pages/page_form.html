@@ -1,0 +1,109 @@
+﻿{% extends "base.html" %}
+
+{% block title %}{{ mode }} Page{% endblock %}
+
+{% block extra_head %}
+{{ block.super }}
+{{ form.media }}
+{% include "partials/summernote_assets.html" %}
+{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+    <div class="col-xl-7">
+        <section class="content-panel p-4 p-md-5">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <h2 class="mb-1">{{ mode }} Page</h2>
+                    <p class="text-body-secondary mb-0">Pages app is the source of truth for long-form content creation.</p>
+                </div>
+                {% if page %}
+                    <a class="btn btn-sm btn-outline-secondary" href="{% url 'pages:revisions' page.slug %}">Revision History</a>
+                {% endif %}
+            </div>
+
+            <div
+                class="ui-inline-feedback-slot d-none mb-3"
+                data-ui-feedback-slot="page-form"
+                aria-live="polite"
+            ></div>
+
+            <form
+                method="post"
+                data-ui-confirm="{% if mode == 'Create' %}Create this page now?{% else %}Save updates to this page?{% endif %}"
+                data-ui-feedback-target="page-form"
+                data-ui-action-kind="{% if mode == 'Create' %}create{% else %}update{% endif %}"
+                class="vstack gap-3"
+            >
+                {% csrf_token %}
+
+                {% for field in form %}
+                    {% if field.field.widget.input_type == "checkbox" %}
+                        <div class="form-check">
+                            {{ field }}
+                            <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                            {% if field.help_text %}<small class="d-block text-body-secondary">{{ field.help_text }}</small>{% endif %}
+                            {% if field.errors %}<small class="text-danger">{{ field.errors|join:', ' }}</small>{% endif %}
+                        </div>
+                    {% else %}
+                        <div>
+                            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                            {{ field }}
+                            {% if field.help_text %}<small class="d-block text-body-secondary">{{ field.help_text }}</small>{% endif %}
+                            {% if field.errors %}<small class="text-danger">{{ field.errors|join:', ' }}</small>{% endif %}
+                        </div>
+                    {% endif %}
+                {% endfor %}
+
+                <div class="d-flex gap-2">
+                    <button class="btn btn-primary" type="submit">{{ mode }} Page</button>
+                    {% if page %}
+                        <a class="btn btn-outline-secondary" href="{{ page.get_absolute_url }}">Cancel</a>
+                    {% else %}
+                        <a class="btn btn-outline-secondary" href="{% url 'pages:manage' %}">Cancel</a>
+                    {% endif %}
+                </div>
+            </form>
+        </section>
+    </div>
+
+    <div class="col-xl-5">
+        <section class="content-panel p-4 sticky-lg-top preview-panel">
+            <h4 class="mb-2">Live Preview</h4>
+            <p class="text-body-secondary small">Updates as you type Markdown in page content.</p>
+            <div
+                id="page-markdown-preview"
+                hx-post="{% url 'pages:markdown_preview' %}"
+                hx-trigger="load, keyup changed delay:450ms from:#id_body_markdown"
+                hx-include="#id_body_markdown"
+                hx-target="#page-markdown-preview"
+                hx-swap="innerHTML"
+            >
+                {% include "pages/partials/editor_preview.html" with preview_html=preview_html %}
+            </div>
+
+            <div
+                id="page-live-seo-checks"
+                hx-post="{% url 'seo:live_check_inline' 'page' %}"
+                hx-trigger="
+                    load,
+                    keyup changed delay:650ms from:#id_title,
+                    keyup changed delay:650ms from:#id_summary,
+                    keyup changed delay:650ms from:#id_slug,
+                    keyup changed delay:650ms from:#id_meta_title,
+                    keyup changed delay:650ms from:#id_meta_description,
+                    keyup changed delay:650ms from:#id_canonical_url,
+                    keyup changed delay:650ms from:#id_body_markdown
+                "
+                hx-include="#id_title, #id_summary, #id_slug, #id_meta_title, #id_meta_description, #id_canonical_url, #id_body_markdown"
+                hx-target="#page-live-seo-checks"
+                hx-swap="innerHTML"
+            >
+                <section class="content-panel p-3 mt-3">
+                    <div class="small text-body-secondary">Running realtime SEO checks...</div>
+                </section>
+            </div>
+        </section>
+    </div>
+</div>
+{% endblock %}

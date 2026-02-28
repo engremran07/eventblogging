@@ -1,0 +1,46 @@
+{% extends "admin/base_site.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ form_title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-5 col-lg-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-4">
+                    <h2 class="card-title mb-4">{{ form_title }}</h2>
+                    
+                    {% if form_description %}
+                        <p class="text-muted mb-4">{{ form_description }}</p>
+                    {% endif %}
+
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            {{ form.non_field_errors }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endif %}
+
+                    <form method="post" class="vstack gap-3">
+                        {% csrf_token %}
+                        {{ form|crispy }}
+                        
+                        <div>
+                            <button class="btn btn-primary w-100" type="submit">{{ submit_text }}</button>
+                        </div>
+
+                        {% if extra_links %}
+                            <div class="text-center vstack gap-2">
+                                {% for link_label, link_url in extra_links %}
+                                    <a href="{{ link_url }}" class="small text-decoration-none">{{ link_label }}</a>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

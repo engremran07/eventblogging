@@ -1,0 +1,20 @@
+﻿{% extends "base.html" %}
+
+{% block title %}Delete {{ post.title }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-7 col-xl-6">
+        <section class="content-panel p-4">
+            <h3 class="mb-2">Delete this post?</h3>
+            <p class="text-body-secondary">"{{ post.title }}" and all comments/revisions will be permanently deleted.</p>
+            <form method="post" class="d-flex gap-2">
+                {% csrf_token %}
+                <button class="btn btn-danger" type="submit">Delete</button>
+                <a class="btn btn-outline-secondary" href="{{ post.get_absolute_url }}">Cancel</a>
+            </form>
+        </section>
+    </div>
+</div>
+{% endblock %}
+

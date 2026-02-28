@@ -1,0 +1,38 @@
+﻿<div class="modal-header">
+    <h5 class="modal-title" id="quickPreviewModalLabel">{{ post.title }}</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+<div class="modal-body">
+    {% if post.cover_image %}
+        <img class="img-fluid rounded-3 mb-3" src="{{ post.cover_image.url }}" alt="{{ post.title }}">
+    {% endif %}
+
+    {% if post.subtitle %}
+        <p class="lead mb-2">{{ post.subtitle }}</p>
+    {% endif %}
+
+    {% if post.excerpt %}
+        <p class="text-body-secondary">{{ post.excerpt }}</p>
+    {% endif %}
+
+    <div class="d-flex flex-wrap gap-2 mb-3">
+        {% if post.primary_topic %}
+            <span class="badge text-bg-primary">{{ post.primary_topic.name }}</span>
+        {% endif %}
+        {% for tag in post.tags.all|slice:":6" %}
+            <span class="badge text-bg-light">#{{ tag.name }}</span>
+        {% endfor %}
+    </div>
+
+    <div class="small text-body-secondary d-flex gap-3">
+        <span><i class="bi bi-clock"></i> {{ post.reading_time }} min</span>
+        <span><i class="bi bi-eye"></i> {{ post.views_count }} views</span>
+        <span><i class="bi bi-chat"></i> {{ post.comments.count }} comments</span>
+    </div>
+</div>
+<div class="modal-footer">
+    <a class="btn btn-outline-secondary" href="{{ post.get_absolute_url }}">Read Full Post</a>
+    {% if request.user == post.author %}
+        <a class="btn btn-primary" href="{% url 'blog:post_update' post.slug %}">Edit Post</a>
+    {% endif %}
+</div>

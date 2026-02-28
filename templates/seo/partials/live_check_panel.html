@@ -1,0 +1,63 @@
+<section class="content-panel p-3 mt-3">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <h6 class="mb-0">Realtime SEO Check</h6>
+        {% if content_type %}
+            <span class="badge text-bg-secondary text-uppercase">{{ content_type }}</span>
+        {% endif %}
+    </div>
+
+    {% if live_check_error %}
+        <div class="alert alert-warning mb-0">{{ live_check_error }}</div>
+    {% else %}
+        <div class="row g-2 mb-3">
+            <div class="col-4">
+                <div class="border rounded-3 p-2">
+                    <div class="small text-body-secondary">Score</div>
+                    <div class="fw-semibold">{{ live_check.score|floatformat:1 }}</div>
+                </div>
+            </div>
+            <div class="col-4">
+                <div class="border rounded-3 p-2">
+                    <div class="small text-body-secondary">Critical</div>
+                    <div class="fw-semibold">{{ live_check.critical_count }}</div>
+                </div>
+            </div>
+            <div class="col-4">
+                <div class="border rounded-3 p-2">
+                    <div class="small text-body-secondary">Warnings</div>
+                    <div class="fw-semibold">{{ live_check.warning_count }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="small text-body-secondary mb-2">Open checks</div>
+        {% if live_check.critical_count == 0 and live_check.warning_count == 0 %}
+            <div class="alert alert-success mb-0">All monitored checks passed.</div>
+        {% else %}
+            <div class="vstack gap-2">
+                {% for item in live_check.results %}
+                    {% if not item.passed %}
+                        <div class="border rounded-3 p-2">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <div class="fw-semibold small">{{ item.key|title }}</div>
+                                {% if item.severity == "critical" %}
+                                    <span class="badge text-bg-danger">Critical</span>
+                                {% elif item.severity == "warning" %}
+                                    <span class="badge text-bg-warning">Warning</span>
+                                {% else %}
+                                    <span class="badge text-bg-secondary">Info</span>
+                                {% endif %}
+                            </div>
+                            <div class="small text-body-secondary">{{ item.message }}</div>
+                            {% if item.suggested_fix %}
+                                <div class="small mt-1"><strong>Fix:</strong> {{ item.suggested_fix }}</div>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                {% empty %}
+                    <div class="small text-body-secondary">No checks ran yet.</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endif %}
+</section>

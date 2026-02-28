@@ -1,0 +1,57 @@
+﻿{% if search_query %}
+    <div class="search-suggestions-head d-flex justify-content-between align-items-center">
+        <span class="small text-body-secondary">Results for "{{ search_query }}"</span>
+        {% if search_total is not None %}
+            <span class="badge text-bg-primary">{{ search_total }}</span>
+        {% endif %}
+    </div>
+{% else %}
+    <div class="search-suggestions-head small text-body-secondary">
+        Start typing to search posts, tags, topics, and categories.
+    </div>
+{% endif %}
+
+<div class="search-suggestions-grid">
+    <section>
+        <h6>Posts</h6>
+        <div class="vstack gap-1">
+            {% for post in search_posts %}
+                <a class="search-item" href="{{ post.get_absolute_url }}">
+                    <strong>{{ post.title }}</strong>
+                    <span>{{ post.excerpt|truncatechars:80 }}</span>
+                </a>
+            {% empty %}
+                <span class="search-empty">No posts found.</span>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section>
+        <h6>Tags</h6>
+        <div class="d-flex flex-wrap gap-1 mb-2">
+            {% for tag in search_tags %}
+                <a class="badge text-bg-light text-decoration-none" href="{% url 'blog:posts_by_tag' tag.name %}">#{{ tag.name }}</a>
+            {% empty %}
+                <span class="search-empty">No tags found.</span>
+            {% endfor %}
+        </div>
+
+        <h6>Topics</h6>
+        <div class="d-flex flex-wrap gap-1 mb-2">
+            {% for topic in search_topics %}
+                <a class="badge text-bg-info text-decoration-none" href="{% url 'blog:posts_by_topic' topic.name %}">{{ topic.name }}</a>
+            {% empty %}
+                <span class="search-empty">No topics found.</span>
+            {% endfor %}
+        </div>
+
+        <h6>Categories</h6>
+        <div class="d-flex flex-wrap gap-1">
+            {% for category in search_categories %}
+                <a class="badge text-bg-warning text-decoration-none" href="{% url 'blog:posts_by_category' category.name %}">{{ category.label|default:category.name }}</a>
+            {% empty %}
+                <span class="search-empty">No categories found.</span>
+            {% endfor %}
+        </div>
+    </section>
+</div>

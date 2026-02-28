@@ -1,0 +1,341 @@
+﻿/* ========================================================================
+   Admin Controls - Uses Centralized Design System
+   All colors from design-system.css variables
+======================================================================== */
+
+.admin-control-shell {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.admin-control-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: var(--space-3);
+}
+
+.admin-control-title {
+    margin: 0;
+    font-size: 1.35rem;
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.admin-control-subtitle {
+    margin: 2px 0 0;
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+}
+
+.admin-control-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+}
+
+.admin-control-nav-item {
+    display: inline-flex;
+    align-items: center;
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    text-decoration: none;
+    color: var(--text-primary);
+    background: var(--surface-1);
+    transition: all 0.2s ease;
+    font-size: 0.95rem;
+    font-weight: 500;
+}
+
+.admin-control-nav-item:hover {
+    background: var(--surface-2);
+    border-color: var(--accent-border);
+    color: var(--accent);
+}
+
+.admin-control-nav-item.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--text-inverse);
+}
+
+.admin-control-nav-item.active:hover {
+    background: var(--accent-hover);
+    border-color: var(--accent-hover);
+}
+
+.admin-control-content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+.admin-control-shell .text-muted {
+    color: var(--text-secondary) !important;
+}
+
+.admin-control-shell .table {
+    margin-bottom: 0;
+    color: var(--text-secondary);
+}
+
+.admin-control-shell .table > :not(caption) > * > * {
+    border-bottom-color: var(--border);
+    vertical-align: top;
+}
+
+.admin-control-shell .table thead th {
+    background: var(--surface-2);
+    color: var(--text-muted);
+    font-size: var(--text-xs);
+    font-weight: var(--fw-semibold);
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+}
+
+.admin-control-shell .table tbody tr:hover {
+    background: var(--surface-2);
+}
+
+.admin-control-shell .table-responsive {
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+
+.admin-control-shell .admin-control-table--wide {
+    min-width: 920px;
+}
+
+.admin-control-shell .table td,
+.admin-control-shell .table th {
+    overflow-wrap: anywhere;
+}
+
+.admin-control-shell .table .table-active {
+    background: color-mix(in srgb, var(--accent) 12%, var(--surface-1));
+}
+
+.admin-control-shell .card .card-header {
+    background: var(--surface-2);
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border);
+    font-weight: var(--fw-semibold);
+}
+
+.admin-control-shell .card .card-body {
+    color: var(--text-secondary);
+}
+
+.admin-control-shell .badge.bg-danger,
+.admin-control-shell .badge.text-bg-danger {
+    background: var(--danger-muted) !important;
+    color: var(--danger) !important;
+}
+
+.admin-control-shell .badge.bg-warning,
+.admin-control-shell .badge.text-bg-warning {
+    background: var(--warning-muted) !important;
+    color: var(--warning) !important;
+}
+
+.admin-control-shell .badge.bg-info,
+.admin-control-shell .badge.text-bg-info {
+    background: var(--info-muted) !important;
+    color: var(--info) !important;
+}
+
+.admin-control-shell .badge.bg-secondary,
+.admin-control-shell .badge.text-bg-secondary,
+.admin-control-shell .badge.bg-light,
+.admin-control-shell .badge.text-bg-light {
+    background: var(--surface-2) !important;
+    color: var(--text-secondary) !important;
+}
+
+.admin-control-content .card {
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    background: var(--surface-1);
+    padding: var(--space-4);
+    box-shadow: var(--shadow-sm);
+}
+
+.admin-control-content .card h3 {
+    margin-top: 0;
+    margin-bottom: var(--space-3);
+    color: var(--text-primary);
+    font-size: 1.1rem;
+}
+
+.admin-control-content .card p {
+    color: var(--text-secondary);
+    margin-bottom: var(--space-2);
+}
+
+.admin-control-metric {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 12px;
+    background: var(--surface-1);
+}
+
+.admin-control-metric .label {
+    display: block;
+    font-size: 0.74rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-secondary);
+}
+
+.admin-control-metric strong {
+    font-size: 1.28rem;
+    line-height: 1.2;
+}
+
+.admin-control-kanban {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(200px, 1fr));
+    gap: 10px;
+}
+
+.admin-control-kanban .lane {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface-2);
+    padding: 8px;
+    min-height: 120px;
+}
+
+.admin-control-kanban .lane h6 {
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.admin-control-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+}
+
+.admin-control-tabs .nav-link {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface-1);
+    color: var(--text-secondary);
+    font-size: var(--text-sm);
+    font-weight: var(--fw-medium);
+    padding: var(--space-2) var(--space-4);
+    transition: all var(--transition-duration) var(--transition-timing);
+}
+
+.admin-control-tabs .nav-link:hover,
+.admin-control-tabs .nav-link:focus-visible {
+    background: var(--surface-2);
+    color: var(--text-primary);
+    border-color: var(--accent-border);
+}
+
+.admin-control-tabs .nav-link.active {
+    background: var(--accent);
+    color: var(--text-inverse);
+    border-color: var(--accent);
+}
+
+.admin-control-tabs .nav-link.active:hover {
+    background: var(--accent-hover);
+    border-color: var(--accent-hover);
+}
+
+.admin-control-shell .btn-outline-primary {
+    color: var(--accent);
+    border-color: var(--accent-border);
+}
+
+.admin-control-shell .btn-outline-primary:hover {
+    color: var(--text-inverse);
+    border-color: var(--accent);
+    background: var(--accent);
+}
+
+.admin-control-shell .btn-outline-secondary {
+    color: var(--text-secondary);
+    border-color: var(--border);
+}
+
+.admin-control-shell .btn-outline-secondary:hover {
+    color: var(--text-primary);
+    border-color: var(--border-focus);
+    background: var(--surface-2);
+}
+
+.admin-control-shell .btn-outline-danger {
+    color: var(--danger);
+    border-color: color-mix(in srgb, var(--danger) 55%, var(--border) 45%);
+}
+
+.admin-control-shell .btn-outline-danger:hover {
+    color: var(--text-inverse);
+    border-color: var(--danger);
+    background: var(--danger);
+}
+
+.admin-control-shell .btn-success {
+    color: var(--text-inverse);
+    background: var(--success);
+    border-color: var(--success);
+}
+
+.admin-control-shell .btn-success:hover {
+    color: var(--text-inverse);
+    background: color-mix(in srgb, var(--success) 86%, var(--surface-1));
+    border-color: color-mix(in srgb, var(--success) 86%, var(--surface-1));
+}
+
+.admin-control-shell .btn-warning {
+    color: var(--text-inverse);
+    background: var(--warning);
+    border-color: var(--warning);
+}
+
+.admin-control-shell .btn-warning:hover {
+    color: var(--text-inverse);
+    background: color-mix(in srgb, var(--warning) 86%, var(--surface-1));
+    border-color: color-mix(in srgb, var(--warning) 86%, var(--surface-1));
+}
+
+.lane-card {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface-1);
+    padding: 8px;
+    margin-bottom: 8px;
+}
+
+.lane-card.compact {
+    padding: 6px;
+}
+
+.lane-card-title {
+    font-weight: 700;
+    font-size: 0.86rem;
+}
+
+.btn-xs {
+    --bs-btn-padding-y: 0.14rem;
+    --bs-btn-padding-x: 0.45rem;
+    --bs-btn-font-size: 0.72rem;
+}
+
+@media (max-width: 1300px) {
+    .admin-control-kanban {
+        grid-template-columns: repeat(2, minmax(200px, 1fr));
+    }
+}
+
+@media (max-width: 768px) {
+    .admin-control-kanban {
+        grid-template-columns: 1fr;
+    }
+}

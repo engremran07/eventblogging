@@ -1,0 +1,140 @@
+{% load static %}{% load i18n %}<!DOCTYPE html>
+<html lang="{{ LANGUAGE_CODE }}" {% if LANGUAGE_BIDI %}dir="rtl"{% endif %} data-bs-theme="{{ site_appearance.mode|default:'light' }}" data-app-preset="{{ site_appearance.preset|default:'aurora' }}">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="{{ site_appearance.mode|default:'light' }}">
+    <title>{% block title %}{{ site_header }} | Django Admin{% endblock %}</title>
+
+    <!-- Favicon and icons -->
+    {% static 'img/home-logo.svg' as default_logo_url %}
+    <link rel="icon" href="{{ site_identity.favicon_url|default:default_logo_url }}">
+    <link rel="icon" href="{{ site_identity.favicon_dark_url|default:site_identity.favicon_url|default:default_logo_url }}" media="(prefers-color-scheme: dark)">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <!-- Bootstrap and Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    {% block extrastyle %}{% endblock %}
+
+    <!-- Design System - Single source of truth -->
+    <link rel="stylesheet" href="{% static 'css/tokens.css' %}">
+    <link rel="stylesheet" href="{% static 'css/design-system.css' %}">
+    <link rel="stylesheet" href="{% static 'css/base.css' %}">
+    <link rel="stylesheet" href="{% static 'css/components.css' %}">
+    <link rel="stylesheet" href="{% static 'css/layout.css' %}">
+    {% if site_appearance and site_appearance.css_variables %}
+        <style id="admin-appearance-vars">
+            :root {
+                {% for var_name, var_value in site_appearance.css_variables.items %}
+                    {{ var_name }}: {{ var_value }};
+                {% endfor %}
+                --accent: var(--brand);
+                --accent-hover: var(--brand-dark);
+                --accent-muted: color-mix(in srgb, var(--brand) 14%, transparent);
+                --accent-border: color-mix(in srgb, var(--brand) 34%, transparent);
+                --bg: var(--bg-main);
+                --surface-1: var(--panel-strong);
+                --surface-2: color-mix(in srgb, var(--panel) 80%, var(--bg-main) 20%);
+                --surface-3: color-mix(in srgb, var(--panel) 62%, var(--bg-main) 38%);
+                --border: var(--line);
+                --border-focus: color-mix(in srgb, var(--brand) 44%, var(--line) 56%);
+                --text-primary: var(--ink);
+                --text-secondary: var(--ink-soft);
+                --text-muted: color-mix(in srgb, var(--ink-soft) 62%, transparent);
+            }
+        </style>
+    {% endif %}
+
+    <!-- Extra head block for child templates -->
+    {% block extrahead %}{% endblock %}
+</head>
+<body
+    class="admin-page"
+    data-bs-theme="{{ site_appearance.mode|default:'light' }}"
+    data-admin-theme-toggle-url="{% url 'blog:admin_settings_theme_toggle' %}"
+    data-theme-state-url="{% url 'blog:api_appearance_state' %}"
+>
+    <!-- Admin Shell Container -->
+    <div
+        class="admin-shell"
+        x-data="{
+            sidebarOpen: JSON.parse(localStorage.getItem('adminSidebarOpen') ?? 'true'),
+            isMobile: window.matchMedia('(max-width: 768px)').matches,
+            init() {
+                const media = window.matchMedia('(max-width: 768px)');
+                const sync = () => {
+                    this.isMobile = media.matches;
+                    if (!this.isMobile) {
+                        this.sidebarOpen = JSON.parse(localStorage.getItem('adminSidebarOpen') ?? 'true');
+                    }
+                };
+                if (typeof media.addEventListener === 'function') {
+                    media.addEventListener('change', sync);
+                } else if (typeof media.addListener === 'function') {
+                    media.addListener(sync);
+                }
+                sync();
+            },
+            toggleSidebar() {
+                this.sidebarOpen = !this.sidebarOpen;
+                localStorage.setItem('adminSidebarOpen', JSON.stringify(this.sidebarOpen));
+            }
+        }"
+        @toggle-sidebar.window="toggleSidebar()"
+        :class="{
+            'sidebar-hidden': !isMobile && !sidebarOpen,
+            'sidebar-visible': isMobile && sidebarOpen
+        }"
+    >
+
+        <!-- SIDEBAR NAVIGATION -->
+        {% include "admin/partials/sidebar.html" %}
+
+        <!-- MAIN CONTENT AREA -->
+        <div class="admin-content">
+            <!-- TOP BAR -->
+            {% include "admin/partials/topbar.html" %}
+
+            <!-- DJANGO ADMIN CONTENT -->
+            <div id="main" class="content-wrapper">
+                {% block messages %}
+                    <div id="admin-messages">
+                        {% include "admin/partials/messages.html" %}
+                    </div>
+                {% endblock %}
+
+                <!-- BREADCRUMB NAVIGATION -->
+                {% block breadcrumbs %}
+                    <div class="breadcrumb">
+                        <a href="{% url 'admin:index' %}" class="breadcrumb-item">
+                            <i class="fas fa-home"></i> Admin
+                        </a>
+                    </div>
+                {% endblock %}
+
+                <!-- PAGE CONTENT -->
+                <div id="content" class="django-content">
+                    {% block content_title %}{% endblock %}
+                    {% block content %}{% endblock %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/htmx.org@2.0.8"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.15.0/dist/cdn.min.js"></script>
+    <script defer src="{% static 'js/alpine-store.js' %}"></script>
+    <script defer src="{% static 'js/admin/core.js' %}"></script>
+
+    <!-- Extra scripts block -->
+    {% block extrajs %}{% endblock %}
+</body>
+</html>

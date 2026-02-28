@@ -1,0 +1,118 @@
+<div class="row g-3">
+    <div class="col-lg-7">
+        <div class="card">
+            <div class="card-header">Run SEO Scan</div>
+            <div class="card-body">
+                <form method="post" action="{% url 'admin_config:seo_control_run' %}" class="mb-3">
+                    {% csrf_token %}
+                    <label class="form-label">Scan note</label>
+                    <div class="input-group">
+                        <input type="text" name="notes" class="form-control" placeholder="Optional note for this run">
+                        <button class="btn btn-primary" type="submit">Run Full SEO Scan</button>
+                    </div>
+                </form>
+
+                <form method="post" action="{% url 'admin_config:seo_scan_start' %}" class="row g-2 align-items-end">
+                    {% csrf_token %}
+                    <div class="col-md-3">
+                        <label class="form-label">Target</label>
+                        <select name="job_type" class="form-select">
+                            {% for value, label in job_types %}
+                                <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-7">
+                        <label class="form-label">Notes</label>
+                        <input type="text" class="form-control" name="notes" placeholder="Optional targeted run note">
+                    </div>
+                    <div class="col-md-2 d-grid">
+                        <button type="submit" class="btn btn-outline-primary">Run Targeted</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>SEO Scan History</span>
+                <a class="btn btn-sm btn-outline-secondary" href="{% url 'admin_config:seo_control_canonical_section' 'results' %}">
+                    Open Results
+                </a>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-sm mb-0">
+                    <thead>
+                        <tr><th>ID</th><th>Type</th><th>Status</th><th>Progress</th><th>Started</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for job in scan_jobs %}
+                            <tr{% if selected_scan_job and selected_scan_job.id == job.id %} class="table-active"{% endif %}>
+                                <td><a href="{% url 'admin_config:seo_control_canonical_section' 'scan' %}?job_id={{ job.id }}">#{{ job.id }}</a></td>
+                                <td>{{ job.job_type }}</td>
+                                <td>{{ job.status }}</td>
+                                <td>{{ job.processed_items }}/{{ job.total_items }}</td>
+                                <td>{{ job.started_at|date:"Y-m-d H:i" }}</td>
+                            </tr>
+                        {% empty %}
+                            <tr><td colspan="5" class="text-muted">No SEO scan jobs yet.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        {% if selected_scan_job %}
+            <div
+                class="card"
+                data-seo-scan-monitor="true"
+                data-job-id="{{ selected_scan_job.id }}"
+                data-progress-url="{% url 'admin_config:seo_control_job_progress' selected_scan_job.id %}"
+            >
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span>SEO Job #{{ selected_scan_job.id }}</span>
+                    {% if selected_scan_job.status == "queued" or selected_scan_job.status == "running" %}
+                        <form method="post" action="{% url 'admin_config:seo_scan_job_cancel' selected_scan_job.id %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-outline-danger">Cancel</button>
+                        </form>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    <div class="mb-2"><strong>Status:</strong> <span data-job-status>{{ selected_scan_job.status }}</span></div>
+                    <div class="progress mb-2" role="progressbar" aria-label="Progress">
+                        <div class="progress-bar" data-job-progress-bar style="width: {{ selected_scan_job_progress.progress_percent|default:0 }}%">
+                            <span data-job-progress-text>{{ selected_scan_job_progress.progress_percent|default:0 }}%</span>
+                        </div>
+                    </div>
+                    <div class="small text-muted" data-job-counts>
+                        {{ selected_scan_job_progress.processed_items|default:0 }}/{{ selected_scan_job_progress.total_items|default:0 }} processed
+                    </div>
+                    <div class="small mt-2" data-job-current-item>
+                        {% if selected_scan_job_progress.current_item %}
+                            Working on {{ selected_scan_job_progress.current_item.content_type__model }} #{{ selected_scan_job_progress.current_item.object_id }}
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        {% else %}
+            <div class="card">
+                <div class="card-body text-muted">Select an SEO scan job to monitor progress.</div>
+            </div>
+        {% endif %}
+
+        <div class="card mt-3">
+            <div class="card-header">Queue Snapshot</div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-8">Pending suggestions</dt><dd class="col-4 text-end">{{ queue_counts.pending }}</dd>
+                    <dt class="col-8">Needs correction</dt><dd class="col-4 text-end">{{ queue_counts.needs_correction }}</dd>
+                    <dt class="col-8">Open issues</dt><dd class="col-4 text-end">{{ latest_issues|length }}</dd>
+                    <dt class="col-8">Interlink coverage</dt><dd class="col-4 text-end">{{ interlink_metrics.coverage_percent }}%</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+</div>

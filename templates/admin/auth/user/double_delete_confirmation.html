@@ -1,0 +1,63 @@
+﻿{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block breadcrumbs %}
+<ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{% url 'admin:index' %}">{% trans 'Home' %}</a></li>
+    <li class="breadcrumb-item"><a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a></li>
+    <li class="breadcrumb-item"><a href="{% url 'admin:auth_user_changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a></li>
+    <li class="breadcrumb-item active">Double Verification</li>
+</ol>
+{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width: 920px;">
+    <div class="card-header">
+        <h4 class="m-0">Double Verification Required</h4>
+    </div>
+    <div class="card-body">
+        <p class="mb-2">You are about to delete <strong>{{ expected_count }}</strong> user accounts.</p>
+        <p class="text-danger">This action is irreversible and requires two explicit checks.</p>
+
+        <div class="mb-3">
+            <h5 class="mb-2">Users queued for deletion</h5>
+            <ul class="mb-0">
+                {% for user in users %}
+                    <li>{{ user.username }}{% if user.email %} ({{ user.email }}){% endif %}</li>
+                {% empty %}
+                    <li>No eligible users selected.</li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <form method="post">
+            {% csrf_token %}
+            {% for hidden in verification_form.hidden_fields %}
+                {{ hidden }}
+            {% endfor %}
+
+            <div class="mb-3">
+                <label class="form-label" for="id_confirmation_phrase">Type confirmation phrase</label>
+                <input id="id_confirmation_phrase" class="form-control" type="text" name="confirmation_phrase" required>
+                <small class="form-text text-muted">Required phrase: <code>{{ confirmation_phrase }}</code></small>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label" for="id_confirm_count">Enter user count to confirm</label>
+                <input id="id_confirm_count" class="form-control" type="number" name="confirm_count" min="1" required>
+                <small class="form-text text-muted">Enter exactly <strong>{{ expected_count }}</strong>.</small>
+            </div>
+
+            <div class="form-check mb-3">
+                <input id="id_double_check" class="form-check-input" type="checkbox" name="double_check" required>
+                <label class="form-check-label" for="id_double_check">I understand this permanently deletes selected users.</label>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button class="btn btn-danger" type="submit" name="confirm_delete" value="1">Delete Users</button>
+                <a class="btn btn-outline-secondary" href="{% url 'admin:auth_user_changelist' %}">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

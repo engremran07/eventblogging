@@ -1,0 +1,6 @@
+<div class="toast" x-data="{show: true}" x-show="show" x-init="setTimeout(() => show = false, {{ duration }})" style="position: fixed; bottom: var(--space-6); right: var(--space-6); background-color: var(--color-{{ toast_type }}-600); color: white; padding: var(--p-md); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); z-index: var(--z-notification); animation: slideInUp var(--transition-fast);">
+  <div style="display: flex; justify-content: space-between; align-items: center;">
+    <span>{{ message }}</span>
+    <button @click="show = false" style="background: none; color: white; border: none; cursor: pointer; font-size: var(--text-lg); padding: 0; margin-left: var(--space-4);">&times;</button>
+  </div>
+</div>

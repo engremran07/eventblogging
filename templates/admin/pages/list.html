@@ -1,0 +1,131 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block title %}Pages | Admin{% endblock %}
+
+{% block extrahead %}
+    {{ block.super }}
+    <link rel="stylesheet" href="{% static 'css/admin/workspace.css' %}">
+{% endblock %}
+
+{% block content %}
+    <div class="workspace-shell" data-admin-workspace="pages" data-list-url="{% url 'admin_pages_list' %}">
+        <section class="card workspace-hero">
+            <div>
+                <p class="workspace-eyebrow">Content Operations</p>
+                <h1 class="workspace-title">Pages Workspace</h1>
+                <p class="workspace-subtitle">
+                    Manage static pages with the same workflow style used for comments and posts.
+                </p>
+            </div>
+            <div class="workspace-hero-actions">
+                <a href="{% url 'admin:pages_page_add' %}" class="btn btn-primary btn-sm">
+                    <i class="fas fa-plus"></i> New Page
+                </a>
+                <a href="{% url 'admin:index' %}" class="btn btn-secondary btn-sm">Dashboard</a>
+            </div>
+        </section>
+
+        <section class="workspace-kpis">
+            <article class="workspace-kpi">
+                <small>Total</small>
+                <strong>{{ total_pages }}</strong>
+                <span>All pages</span>
+            </article>
+            <article class="workspace-kpi">
+                <small>Published</small>
+                <strong>{{ published_pages }}</strong>
+                <span>Live pages</span>
+            </article>
+            <article class="workspace-kpi">
+                <small>In Review</small>
+                <strong>{{ review_pages }}</strong>
+                <span>Editorial queue</span>
+            </article>
+            <article class="workspace-kpi">
+                <small>Drafts</small>
+                <strong>{{ draft_pages }}</strong>
+                <span>Pending publication</span>
+            </article>
+        </section>
+
+        <section class="card workspace-filter-card">
+            <form
+                method="get"
+                action="{% url 'admin_pages_list' %}"
+                class="workspace-filter-grid"
+                data-workspace-filter
+                data-filter-url="{% url 'admin_pages_list' %}"
+                data-filter-target="#pages-table-container"
+                hx-get="{% url 'admin_pages_list' %}"
+                hx-target="#pages-table-container"
+                hx-swap="innerHTML"
+                hx-push-url="true"
+            >
+                <div class="workspace-field workspace-field--status">
+                    <label for="pages-status">Status</label>
+                    <select id="pages-status" name="status">
+                        <option value="">All statuses</option>
+                        {% for value, label in status_choices %}
+                            <option value="{{ value }}" {% if status_filter == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="workspace-field workspace-field--template">
+                    <label for="pages-template">Template</label>
+                    <select id="pages-template" name="template">
+                        <option value="">All templates</option>
+                        {% for value, label in template_choices %}
+                            <option value="{{ value }}" {% if template_filter == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="workspace-field workspace-field--nav">
+                    <label for="pages-nav">Navigation</label>
+                    <select id="pages-nav" name="nav">
+                        <option value="" {% if not nav_filter %}selected{% endif %}>Any</option>
+                        <option value="yes" {% if nav_filter == "yes" %}selected{% endif %}>Shown</option>
+                        <option value="no" {% if nav_filter == "no" %}selected{% endif %}>Hidden</option>
+                    </select>
+                </div>
+
+                <div class="workspace-field workspace-field--sort">
+                    <label for="pages-sort">Sort</label>
+                    <select id="pages-sort" name="sort">
+                        <option value="-updated_at" {% if sort_by == "-updated_at" %}selected{% endif %}>Recently updated</option>
+                        <option value="-published_at" {% if sort_by == "-published_at" %}selected{% endif %}>Newest published</option>
+                        <option value="title" {% if sort_by == "title" %}selected{% endif %}>Title A-Z</option>
+                    </select>
+                </div>
+
+                <div class="workspace-field workspace-field--search">
+                    <label for="pages-search">Search</label>
+                    <input
+                        id="pages-search"
+                        type="search"
+                        name="search"
+                        value="{{ search_query }}"
+                        placeholder="Search title, slug, author"
+                        data-filter-live
+                    >
+                </div>
+
+                <div class="workspace-filter-actions">
+                    <button type="submit" class="btn btn-secondary btn-sm">Apply</button>
+                    <a href="{% url 'admin_pages_list' %}" class="btn btn-ghost btn-sm">Reset</a>
+                </div>
+            </form>
+        </section>
+
+        <div id="pages-table-container">
+            {% include "admin/pages/table.html" %}
+        </div>
+    </div>
+{% endblock %}
+
+{% block extrajs %}
+    {{ block.super }}
+    <script defer src="{% static 'js/admin/workspace.js' %}"></script>
+{% endblock %}

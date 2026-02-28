@@ -1,0 +1,58 @@
+﻿{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block extrahead %}
+    {{ block.super }}
+    <link rel="stylesheet" href="{% static 'css/admin/workspace.css' %}">
+    <link rel="stylesheet" href="{% static 'css/admin/control.css' %}">
+    <script defer src="{% static 'js/admin/control.js' %}"></script>
+{% endblock %}
+
+{% block content_title %}{{ admin_control_title }}{% endblock %}
+
+{% block breadcrumbs %}
+<ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{% url 'admin:index' %}">Home</a></li>
+    <li class="breadcrumb-item"><a href="{% url 'admin_config:seo_overview' %}">SEO</a></li>
+    {% if admin_control_breadcrumb_parent_label and admin_control_breadcrumb_parent_url %}
+        <li class="breadcrumb-item"><a href="{{ admin_control_breadcrumb_parent_url }}">{{ admin_control_breadcrumb_parent_label }}</a></li>
+    {% endif %}
+    <li class="breadcrumb-item active">{{ admin_control_title }}</li>
+</ol>
+{% endblock %}
+
+{% block content %}
+    <section class="workspace-shell admin-control-shell">
+        <section class="card workspace-hero admin-control-hero">
+            <div>
+                <p class="workspace-eyebrow">Search Operations</p>
+                <h1 class="workspace-title">{{ admin_control_title }}</h1>
+                {% if admin_control_subtitle %}
+                    <p class="workspace-subtitle">{{ admin_control_subtitle }}</p>
+                {% endif %}
+            </div>
+            <div class="workspace-hero-actions">
+                <a
+                    class="btn btn-sm {% if admin_control_section == 'seo_overview' %}btn-primary{% else %}btn-secondary{% endif %}"
+                    href="{% url 'admin_config:seo_overview' %}"
+                >Overview</a>
+                <a
+                    class="btn btn-sm {% if admin_control_section == 'seo_control' or admin_control_section == 'seo_queue' %}btn-primary{% else %}btn-secondary{% endif %}"
+                    href="{% url 'admin_config:seo_queue' %}"
+                >Audit Queue</a>
+            </div>
+        </section>
+
+        <section class="card workspace-filter-card admin-control-nav-card">
+            <nav class="admin-control-nav">
+                <a class="admin-control-nav-item {% if admin_control_section == 'seo_overview' %}active{% endif %}" href="{% url 'admin_config:seo_overview' %}">Overview</a>
+                <a class="admin-control-nav-item {% if admin_control_section == 'seo_control' or admin_control_section == 'seo_queue' %}active{% endif %}" href="{% url 'admin_config:seo_queue' %}">Audit Queue</a>
+            </nav>
+        </section>
+
+        <div class="admin-control-content">
+            {% block admin_control_body %}{% endblock %}
+        </div>
+    </section>
+{% endblock %}
+

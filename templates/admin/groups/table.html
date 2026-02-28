@@ -1,0 +1,98 @@
+<section class="card workspace-table-card">
+    {% if groups %}
+        <form
+            id="admin-groups-bulk-form"
+            method="post"
+            action="{% url 'admin_groups_bulk_action' %}"
+            class="workspace-bulkbar"
+            hx-post="{% url 'admin_groups_bulk_action' %}"
+            hx-target="#groups-table-container"
+            hx-swap="innerHTML"
+            hx-push-url="true"
+            hx-confirm="Delete selected groups? This action cannot be undone."
+        >
+            {% csrf_token %}
+            <input type="hidden" name="next_url" value="{{ request.get_full_path }}">
+            <input type="hidden" name="has_users" value="{{ has_users_filter }}">
+            <input type="hidden" name="sort" value="{{ sort_by }}">
+            <input type="hidden" name="search" value="{{ search_query }}">
+            {% if page_obj.number %}<input type="hidden" name="page" value="{{ page_obj.number }}">{% endif %}
+            <span class="workspace-muted">Bulk groups action</span>
+            <div class="workspace-bulk-actions">
+                <input type="hidden" name="bulk_action" value="delete">
+                <button type="submit" class="btn btn-danger btn-sm">Delete Selected</button>
+            </div>
+        </form>
+    {% endif %}
+
+    <div class="workspace-table-scroll">
+        <table class="workspace-table">
+            <thead>
+                <tr>
+                    <th style="width: 44px;">Sel</th>
+                    <th>Group</th>
+                    <th>Users</th>
+                    <th>Permissions</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for group in groups %}
+                    <tr>
+                        <td>
+                            <input
+                                type="checkbox"
+                                class="form-check-input"
+                                name="selected_groups"
+                                value="{{ group.id }}"
+                                form="admin-groups-bulk-form"
+                                aria-label="Select {{ group.name }}"
+                            >
+                        </td>
+                        <td class="workspace-link">{{ group.name }}</td>
+                        <td class="workspace-muted">{{ group.user_count }}</td>
+                        <td class="workspace-muted">{{ group.permission_count }}</td>
+                        <td>
+                            <a href="{% url 'admin:auth_group_change' group.id %}" class="btn btn-secondary btn-sm">Edit</a>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="5">
+                            <div class="workspace-empty">
+                                <i class="fas fa-key"></i>
+                                <p>No groups found for this filter.</p>
+                            </div>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if is_paginated %}
+        <nav class="workspace-pagination">
+            {% if page_obj.has_previous %}
+                {% if page_query %}
+                    <a href="?{{ page_query }}&page=1" hx-get="?{{ page_query }}&page=1" hx-target="#groups-table-container" hx-swap="innerHTML" hx-push-url="true" class="btn btn-secondary btn-sm">First</a>
+                    <a href="?{{ page_query }}&page={{ page_obj.previous_page_number }}" hx-get="?{{ page_query }}&page={{ page_obj.previous_page_number }}" hx-target="#groups-table-container" hx-swap="innerHTML" hx-push-url="true" class="btn btn-secondary btn-sm">Previous</a>
+                {% else %}
+                    <a href="?page=1" hx-get="?page=1" hx-target="#groups-table-container" hx-swap="innerHTML" hx-push-url="true" class="btn btn-secondary btn-sm">First</a>
+                    <a href="?page={{ page_obj.previous_page_number }}" hx-get="?page={{ page_obj.previous_page_number }}" hx-target="#groups-table-container" hx-swap="innerHTML" hx-push-url="true" class="btn btn-secondary btn-sm">Previous</a>
+                {% endif %}
+            {% endif %}
+
+            <span class="workspace-page-status">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+
+            {% if page_obj.has_next %}
+                {% if page_query %}
+                    <a href="?{{ page_query }}&page={{ page_obj.next_page_number }}" hx-get="?{{ page_query }}&page={{ page_obj.next_page_number }}" hx-target="#groups-table-container" hx-swap="innerHTML" hx-push-url="true" class="btn btn-secondary btn-sm">Next</a>
+                    <a href="?{{ page_query }}&page={{ page_obj.paginator.num_pages }}" hx-get="?{{ page_query }}&page={{ page_obj.paginator.num_pages }}" hx-target="#groups-table-container" hx-swap="innerHTML" hx-push-url="true" class="btn btn-secondary btn-sm">Last</a>
+                {% else %}
+                    <a href="?page={{ page_obj.next_page_number }}" hx-get="?page={{ page_obj.next_page_number }}" hx-target="#groups-table-container" hx-swap="innerHTML" hx-push-url="true" class="btn btn-secondary btn-sm">Next</a>
+                    <a href="?page={{ page_obj.paginator.num_pages }}" hx-get="?page={{ page_obj.paginator.num_pages }}" hx-target="#groups-table-container" hx-swap="innerHTML" hx-push-url="true" class="btn btn-secondary btn-sm">Last</a>
+                {% endif %}
+            {% endif %}
+        </nav>
+    {% endif %}
+</section>

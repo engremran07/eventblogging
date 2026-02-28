@@ -1,0 +1,129 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block title %}Users | Admin{% endblock %}
+
+{% block extrahead %}
+    {{ block.super }}
+    <link rel="stylesheet" href="{% static 'css/admin/workspace.css' %}">
+{% endblock %}
+
+{% block content %}
+    <div class="workspace-shell" data-admin-workspace="users">
+        <section class="card workspace-hero">
+            <div>
+                <p class="workspace-eyebrow">Identity Operations</p>
+                <h1 class="workspace-title">Users Workspace</h1>
+                <p class="workspace-subtitle">
+                    Manage users with the same filtering and table workflow used in comments.
+                </p>
+            </div>
+            <div class="workspace-hero-actions">
+                <a href="{% url 'admin:auth_user_add' %}" class="btn btn-primary btn-sm">
+                    <i class="fas fa-plus"></i> New User
+                </a>
+                <a href="{% url 'admin:index' %}" class="btn btn-secondary btn-sm">Dashboard</a>
+            </div>
+        </section>
+
+        <section class="workspace-kpis">
+            <article class="workspace-kpi">
+                <small>Total</small>
+                <strong>{{ total_users }}</strong>
+                <span>All users</span>
+            </article>
+            <article class="workspace-kpi">
+                <small>Active</small>
+                <strong>{{ active_users }}</strong>
+                <span>Enabled accounts</span>
+            </article>
+            <article class="workspace-kpi">
+                <small>Staff</small>
+                <strong>{{ staff_users }}</strong>
+                <span>Admin-access users</span>
+            </article>
+            <article class="workspace-kpi">
+                <small>Superusers</small>
+                <strong>{{ superusers }}</strong>
+                <span>Full control accounts</span>
+            </article>
+        </section>
+
+        <section class="card workspace-filter-card">
+            <form
+                method="get"
+                action="{% url 'admin_users_list' %}"
+                class="workspace-filter-grid"
+                data-workspace-filter
+                data-filter-url="{% url 'admin_users_list' %}"
+                data-filter-target="#users-table-container"
+                hx-get="{% url 'admin_users_list' %}"
+                hx-target="#users-table-container"
+                hx-swap="innerHTML"
+                hx-push-url="true"
+            >
+                <div class="workspace-field workspace-field--staff">
+                    <label for="users-staff">Staff</label>
+                    <select id="users-staff" name="staff">
+                        <option value="" {% if not staff_filter %}selected{% endif %}>Any</option>
+                        <option value="yes" {% if staff_filter == "yes" %}selected{% endif %}>Yes</option>
+                        <option value="no" {% if staff_filter == "no" %}selected{% endif %}>No</option>
+                    </select>
+                </div>
+
+                <div class="workspace-field workspace-field--active">
+                    <label for="users-active">Active</label>
+                    <select id="users-active" name="active">
+                        <option value="" {% if not active_filter %}selected{% endif %}>Any</option>
+                        <option value="yes" {% if active_filter == "yes" %}selected{% endif %}>Yes</option>
+                        <option value="no" {% if active_filter == "no" %}selected{% endif %}>No</option>
+                    </select>
+                </div>
+
+                <div class="workspace-field workspace-field--superuser">
+                    <label for="users-superuser">Superuser</label>
+                    <select id="users-superuser" name="superuser">
+                        <option value="" {% if not superuser_filter %}selected{% endif %}>Any</option>
+                        <option value="yes" {% if superuser_filter == "yes" %}selected{% endif %}>Yes</option>
+                        <option value="no" {% if superuser_filter == "no" %}selected{% endif %}>No</option>
+                    </select>
+                </div>
+
+                <div class="workspace-field workspace-field--sort">
+                    <label for="users-sort">Sort</label>
+                    <select id="users-sort" name="sort">
+                        <option value="-date_joined" {% if sort_by == "-date_joined" %}selected{% endif %}>Newest joined</option>
+                        <option value="-last_login" {% if sort_by == "-last_login" %}selected{% endif %}>Last login</option>
+                        <option value="username" {% if sort_by == "username" %}selected{% endif %}>Username A-Z</option>
+                    </select>
+                </div>
+
+                <div class="workspace-field workspace-field--search">
+                    <label for="users-search">Search</label>
+                    <input
+                        id="users-search"
+                        type="search"
+                        name="search"
+                        value="{{ search_query }}"
+                        placeholder="Search username, email, name, profile"
+                        data-filter-live
+                    >
+                </div>
+
+                <div class="workspace-filter-actions">
+                    <button type="submit" class="btn btn-secondary btn-sm">Apply</button>
+                    <a href="{% url 'admin_users_list' %}" class="btn btn-ghost btn-sm">Reset</a>
+                </div>
+            </form>
+        </section>
+
+        <div id="users-table-container">
+            {% include "admin/users/table.html" %}
+        </div>
+    </div>
+{% endblock %}
+
+{% block extrajs %}
+    {{ block.super }}
+    <script defer src="{% static 'js/admin/workspace.js' %}"></script>
+{% endblock %}

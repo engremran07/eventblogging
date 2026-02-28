@@ -1,0 +1,128 @@
+﻿{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block title %}Comments | Admin{% endblock %}
+
+{% block extrahead %}
+    {{ block.super }}
+    <link rel="stylesheet" href="{% static 'css/admin/workspace.css' %}">
+{% endblock %}
+
+{% block content %}
+    <div class="workspace-shell" data-admin-workspace="comments" data-list-url="{% url 'blog:admin_comments_list' %}">
+        <section class="card workspace-hero">
+            <div>
+                <p class="workspace-eyebrow">Moderation Operations</p>
+                <h1 class="workspace-title">Comments Workspace</h1>
+                <p class="workspace-subtitle">
+                    Review community activity, approve legitimate feedback, and remove invalid submissions.
+                </p>
+            </div>
+            <div class="workspace-hero-actions">
+                <a href="{% url 'blog:admin_posts_list' %}" class="btn btn-secondary btn-sm">Open Posts</a>
+                <a href="{% url 'admin:index' %}" class="btn btn-secondary btn-sm">Dashboard</a>
+            </div>
+        </section>
+
+        <section class="workspace-kpis">
+            <article class="workspace-kpi">
+                <small>Total</small>
+                <strong>{{ total_comments }}</strong>
+                <span>All stored comments</span>
+            </article>
+            <article class="workspace-kpi">
+                <small>Pending</small>
+                <strong>{{ pending_count }}</strong>
+                <span>Awaiting moderation</span>
+            </article>
+            <article class="workspace-kpi">
+                <small>Approved</small>
+                <strong>{{ approved_count }}</strong>
+                <span>Visible on posts</span>
+            </article>
+            <article class="workspace-kpi">
+                <small>Pending Rate</small>
+                <strong>
+                    {% if total_comments %}
+                        {% widthratio pending_count total_comments 100 %}%
+                    {% else %}
+                        0%
+                    {% endif %}
+                </strong>
+                <span>Moderation pressure</span>
+            </article>
+        </section>
+
+        <section class="card workspace-filter-card">
+            <form
+                method="get"
+                action="{% url 'blog:admin_comments_list' %}"
+                class="workspace-filter-grid"
+                data-workspace-filter
+                data-filter-url="{% url 'blog:admin_comments_list' %}"
+                data-filter-target="#comments-table-container"
+                hx-get="{% url 'blog:admin_comments_list' %}"
+                hx-target="#comments-table-container"
+                hx-swap="innerHTML"
+                hx-push-url="true"
+            >
+                <div class="workspace-field workspace-field--comment-status">
+                    <label for="comments-status">Status</label>
+                    <select id="comments-status" name="status">
+                        <option value="" {% if not status_filter %}selected{% endif %}>All comments</option>
+                        <option value="pending" {% if status_filter == "pending" %}selected{% endif %}>Pending</option>
+                        <option value="approved" {% if status_filter == "approved" %}selected{% endif %}>Approved</option>
+                    </select>
+                </div>
+
+                <div class="workspace-field workspace-field--comment-post">
+                    <label for="comments-post">Post</label>
+                    <select id="comments-post" name="post">
+                        <option value="" {% if not post_filter %}selected{% endif %}>All posts</option>
+                        {% for filter_post in post_choices %}
+                            <option value="{{ filter_post.id }}" {% if post_filter == filter_post.id|stringformat:"s" %}selected{% endif %}>
+                                {{ filter_post.title|truncatechars:42 }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="workspace-field workspace-field--comment-sort">
+                    <label for="comments-sort">Sort</label>
+                    <select id="comments-sort" name="sort">
+                        <option value="-created_at" {% if sort_by == "-created_at" %}selected{% endif %}>Newest first</option>
+                        <option value="created_at" {% if sort_by == "created_at" %}selected{% endif %}>Oldest first</option>
+                        <option value="-updated_at" {% if sort_by == "-updated_at" %}selected{% endif %}>Recently updated</option>
+                        <option value="updated_at" {% if sort_by == "updated_at" %}selected{% endif %}>Least recently updated</option>
+                    </select>
+                </div>
+
+                <div class="workspace-field workspace-field--comment-search">
+                    <label for="comments-search">Search</label>
+                    <input
+                        id="comments-search"
+                        type="search"
+                        name="search"
+                        value="{{ search_query }}"
+                        placeholder="Search author, post, body"
+                        data-filter-live
+                    >
+                </div>
+
+                <div class="workspace-filter-actions">
+                    <button type="submit" class="btn btn-secondary btn-sm">Apply</button>
+                    <a href="{% url 'blog:admin_comments_list' %}" class="btn btn-ghost btn-sm">Reset</a>
+                </div>
+            </form>
+        </section>
+
+        <div id="comments-table-container">
+            {% include "admin/comments/table.html" %}
+        </div>
+    </div>
+{% endblock %}
+
+{% block extrajs %}
+    {{ block.super }}
+    <script defer src="{% static 'js/admin/workspace.js' %}"></script>
+{% endblock %}

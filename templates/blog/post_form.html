@@ -1,0 +1,177 @@
+﻿{% extends "base.html" %}
+
+{% block title %}{{ mode }} Post{% endblock %}
+
+{% block extra_head %}
+{{ block.super }}
+{{ form.media }}
+{% include "partials/summernote_assets.html" %}
+{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+    <div class="col-xl-7">
+        <section class="content-panel p-4 p-md-5">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <h2 class="mb-1">{{ mode }} Post</h2>
+                    <p class="text-body-secondary mb-0">Structured editor with Tagulous smart tags and live Markdown preview.</p>
+                </div>
+                {% if post %}
+                    <a class="btn btn-sm btn-outline-secondary" href="{% url 'blog:post_revisions' post.slug %}">Revision History</a>
+                {% endif %}
+            </div>
+
+            <div
+                class="ui-inline-feedback-slot d-none mb-3"
+                data-ui-feedback-slot="post-form"
+                aria-live="polite"
+            ></div>
+
+            <form
+                method="post"
+                enctype="multipart/form-data"
+                data-ui-confirm="{% if mode == 'Create' %}Create this post now?{% else %}Save updates to this post?{% endif %}"
+                data-ui-feedback-target="post-form"
+                data-ui-action-kind="{% if mode == 'Create' %}create{% else %}update{% endif %}"
+                class="vstack gap-3"
+            >
+                {% csrf_token %}
+
+                {% for field in form %}
+                    {% if field.field.widget.input_type == "checkbox" %}
+                        <div class="form-check">
+                            {{ field }}
+                            <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                            {% if field.help_text %}<small class="d-block text-body-secondary">{{ field.help_text }}</small>{% endif %}
+                            {% if field.errors %}<small class="text-danger">{{ field.errors|join:', ' }}</small>{% endif %}
+                        </div>
+                    {% else %}
+                        <div>
+                            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                            {{ field }}
+                            {% if field.help_text %}<small class="d-block text-body-secondary">{{ field.help_text }}</small>{% endif %}
+                            {% if field.errors %}<small class="text-danger">{{ field.errors|join:', ' }}</small>{% endif %}
+                        </div>
+                    {% endif %}
+                {% endfor %}
+
+                <div class="d-flex gap-2 flex-wrap">
+                    <button class="btn btn-secondary" type="submit" data-post-status-submit="draft">Save Draft</button>
+                    <button class="btn btn-primary" type="submit" data-post-status-submit="published">Publish</button>
+                    <button class="btn btn-outline-primary" type="submit">{{ mode }} Post</button>
+                    {% if post %}
+                        <a class="btn btn-outline-secondary" href="{{ post.get_absolute_url }}">Cancel</a>
+                    {% else %}
+                        <a class="btn btn-outline-secondary" href="{% url 'blog:home' %}">Cancel</a>
+                    {% endif %}
+                </div>
+            </form>
+        </section>
+    </div>
+
+    <div class="col-xl-5">
+        <section class="content-panel p-4 sticky-lg-top preview-panel">
+            <h4 class="mb-2">Live Preview</h4>
+            <p class="text-body-secondary small">Updates as you type Markdown in the editor.</p>
+            <div
+                id="markdown-preview"
+                hx-post="{% url 'blog:markdown_preview' %}"
+                hx-trigger="load, keyup changed delay:450ms from:#id_body_markdown"
+                hx-include="#id_body_markdown"
+                hx-target="#markdown-preview"
+                hx-swap="innerHTML"
+            >
+                {% include "blog/partials/editor_preview.html" with preview_html=preview_html %}
+            </div>
+
+            <div
+                id="post-live-seo-checks"
+                hx-post="{% url 'seo:live_check_inline' 'post' %}"
+                hx-trigger="
+                    load,
+                    keyup changed delay:650ms from:#id_title,
+                    keyup changed delay:650ms from:#id_excerpt,
+                    keyup changed delay:650ms from:#id_slug,
+                    keyup changed delay:650ms from:#id_meta_title,
+                    keyup changed delay:650ms from:#id_meta_description,
+                    keyup changed delay:650ms from:#id_canonical_url,
+                    keyup changed delay:650ms from:#id_body_markdown
+                "
+                hx-include="#id_title, #id_excerpt, #id_slug, #id_meta_title, #id_meta_description, #id_canonical_url, #id_body_markdown"
+                hx-target="#post-live-seo-checks"
+                hx-swap="innerHTML"
+            >
+                <section class="content-panel p-3 mt-3">
+                    <div class="small text-body-secondary">Running realtime SEO checks...</div>
+                </section>
+            </div>
+        </section>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(() => {
+    const titleInput = document.getElementById("id_title");
+    const excerptInput = document.getElementById("id_excerpt");
+    const metaTitleInput = document.getElementById("id_meta_title");
+    const metaDescriptionInput = document.getElementById("id_meta_description");
+
+    if (!(titleInput && excerptInput && metaTitleInput && metaDescriptionInput)) {
+        return;
+    }
+
+    const normalize = (value) => (value || "").replace(/\s+/g, " ").trim();
+    const clamp = (value, maxLength) => normalize(value).slice(0, maxLength);
+
+    let metaTitleManual = false;
+    let metaDescriptionManual = false;
+
+    const syncMetaTitle = () => {
+        if (!metaTitleManual) {
+            metaTitleInput.value = clamp(titleInput.value, 70);
+        }
+    };
+
+    const syncMetaDescription = () => {
+        if (!metaDescriptionManual) {
+            metaDescriptionInput.value = clamp(excerptInput.value, 170);
+        }
+    };
+
+    metaTitleInput.addEventListener("input", () => {
+        const current = normalize(metaTitleInput.value);
+        const autoValue = clamp(titleInput.value, 70);
+        metaTitleManual = current !== "" && current !== autoValue;
+    });
+
+    metaDescriptionInput.addEventListener("input", () => {
+        const current = normalize(metaDescriptionInput.value);
+        const autoValue = clamp(excerptInput.value, 170);
+        metaDescriptionManual = current !== "" && current !== autoValue;
+    });
+
+    titleInput.addEventListener("input", syncMetaTitle);
+    excerptInput.addEventListener("input", syncMetaDescription);
+
+    const statusField = document.getElementById("id_status");
+    document.querySelectorAll("[data-post-status-submit]").forEach((button) => {
+        button.addEventListener("click", () => {
+            if (!statusField) {
+                return;
+            }
+            const targetStatus = button.dataset.postStatusSubmit || "";
+            if (targetStatus) {
+                statusField.value = targetStatus;
+            }
+        });
+    });
+
+    syncMetaTitle();
+    syncMetaDescription();
+})();
+</script>
+{% endblock %}
+

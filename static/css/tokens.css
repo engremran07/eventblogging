@@ -1,0 +1,262 @@
+/**
+ * =============================================================================
+ * DESIGN TOKENS - ENTERPRISE GRADE COLOR AND TYPOGRAPHY SYSTEM
+ * =============================================================================
+ * 
+ * Single source of truth for all visual design across the platform.
+ * This file is loaded FIRST before any other CSS.
+ * Every color, every spacing value, every border radius - defined once here.
+ * 
+ * NO COLOR IS WRITTEN TWICE.
+ * NO VALUE IS HARDCODED.
+ * 
+ * Theme: Dark by default, light variant available.
+ * Color palette: Enterprise (calm, precise, confident). No purple. No frivolous.
+ * Philosophy: Color is for hierarchy, status, and interaction — nothing more.
+ */
+
+:root {
+  /* =========================================================================
+     SURFACE COLORS - The foundation for all backgrounds and containers
+     ========================================================================= */
+  
+  --bg: #0f1117;                    /* Page background - darkest */
+  --surface-1: #161b27;             /* Cards, sidebar, main containers */
+  --surface-2: #1e2436;             /* Input fields, table rows, secondary bg */
+  --surface-3: #252d42;             /* Hover states, selected rows */
+  --border: #2a3249;                /* All borders - unified value */
+  --border-focus: #3d4f7a;          /* Focused input borders only */
+  
+  /* =========================================================================
+     TEXT COLORS - Typography hierarchy
+     ========================================================================= */
+  
+  --text-primary: #e2e8f0;          /* Headings, important labels */
+  --text-secondary: #8b96b0;        /* Body text, descriptions */
+  --text-muted: #4a5568;            /* Placeholder, disabled, hints */
+  --text-inverse: #0f1117;          /* Text on accent backgrounds */
+  
+  /* =========================================================================
+     ACCENT COLOR - The single primary action color (clean blue, not purple)
+     ========================================================================= */
+  
+  --accent: #4f9cf9;                /* Primary action color */
+  --accent-hover: #3b82f6;          /* Hover state - slightly deeper blue */
+  --accent-muted: rgba(79, 156, 249, 0.12);   /* Subtle backgrounds */
+  --accent-border: rgba(79, 156, 249, 0.30);  /* Accent borders */
+  
+  /* =========================================================================
+     SEMANTIC COLORS - Status indicators (enterprise palette)
+     ========================================================================= */
+  
+  --success: #22c55e;               /* Success, approved, published state */
+  --success-muted: rgba(34, 197, 94, 0.10);
+  
+  --warning: #f59e0b;               /* Warning, pending, draft state */
+  --warning-muted: rgba(245, 158, 11, 0.10);
+  
+  --danger: #ef4444;                /* Danger, error, spam state */
+  --danger-muted: rgba(239, 68, 68, 0.10);
+  
+  --info: #38bdf8;                  /* Info, help, neutral state */
+  --info-muted: rgba(56, 189, 248, 0.10);
+  
+  /* =========================================================================
+     TYPOGRAPHY - System fonts and sizing
+     ========================================================================= */
+  
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-serif: Georgia, Palatino, "Times New Roman", serif;
+  --font-mono: "SF Mono", "Monaco", "Inconsolata", "Fira Code", monospace;
+  
+  /* Font sizes - single scale */
+  --text-xs: 0.75rem;               /* 12px */
+  --text-sm: 0.875rem;              /* 14px */
+  --text-base: 1rem;                /* 16px - body default */
+  --text-lg: 1.125rem;              /* 18px */
+  --text-xl: 1.25rem;               /* 20px */
+  --text-2xl: 1.5rem;               /* 24px - section heading */
+  --text-3xl: 1.875rem;             /* 30px */
+  --text-4xl: 2.25rem;              /* 36px - page title */
+  
+  /* Font weights */
+  --fw-normal: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+  
+  /* Line heights */
+  --lh-tight: 1.25;
+  --lh-snug: 1.375;
+  --lh-normal: 1.5;
+  --lh-relaxed: 1.625;
+  
+  /* =========================================================================
+     SPACING SCALE - Consistent padding, margin, gaps
+     ========================================================================= */
+  
+  --space-0: 0;
+  --space-1: 0.25rem;               /* 4px */
+  --space-2: 0.5rem;                /* 8px */
+  --space-3: 0.75rem;               /* 12px */
+  --space-4: 1rem;                  /* 16px - standard padding */
+  --space-5: 1.25rem;               /* 20px */
+  --space-6: 1.5rem;                /* 24px - card padding */
+  --space-8: 2rem;                  /* 32px - section spacing */
+  --space-12: 3rem;                 /* 48px - large spacing */
+  --space-16: 4rem;                 /* 64px */
+  
+  /* =========================================================================
+     BORDER RADIUS - Consistent roundness across all shapes
+     ========================================================================= */
+  
+  --radius-sm: 4px;                 /* Badge, badge-like elements */
+  --radius-md: 6px;                 /* Buttons, inputs, modest corners */
+  --radius-lg: 10px;                /* Cards, larger containers */
+  --radius-full: 9999px;            /* Pills, fully rounded */
+  
+  /* =========================================================================
+     SHADOWS - Minimal, professional elevation without drama
+     ========================================================================= */
+  
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+  
+  /* =========================================================================
+     LAYOUT - Admin and public dimensions
+     ========================================================================= */
+  
+  --sidebar-width: 240px;           /* Fixed width sidebar */
+  --topbar-height: 64px;            /* Admin topbar */
+  --border-width: 1px;              /* All borders use this width */
+  --transition-duration: 150ms;     /* Smooth state changes */
+  --transition-timing: cubic-bezier(0.4, 0, 0.2, 1);
+  
+  /* =========================================================================
+     BREAKPOINTS - Responsive design
+     ========================================================================= */
+  
+  --screen-sm: 640px;
+  --screen-md: 768px;
+  --screen-lg: 1024px;
+  --screen-xl: 1280px;
+  --screen-2xl: 1536px;
+}
+
+/* ============================================================================
+   LIGHT THEME - Override root colors in light mode
+   ============================================================================ */
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f8fafc;
+    --surface-1: #ffffff;
+    --surface-2: #f1f5f9;
+    --surface-3: #e8edf5;
+    --border: #dde3ef;
+    --border-focus: #a5bdf4;
+    
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-muted: #94a3b8;
+    --text-inverse: #ffffff;
+  }
+}
+
+/* ============================================================================
+   EXPLICIT LIGHT THEME CLASS - For theme toggle in admin
+   ============================================================================ */
+
+[data-bs-theme="light"] {
+  --bg: #f8fafc;
+  --surface-1: #ffffff;
+  --surface-2: #f1f5f9;
+  --surface-3: #e8edf5;
+  --border: #dde3ef;
+  --border-focus: #a5bdf4;
+  
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+  --text-inverse: #ffffff;
+}
+
+[data-bs-theme="dark"] {
+  --bg: #0f1117;
+  --surface-1: #161b27;
+  --surface-2: #1e2436;
+  --surface-3: #252d42;
+  --border: #2a3249;
+  --border-focus: #3d4f7a;
+  
+  --text-primary: #e2e8f0;
+  --text-secondary: #8b96b0;
+  --text-muted: #4a5568;
+  --text-inverse: #0f1117;
+}
+
+/* ============================================================================
+   UNIVERSAL RULES - Applied before component-specific styles
+   ============================================================================ */
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg);
+  color: var(--text-primary);
+  font: var(--fw-normal) var(--text-base) / var(--lh-normal) var(--font-sans);
+  transition: background-color var(--transition-duration) var(--transition-timing),
+              color var(--transition-duration) var(--transition-timing);
+}
+
+/* Fast, responsive scrolling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--surface-1);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: var(--radius-md);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-focus);
+}
+
+/* ============================================================================
+   FOCUS STATES - Accessible focus rings
+   ============================================================================ */
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: none;
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px var(--accent-muted);
+}

@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+  <title id="title">Platform Logo</title>
+  <desc id="desc">Transparent hexagonal mark with a house symbol</desc>
+  <defs>
+    <linearGradient id="brandGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1d6bff"/>
+      <stop offset="100%" stop-color="#00a8d8"/>
+    </linearGradient>
+  </defs>
+  <path
+    d="M32 6 52 17v30L32 58 12 47V17Z"
+    fill="url(#brandGradient)"
+    opacity="0.16"
+  />
+  <path
+    d="M32 8 50 18v28L32 56 14 46V18Z"
+    fill="none"
+    stroke="url(#brandGradient)"
+    stroke-width="3.5"
+    stroke-linejoin="round"
+  />
+  <path
+    d="M22 33.5 32 24l10 9.5V45a2 2 0 0 1-2 2h-5v-8h-6v8h-5a2 2 0 0 1-2-2Z"
+    fill="url(#brandGradient)"
+  />
+</svg>

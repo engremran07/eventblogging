@@ -1,0 +1,325 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block extra_head %}
+    {{ block.super }}
+    <link rel="stylesheet" href="{% static 'css/admin/workspace.css' %}">
+{% endblock %}
+
+{% block content %}
+<div
+    class="workspace-shell dashboard-live-shell"
+    data-dashboard-live
+    data-stats-url="{% url 'blog:api_dashboard_stats' %}"
+>
+    <section class="card workspace-hero">
+        <div>
+            <p class="workspace-eyebrow">{% if dashboard_scope == "all" %}Global Operations{% else %}Author Operations{% endif %}</p>
+            <h1 class="workspace-title">Publishing Workspace</h1>
+            <p class="workspace-subtitle">
+                {% if dashboard_scope == "all" %}
+                    Control platform publishing, monitor live performance, and ship updates quickly.
+                {% else %}
+                    Control your publishing, monitor live performance, and ship updates quickly.
+                {% endif %}
+            </p>
+            <p class="workspace-muted dashboard-live-meta mb-0" data-dashboard-last-sync>Live sync standby.</p>
+        </div>
+        <div class="workspace-hero-actions">
+            <a class="btn btn-secondary btn-sm" href="{% url 'blog:post_create' %}">
+                <i class="bi bi-plus-circle" aria-hidden="true"></i>
+                Create Post
+            </a>
+            <button class="btn btn-ghost btn-sm" type="button" data-dashboard-refresh>
+                <i class="bi bi-arrow-repeat" aria-hidden="true"></i>
+                Refresh
+            </button>
+            <a class="btn btn-ghost btn-sm" href="{% url 'blog:api_dashboard_stats' %}" target="_blank" rel="noopener noreferrer">
+                <i class="bi bi-code-slash" aria-hidden="true"></i>
+                Stats API
+            </a>
+        </div>
+    </section>
+
+    <section class="workspace-kpis">
+        <article class="workspace-kpi">
+            <small>Total</small>
+            <strong data-dashboard-metric="dashboard_total_posts">{{ dashboard_total_posts }}</strong>
+            <span>{% if dashboard_scope == "all" %}All posts in platform{% else %}All authored posts{% endif %}</span>
+        </article>
+        <article class="workspace-kpi">
+            <small>Published</small>
+            <strong data-dashboard-metric="dashboard_published_posts">{{ dashboard_published_posts }}</strong>
+            <span>Live to readers</span>
+        </article>
+        <article class="workspace-kpi">
+            <small>Drafts</small>
+            <strong data-dashboard-metric="dashboard_draft_posts">{{ dashboard_draft_posts }}</strong>
+            <span>Awaiting publish</span>
+        </article>
+        <article class="workspace-kpi">
+            <small>Views</small>
+            <strong data-dashboard-metric="dashboard_total_views">{{ dashboard_total_views }}</strong>
+            <span>Published traffic</span>
+        </article>
+    </section>
+
+    <div class="row g-4">
+        <div class="col-xl-8">
+            <form method="get" class="card workspace-filter-card mb-3">
+                <div class="workspace-filter-grid dashboard-bulk-grid">
+                    <div class="workspace-field workspace-field--sort">
+                        <label for="dashboard-sort">Sort</label>
+                        <select id="dashboard-sort" name="sort">
+                            {% for sort_value, sort_label in sort_choices.items %}
+                                <option value="{{ sort_value }}" {% if sort_by == sort_value %}selected{% endif %}>{{ sort_label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="workspace-filter-actions">
+                        <button class="btn btn-secondary btn-sm" type="submit">Apply</button>
+                        <a class="btn btn-ghost btn-sm" href="{% url 'blog:dashboard' %}">Reset</a>
+                    </div>
+                </div>
+            </form>
+
+            <form
+                method="post"
+                action="{% url 'blog:post_bulk_action' %}"
+                data-ui-confirm-template='Apply "{action}" to selected posts?'
+                data-ui-feedback-target="dashboard-posts"
+                data-ui-action-kind="bulk"
+                class="card workspace-table-card dashboard-posts-card"
+            >
+                {% csrf_token %}
+                <div class="workspace-filter-card">
+                    <div
+                        class="ui-inline-feedback-slot d-none mb-3"
+                        data-ui-feedback-slot="dashboard-posts"
+                        aria-live="polite"
+                    ></div>
+                    <div class="workspace-filter-grid dashboard-bulk-grid">
+                        <div class="workspace-field workspace-field--search">
+                            <label for="post-bulk-action">Bulk Action</label>
+                            <select id="post-bulk-action" name="bulk_action">
+                                <option value="publish">Publish selected</option>
+                                <option value="review">Move selected to review</option>
+                                <option value="archive">Archive selected</option>
+                                <option value="feature_on">Feature selected</option>
+                                <option value="feature_off">Unfeature selected</option>
+                                <option value="comments_on">Enable comments</option>
+                                <option value="comments_off">Disable comments</option>
+                                <option value="reactions_on">Enable reactions</option>
+                                <option value="reactions_off">Disable reactions</option>
+                                <option value="delete">Delete selected</option>
+                            </select>
+                        </div>
+                        <div class="workspace-filter-actions">
+                            <button class="btn btn-secondary btn-sm" type="submit">Apply</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="workspace-table-scroll">
+                    <table class="workspace-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 44px;"></th>
+                                <th>Title</th>
+                                {% if dashboard_scope == "all" %}<th>Author</th>{% endif %}
+                                <th>Status</th>
+                                <th>Tags</th>
+                                <th>Views</th>
+                                <th>Updated</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for post in posts %}
+                                <tr>
+                                    <td>
+                                        <input
+                                            class="form-check-input"
+                                            type="checkbox"
+                                            name="selected_posts"
+                                            value="{{ post.id }}"
+                                            aria-label="Select {{ post.title }}"
+                                        >
+                                    </td>
+                                    <td>
+                                        <a href="{{ post.get_absolute_url }}" class="workspace-link">{{ post.title }}</a>
+                                        <div class="workspace-muted">{{ post.excerpt|truncatechars:90 }}</div>
+                                    </td>
+                                    {% if dashboard_scope == "all" %}
+                                        <td>{{ post.author.get_username }}</td>
+                                    {% endif %}
+                                    <td>
+                                        <span class="workspace-chip">{{ post.get_status_display }}</span>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex flex-wrap gap-1">
+                                            {% for tag in post.tags.all|slice:":3" %}
+                                                <span class="workspace-chip">#{{ tag.name }}</span>
+                                            {% empty %}
+                                                <span class="workspace-muted">-</span>
+                                            {% endfor %}
+                                        </div>
+                                    </td>
+                                    <td>{{ post.views_count }}</td>
+                                    <td>{{ post.updated_at|date:"Y-m-d H:i" }}</td>
+                                    <td>
+                                        <div class="dashboard-row-actions">
+                                            <a
+                                                class="btn btn-ghost btn-sm"
+                                                href="{% url 'blog:post_update' post.slug %}"
+                                                title="Edit post"
+                                                aria-label="Edit {{ post.title }}"
+                                            >
+                                                <i class="bi bi-pencil-square" aria-hidden="true"></i>
+                                            </a>
+                                            <a
+                                                class="btn btn-ghost btn-sm"
+                                                href="{% url 'blog:post_revisions' post.slug %}"
+                                                title="View revisions"
+                                                aria-label="Revisions for {{ post.title }}"
+                                            >
+                                                <i class="bi bi-clock-history" aria-hidden="true"></i>
+                                            </a>
+                                            <a
+                                                class="btn btn-danger btn-sm"
+                                                href="{% url 'blog:post_delete' post.slug %}"
+                                                title="Delete post"
+                                                aria-label="Delete {{ post.title }}"
+                                            >
+                                                <i class="bi bi-trash3" aria-hidden="true"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="{% if dashboard_scope == 'all' %}8{% else %}7{% endif %}" class="workspace-empty">
+                                        {% if dashboard_scope == "all" %}No posts in platform yet.{% else %}No posts yet.{% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                {% if is_paginated %}
+                    <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mt-3">
+                        <span class="workspace-page-status">
+                            Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                        </span>
+                        <div class="d-flex gap-2">
+                            {% if page_obj.has_previous %}
+                                <a
+                                    class="btn btn-secondary btn-sm"
+                                    href="?{% if page_query %}{{ page_query }}&{% endif %}page={{ page_obj.previous_page_number }}"
+                                >
+                                    Previous
+                                </a>
+                            {% endif %}
+                            {% if page_obj.has_next %}
+                                <a
+                                    class="btn btn-secondary btn-sm"
+                                    href="?{% if page_query %}{{ page_query }}&{% endif %}page={{ page_obj.next_page_number }}"
+                                >
+                                    Next
+                                </a>
+                                <a
+                                    class="btn btn-secondary btn-sm"
+                                    href="?{% if page_query %}{{ page_query }}&{% endif %}page={{ page_obj.paginator.num_pages }}"
+                                >
+                                    Last
+                                </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endif %}
+            </form>
+        </div>
+
+        <div class="col-xl-4">
+            <section class="card mb-3">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <h6 class="mb-0">Top Performing Posts</h6>
+                    <span class="workspace-chip">Live</span>
+                </div>
+                <ul class="dashboard-live-list" data-dashboard-top-posts data-empty-message="Publish posts to collect analytics.">
+                    {% for post in dashboard_top_posts %}
+                        <li>
+                            <a class="workspace-link" href="{{ post.get_absolute_url }}">{{ post.title }}</a>
+                            <span class="workspace-muted">{{ post.views_count }} views</span>
+                        </li>
+                    {% empty %}
+                        <li class="workspace-muted">Publish posts to collect analytics.</li>
+                    {% endfor %}
+                </ul>
+            </section>
+
+            <section class="card mb-3">
+                <h6 class="mb-2">Recent Activity</h6>
+                <ul class="dashboard-live-list" data-dashboard-activity data-empty-message="No activity yet.">
+                    {% for post in dashboard_latest_activity %}
+                        <li>
+                            <span>{{ post.title|truncatechars:28 }}</span>
+                            <span class="workspace-muted">{{ post.updated_at|date:"m-d H:i" }}</span>
+                        </li>
+                    {% empty %}
+                        <li class="workspace-muted">No activity yet.</li>
+                    {% endfor %}
+                </ul>
+            </section>
+
+            <section class="card">
+                <h6 class="mb-2 d-flex justify-content-between align-items-center">
+                    <span>Tagulous Live</span>
+                    <span class="workspace-chip">Active</span>
+                </h6>
+                <p class="workspace-muted mb-2">Top taxonomy data from live tag usage.</p>
+                <div class="small mb-2">
+                    <strong>Max category depth:</strong>
+                    {{ dashboard_tagulous.max_category_depth_live }}
+                </div>
+
+                <div class="mb-2">
+                    <div class="workspace-muted mb-1">Top Tags</div>
+                    <div class="d-flex flex-wrap gap-1">
+                        {% for tag in dashboard_tagulous.top_tags|slice:":8" %}
+                            <a class="workspace-chip text-decoration-none" href="{% url 'blog:posts_by_tag' tag.name %}">#{{ tag.label|default:tag.name }}</a>
+                        {% empty %}
+                            <span class="workspace-muted">No tags yet.</span>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="mb-2">
+                    <div class="workspace-muted mb-1">Top Topics</div>
+                    <div class="d-flex flex-wrap gap-1">
+                        {% for topic in dashboard_tagulous.top_topics|slice:":8" %}
+                            <a class="workspace-chip text-decoration-none" href="{% url 'blog:posts_by_topic' topic.name %}">{{ topic.label|default:topic.name }}</a>
+                        {% empty %}
+                            <span class="workspace-muted">No topics yet.</span>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div>
+                    <div class="workspace-muted mb-1">Top Categories</div>
+                    <div class="d-flex flex-wrap gap-1">
+                        {% for category in dashboard_tagulous.top_categories|slice:":8" %}
+                            <a class="workspace-chip text-decoration-none" href="{% url 'blog:posts_by_category' category.name %}">{{ category.label|default:category.name }}</a>
+                        {% empty %}
+                            <span class="workspace-muted">No categories yet.</span>
+                        {% endfor %}
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+</div>
+{% endblock %}

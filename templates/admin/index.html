@@ -1,0 +1,341 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static log %}
+
+{% block bodyclass %}{{ block.super }} dashboard{% endblock %}
+{% block content_title %}{% trans 'Dashboard' %}{% endblock %}
+
+{% block extrahead %}
+    {{ block.super }}
+    <link rel="stylesheet" href="{% static 'css/admin/dashboard.css' %}">
+{% endblock %}
+
+{% block breadcrumbs %}
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'admin:index' %}">{% trans 'Home' %}</a></li>
+        <li class="breadcrumb-item">{% trans 'Dashboard' %}</li>
+    </ol>
+{% endblock %}
+
+{% block content %}
+    {% if admin_overview %}
+        <div class="dashboard-shell">
+            <section class="card dashboard-hero">
+                <div>
+                    <p class="dashboard-eyebrow">Control Center</p>
+                    <h2 class="dashboard-heading">Unified Operations Dashboard</h2>
+                    <p class="dashboard-subtitle">
+                        Live editorial, SEO, moderation, and platform readiness in one workspace.
+                    </p>
+                </div>
+                <div class="dashboard-hero-actions">
+                    <span class="badge text-bg-secondary">Updated {{ admin_overview.updated_at|date:"Y-m-d H:i:s" }}</span>
+                    <a class="btn btn-primary btn-sm" href="{% url 'blog:admin_post_create' %}">New Post</a>
+                    <a class="btn btn-outline-secondary btn-sm" href="{% url 'admin_config:seo_control_canonical_section' 'onsite' %}">SEO Queue</a>
+                    <a class="btn btn-outline-secondary btn-sm" href="{% url 'blog:admin_comments_list' %}">Moderate Comments</a>
+                </div>
+            </section>
+
+            <section class="dashboard-kpi-grid">
+                <article class="dashboard-kpi-card">
+                    <small>Total Posts</small>
+                    <strong>{{ admin_overview.site.posts_total }}</strong>
+                    <span>Published {{ admin_overview.site.posts_published }} | Drafts {{ admin_overview.site.posts_draft }}</span>
+                </article>
+                <article class="dashboard-kpi-card">
+                    <small>Publication Rate</small>
+                    <strong>{{ admin_overview.derived.publication_rate }}%</strong>
+                    <span>Current catalog publication coverage</span>
+                </article>
+                <article class="dashboard-kpi-card">
+                    <small>Pending Comments</small>
+                    <strong>{{ admin_overview.site.comments_pending }}</strong>
+                    <span>{{ admin_overview.derived.pending_comment_rate }}% of total comments</span>
+                </article>
+                <article class="dashboard-kpi-card">
+                    <small>SEO Health</small>
+                    <strong>
+                        {% if admin_overview.seo.latest_score %}
+                            {{ admin_overview.seo.latest_score|floatformat:1 }}
+                        {% else %}
+                            --
+                        {% endif %}
+                    </strong>
+                    <span>{{ admin_overview.derived.seo_health.label }}</span>
+                </article>
+                <article class="dashboard-kpi-card">
+                    <small>Audience Reach</small>
+                    <strong>{{ admin_overview.site.views_total }}</strong>
+                    <span>Total post views across published content</span>
+                </article>
+                <article class="dashboard-kpi-card">
+                    <small>Taxonomy Density</small>
+                    <strong>{{ admin_overview.site.categories_total }}</strong>
+                    <span>{{ admin_overview.site.topics_total }} topics | {{ admin_overview.site.tags_total }} tags</span>
+                </article>
+            </section>
+
+            {% if admin_overview.health_signals %}
+                <section class="card dashboard-signals">
+                    <h5 class="m-0">Operational Signals</h5>
+                    <div class="dashboard-signal-list">
+                        {% for signal in admin_overview.health_signals %}
+                            <article class="dashboard-signal signal-{{ signal.level }}">
+                                <div>
+                                    <h6>{{ signal.title }}</h6>
+                                    <p>{{ signal.detail }}</p>
+                                </div>
+                                {% if signal.url and signal.action_label %}
+                                    <a href="{{ signal.url }}" class="btn btn-sm btn-outline-secondary">{{ signal.action_label }}</a>
+                                {% endif %}
+                            </article>
+                        {% endfor %}
+                    </div>
+                </section>
+            {% endif %}
+
+            <div class="dashboard-main-grid">
+                <div class="dashboard-main-column">
+                    <section class="card">
+                        <div class="dashboard-card-head">
+                            <h5 class="m-0">Performance Snapshot (7d)</h5>
+                        </div>
+                        <div class="dashboard-mini-metrics">
+                            <div class="dashboard-mini-metric">
+                                <small>Created</small>
+                                <strong>{{ admin_overview.insights.posts_created_7d }}</strong>
+                                <span>Posts</span>
+                            </div>
+                            <div class="dashboard-mini-metric">
+                                <small>Published</small>
+                                <strong>{{ admin_overview.insights.posts_published_7d }}</strong>
+                                <span>Posts</span>
+                            </div>
+                            <div class="dashboard-mini-metric">
+                                <small>Comments</small>
+                                <strong>{{ admin_overview.insights.comments_7d }}</strong>
+                                <span>New in 7d</span>
+                            </div>
+                            <div class="dashboard-mini-metric">
+                                <small>Active Authors</small>
+                                <strong>{{ admin_overview.insights.active_authors_7d }}</strong>
+                                <span>In 7d</span>
+                            </div>
+                            <div class="dashboard-mini-metric">
+                                <small>Avg Comments/Post</small>
+                                <strong>{{ admin_overview.insights.avg_comments_per_post }}</strong>
+                                <span>Engagement</span>
+                            </div>
+                            <div class="dashboard-mini-metric">
+                                <small>Avg Views/Post</small>
+                                <strong>{{ admin_overview.insights.avg_views_per_post }}</strong>
+                                <span>Reach</span>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="card">
+                        <div class="dashboard-card-head">
+                            <h5 class="m-0">Top Posts by Views</h5>
+                            <a href="{% url 'blog:admin_posts_list' %}" class="btn btn-sm btn-outline-secondary">Open Posts</a>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-sm m-0 dashboard-table">
+                                <thead>
+                                    <tr>
+                                        <th>Post</th>
+                                        <th class="text-end">Views</th>
+                                        <th>Published</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for post in admin_overview.top_posts %}
+                                        <tr>
+                                            <td><a href="{% url 'blog:admin_post_editor' post.id %}">{{ post.title|truncatechars:52 }}</a></td>
+                                            <td class="text-end">{{ post.views_count }}</td>
+                                            <td>{{ post.published_at|date:"Y-m-d" }}</td>
+                                        </tr>
+                                    {% empty %}
+                                        <tr><td colspan="3" class="text-muted">No data yet.</td></tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+
+                    <section class="card">
+                        <div class="dashboard-card-head">
+                            <h5 class="m-0">Recently Updated Posts</h5>
+                            <a href="{% url 'blog:admin_posts_list' %}" class="btn btn-sm btn-outline-secondary">Manage</a>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-sm m-0 dashboard-table">
+                                <thead>
+                                    <tr>
+                                        <th>Post</th>
+                                        <th>Status</th>
+                                        <th>Updated</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for post in admin_overview.recent_posts %}
+                                        <tr>
+                                            <td><a href="{% url 'blog:admin_post_editor' post.id %}">{{ post.title|truncatechars:52 }}</a></td>
+                                            <td><span class="text-capitalize">{{ post.status }}</span></td>
+                                            <td>{{ post.updated_at|date:"Y-m-d H:i" }}</td>
+                                        </tr>
+                                    {% empty %}
+                                        <tr><td colspan="3" class="text-muted">No data yet.</td></tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+                </div>
+
+                <aside class="dashboard-side-column">
+                    <section class="card">
+                        <div class="dashboard-card-head">
+                            <h5 class="m-0">Site Overview</h5>
+                        </div>
+                        <ul class="dashboard-stats-list">
+                            <li><span>Subscribers</span><strong>{{ admin_overview.site.subscribers_total }}</strong></li>
+                            <li><span>Topics</span><strong>{{ admin_overview.site.topics_total }}</strong></li>
+                            <li><span>Tags</span><strong>{{ admin_overview.site.tags_total }}</strong></li>
+                            <li><span>Categories</span><strong>{{ admin_overview.site.categories_total }}</strong></li>
+                        </ul>
+                    </section>
+
+                    {% if admin_overview.appearance %}
+                        <section class="card">
+                            <div class="dashboard-card-head">
+                                <h5 class="m-0">Appearance Studio</h5>
+                                <span class="badge text-bg-info">{{ admin_overview.appearance.mode_label }}</span>
+                            </div>
+                            <ul class="dashboard-stats-list">
+                                <li><span>Preset</span><strong>{{ admin_overview.appearance.preset_label }}</strong></li>
+                                <li><span>Theme Mode</span><strong>{{ admin_overview.appearance.mode_label }}</strong></li>
+                            </ul>
+                            <a href="{% url 'blog:admin_settings' %}?section=appearance#settings-appearance" class="btn btn-sm btn-outline-secondary w-100">Open Appearance Studio</a>
+                        </section>
+                    {% endif %}
+
+                    {% if admin_overview.content_refresh %}
+                        <section class="card">
+                            <div class="dashboard-card-head">
+                                <h5 class="m-0">Content Refresh Timer</h5>
+                                <span class="badge {% if admin_overview.content_refresh.enabled %}text-bg-success{% else %}text-bg-secondary{% endif %}">
+                                    {% if admin_overview.content_refresh.enabled %}Enabled{% else %}Disabled{% endif %}
+                                </span>
+                            </div>
+                            <ul class="dashboard-stats-list">
+                                <li><span>Post Interval</span><strong>{{ admin_overview.content_refresh.post_interval_hours }}h</strong></li>
+                                <li><span>Page Interval</span><strong>{{ admin_overview.content_refresh.page_interval_hours }}h</strong></li>
+                                <li><span>Max Items/Run</span><strong>{{ admin_overview.content_refresh.max_items_per_run }}</strong></li>
+                                <li>
+                                    <span>Last Run</span>
+                                    <strong>
+                                        {% if admin_overview.content_refresh.last_run_at %}
+                                            {{ admin_overview.content_refresh.last_run_at|date:"Y-m-d H:i" }}
+                                        {% else %}
+                                            Never
+                                        {% endif %}
+                                    </strong>
+                                </li>
+                            </ul>
+                            <a href="{% url 'admin:blog_contentrefreshsettings_change' 1 %}" class="btn btn-sm btn-outline-secondary w-100">Configure Timer</a>
+                        </section>
+                    {% endif %}
+
+                    {% if admin_overview.seo %}
+                        <section class="card">
+                            <div class="dashboard-card-head">
+                                <h5 class="m-0">SEO Engine</h5>
+                                {% if admin_overview.seo.latest_score %}
+                                    <span class="badge {% if admin_overview.seo.latest_score >= 80 %}text-bg-success{% elif admin_overview.seo.latest_score >= 60 %}text-bg-warning{% else %}text-bg-danger{% endif %}">
+                                        Score {{ admin_overview.seo.latest_score|floatformat:1 }}
+                                    </span>
+                                {% else %}
+                                    <span class="badge text-bg-secondary">No audits</span>
+                                {% endif %}
+                            </div>
+                            <ul class="dashboard-stats-list">
+                                <li><span>Critical Issues</span><strong>{{ admin_overview.seo.issue_counts.critical_open }}</strong></li>
+                                <li><span>Warning Issues</span><strong>{{ admin_overview.seo.issue_counts.warning_open }}</strong></li>
+                                <li><span>Pending Suggestions</span><strong>{{ admin_overview.seo.suggestion_counts.pending_total }}</strong></li>
+                                <li><span>Metadata Queue</span><strong>{{ admin_overview.seo.suggestion_counts.pending_metadata }}</strong></li>
+                                <li><span>Interlink Queue</span><strong>{{ admin_overview.seo.suggestion_counts.pending_interlinks }}</strong></li>
+                                <li><span>Redirect Queue</span><strong>{{ admin_overview.seo.suggestion_counts.pending_redirects }}</strong></li>
+                            </ul>
+                            <div class="dashboard-inline-actions">
+                                <a href="{% url 'admin_config:seo_control_canonical_section' 'onsite' %}" class="btn btn-sm btn-outline-secondary">Queue</a>
+                                <a href="{% url 'admin_config:seo_control_canonical_section' 'scan' %}" class="btn btn-sm btn-outline-secondary">Scans</a>
+                                <a href="{% url 'admin_config:seo_control_canonical_section' 'settings' %}" class="btn btn-sm btn-outline-secondary">Settings</a>
+                            </div>
+                        </section>
+                    {% endif %}
+
+                    <section class="card">
+                        <div class="dashboard-card-head">
+                            <h5 class="m-0">Repo Overview</h5>
+                            <span class="badge {% if admin_overview.repo.dirty %}text-bg-warning{% else %}text-bg-success{% endif %}">
+                                {% if admin_overview.repo.dirty %}Dirty{% else %}Clean{% endif %}
+                            </span>
+                        </div>
+                        <ul class="dashboard-stats-list">
+                            <li><span>Branch</span><strong>{{ admin_overview.repo.branch }}</strong></li>
+                            <li><span>Commit</span><strong>{{ admin_overview.repo.commit }}</strong></li>
+                            <li><span>Python Files</span><strong>{{ admin_overview.repo.python_files }}</strong></li>
+                            <li><span>Template Files</span><strong>{{ admin_overview.repo.template_files }}</strong></li>
+                            <li><span>Static Files</span><strong>{{ admin_overview.repo.static_files }}</strong></li>
+                            <li><span>Migrations</span><strong>{{ admin_overview.repo.migration_files }}</strong></li>
+                            <li><span>Code Lines</span><strong>{{ admin_overview.repo.code_lines }}</strong></li>
+                        </ul>
+                    </section>
+                </aside>
+            </div>
+        </div>
+    {% endif %}
+
+    <section class="card mt-3">
+        <div class="dashboard-card-head">
+            <h5 class="m-0">{% trans 'Recent actions' %}</h5>
+        </div>
+        {% get_admin_log 8 as admin_log for_user user %}
+        {% if not admin_log %}
+            <p class="text-muted m-0">{% trans 'None available' %}</p>
+        {% else %}
+            <ul class="dashboard-activity-list">
+                {% for entry in admin_log %}
+                    <li>
+                        <div class="dashboard-activity-icon">
+                            {% if entry.is_change %}
+                                <i class="fas fa-edit"></i>
+                            {% elif entry.is_deletion %}
+                                <i class="fas fa-trash"></i>
+                            {% elif entry.is_addition %}
+                                <i class="fas fa-plus-circle"></i>
+                            {% else %}
+                                <i class="fas fa-circle"></i>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <p class="m-0">
+                                {% if entry.is_deletion or not entry.get_admin_url %}
+                                    {{ entry.object_repr }}
+                                {% else %}
+                                    <a href="{{ entry.get_admin_url }}">{{ entry.object_repr }}</a>
+                                {% endif %}
+                                {% if entry.model %}
+                                    <span class="text-muted">({{ entry.model|capfirst }})</span>
+                                {% endif %}
+                            </p>
+                            <small class="text-muted">
+                                {% blocktrans with timesince=entry.action_time|timesince %}{{ timesince }} ago{% endblocktrans %}
+                            </small>
+                        </div>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    </section>
+{% endblock %}

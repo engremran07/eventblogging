@@ -1,0 +1,55 @@
+﻿{% extends "seo/admin/base.html" %}
+
+{% block admin_control_body %}
+<div class="row g-3">
+    <div class="col-lg-7">
+        <div class="card">
+            <div class="card-header">Suggestion #{{ suggestion.id }} Payload</div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="return_section" value="{{ return_section|default:'onsite' }}">
+                    <div class="mb-3">
+                        <label class="form-label">{{ form.payload_json.label }}</label>
+                        {{ form.payload_json }}
+                        {% for error in form.payload_json.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">{{ form.note.label }}</label>
+                        {{ form.note }}
+                        {% for error in form.note.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                    </div>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <button class="btn btn-primary" type="submit">Save Revision</button>
+                        <button class="btn btn-success" name="apply_action" value="approve" type="submit">Save + Approve</button>
+                        <button class="btn btn-outline-danger" name="apply_action" value="reject" type="submit">Save + Reject</button>
+                        <a class="btn btn-outline-secondary" href="{% url 'admin_config:seo_control_canonical_section' return_section|default:'onsite' %}">Back</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="card">
+            <div class="card-header">Revision History</div>
+            <div class="card-body p-0">
+                <table class="table table-sm mb-0">
+                    <thead><tr><th>When</th><th>Editor</th><th>Note</th></tr></thead>
+                    <tbody>
+                        {% for revision in revisions %}
+                            <tr>
+                                <td>{{ revision.edited_at|date:"Y-m-d H:i" }}</td>
+                                <td>{{ revision.edited_by|default:"-" }}</td>
+                                <td>{{ revision.note|default:"-" }}</td>
+                            </tr>
+                        {% empty %}
+                            <tr><td colspan="3" class="text-muted">No revisions yet.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

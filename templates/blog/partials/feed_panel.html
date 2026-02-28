@@ -1,0 +1,91 @@
+﻿<section class="content-panel p-4 mb-3" x-data="{ open: false }">
+    <form
+        id="search-form"
+        class="row g-2 align-items-center"
+        method="get"
+        action="{{ request.path }}"
+        hx-get="{{ request.path }}"
+        hx-target="#feed-panel"
+        hx-push-url="true"
+        x-on:input.debounce.320ms="$el.requestSubmit()"
+    >
+        {% if active_topic %}<input type="hidden" name="topic" value="{{ active_topic }}">{% endif %}
+        {% if active_tag %}<input type="hidden" name="tag" value="{{ active_tag }}">{% endif %}
+        {% if active_category %}<input type="hidden" name="category" value="{{ active_category }}">{% endif %}
+
+        <div class="col-lg-8 position-relative">
+            <label class="form-label mb-1">Search</label>
+            <div class="search-input-wrap">
+                <input
+                    type="search"
+                    name="q"
+                    value="{{ active_query }}"
+                    class="form-control search-input"
+                    placeholder="Search posts, tags, topics, categories..."
+                    autocomplete="off"
+                    spellcheck="false"
+                    x-ref="searchInput"
+                    x-on:focus="open = true"
+                    x-on:keydown.escape.window="open = false"
+                    hx-get="{% url 'blog:search_suggestions' %}"
+                    hx-trigger="keyup changed delay:220ms, search"
+                    hx-target="#search-suggestions-content"
+                    hx-include="#search-form [name='q']"
+                >
+                <button
+                    type="button"
+                    class="btn btn-sm btn-outline-secondary search-clear-btn"
+                    x-show="$refs.searchInput.value.length > 0"
+                    x-cloak
+                    x-on:click="
+                        $refs.searchInput.value = '';
+                        $refs.searchInput.dispatchEvent(new Event('input'));
+                        $refs.searchInput.dispatchEvent(new Event('keyup'));
+                        $refs.searchInput.focus();
+                    "
+                >
+                    Clear
+                </button>
+            </div>
+
+            <div class="search-suggestions-panel mt-2" x-show="open" x-cloak x-on:click.outside="open = false">
+                <div id="search-suggestions-content">
+                    {% include "blog/partials/search_suggestions.html" %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4 d-flex align-items-end gap-2">
+            <button class="btn btn-primary w-100" type="submit">Search</button>
+            <a class="btn btn-outline-secondary" href="{{ request.path }}">Reset</a>
+        </div>
+    </form>
+</section>
+
+<section class="content-panel p-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <div>
+            <h3 class="mb-1">Discover Posts</h3>
+            <p class="text-body-secondary mb-0 small">
+                {% if page_obj.paginator.count %}
+                    Showing {{ page_obj.start_index }}-{{ page_obj.end_index }} of {{ page_obj.paginator.count }}
+                {% endif %}
+            </p>
+        </div>
+        <div class="d-flex gap-2">
+            {% if feature_controls.enable_public_api %}
+            <a class="btn btn-sm btn-outline-secondary" href="{{ api_posts_url }}{% if query_without_page %}?{{ query_without_page }}{% endif %}" target="_blank" rel="noopener noreferrer">Open JSON API</a>
+            {% endif %}
+            <button class="btn btn-sm btn-outline-primary" hx-get="{{ request.path }}" hx-target="#feed-panel" hx-push-url="true">Refresh</button>
+        </div>
+    </div>
+
+    {% if active_query %}
+        <div class="alert alert-primary-subtle border mb-3">
+            Live search active for <strong>"{{ active_query }}"</strong>.
+            <span class="text-body-secondary small">Algorithmic related posts are updated in the left widget.</span>
+        </div>
+    {% endif %}
+
+    {% include "blog/partials/post_list.html" %}
+</section>

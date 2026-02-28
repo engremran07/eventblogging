@@ -1,0 +1,190 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block content %}
+    <div class="admin-page-content">
+        <h1 style="margin-bottom: var(--space-6);">Dashboard</h1>
+        
+        <!-- Stats Grid -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: var(--space-4); margin-bottom: var(--space-8);">
+            <!-- Total Posts -->
+            <div class="stat-card">
+                <div class="stat-value">{{ total_posts }}</div>
+                <div class="stat-label">Total Posts</div>
+                <div class="stat-subtext">
+                    {% if published_posts %}
+                        {{ published_posts }} published
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Draft Posts -->
+            <div class="stat-card">
+                <div class="stat-value">{{ draft_posts }}</div>
+                <div class="stat-label">Draft Posts</div>
+                <div class="stat-subtext">Ready to publish</div>
+            </div>
+            
+            <!-- Comments -->
+            <div class="stat-card">
+                <div class="stat-value">{{ pending_comments }}</div>
+                <div class="stat-label">Pending Comments</div>
+                <div class="stat-subtext">{{ approved_comments }} approved</div>
+            </div>
+            
+            <!-- Avg SEO Score -->
+            <div class="stat-card">
+                <div class="stat-value">
+                    <span style="color: var(--success);">{{ avg_seo_score|default:"--" }}</span>%
+                </div>
+                <div class="stat-label">Avg SEO Score</div>
+                <div class="stat-subtext">From published posts</div>
+            </div>
+        </div>
+        
+        <!-- Recent Activity Grid -->
+        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: var(--space-6); margin-bottom: var(--space-8);">
+            <!-- Recent Posts -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 style="margin: 0;">Recent Posts</h2>
+                    <a href="{% url 'blog:admin_posts_list' %}" class="btn btn-ghost btn-sm">View All</a>
+                </div>
+                
+                <table style="width: 100%; font-size: var(--text-sm);">
+                    <tbody>
+                        {% for post in recent_posts %}
+                            <tr style="border-bottom: var(--border-width) solid var(--border);">
+                                <td style="padding: var(--space-3); text-align: left;">
+                                    <a href="{% url 'blog:admin_post_editor' post.id %}" style="color: var(--accent); text-decoration: none;">
+                                        {{ post.title|truncatewords:5 }}
+                                    </a>
+                                </td>
+                                <td style="padding: var(--space-3); text-align: right;">
+                                    {% if post.is_published %}
+                                        <span class="badge badge-success">Published</span>
+                                    {% else %}
+                                        <span class="badge badge-muted">Draft</span>
+                                    {% endif %}
+                                </td>
+                                <td style="padding: var(--space-3); text-align: right; color: var(--text-muted);">
+                                    {{ post.published_at|date:"M d" }}
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td style="padding: var(--space-4); color: var(--text-muted); text-align: center;">
+                                    No posts yet. <a href="{% url 'blog:admin_post_create' %}">Create one</a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Quick Actions -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 style="margin: 0;">Quick Actions</h2>
+                </div>
+                
+                <div style="display: flex; flex-direction: column; gap: var(--space-3);">
+                    <a href="{% url 'blog:admin_post_create' %}" class="btn btn-primary btn-block">
+                        <i class="fas fa-plus"></i> New Post
+                    </a>
+                    <a href="{% url 'blog:admin_comments_list' %}" class="btn btn-secondary btn-block">
+                        <i class="fas fa-comments"></i> Moderate Comments
+                    </a>
+                    <a href="{% url 'blog:admin_posts_list' %}" class="btn btn-secondary btn-block">
+                        <i class="fas fa-pencil"></i> Edit Drafts
+                    </a>
+                    {% if seo_pending_count %}
+                        <a href="{% url 'admin_config:seo_control' %}" class="btn btn-secondary btn-block">
+                            <i class="fas fa-search"></i> SEO Audit ({{ seo_pending_count }})
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Pending Comments (if any) -->
+        {% if pending_comments_list %}
+            <div class="card">
+                <div class="card-header">
+                    <h2 style="margin: 0;">Pending Comments</h2>
+                    <a href="{% url 'blog:admin_comments_list' %}" class="btn btn-ghost btn-sm">View All</a>
+                </div>
+                
+                <div style="display: flex; flex-direction: column; gap: var(--space-4);">
+                    {% for comment in pending_comments_list|slice:":5" %}
+                        <div style="padding-bottom: var(--space-4); border-bottom: var(--border-width) solid var(--border);">
+                            <strong>{{ comment.author.username }}</strong>
+                            <div style="font-size: var(--text-sm); color: var(--text-muted);">
+                                on <a href="{% url 'blog:admin_post_editor' comment.post.id %}">{{ comment.post.title|truncatewords:5 }}</a>
+                            </div>
+                            <p style="margin: var(--space-2) 0 0; font-size: var(--text-sm);">{{ comment.body|truncatewords:20 }}</p>
+                            <div style="margin-top: var(--space-2); display: flex; gap: var(--space-2);">
+                                <button hx-post="{% url 'blog:admin_comment_approve' comment.id %}" hx-swap="outerHTML" class="btn btn-success btn-sm">
+                                    Approve
+                                </button>
+                                <button hx-post="{% url 'blog:admin_comment_delete' comment.id %}" hx-confirm="Delete this comment?" hx-swap="outerHTML" class="btn btn-danger btn-sm">
+                                    Delete
+                                </button>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+    </div>
+    
+    <style>
+        .admin-page-content {
+            padding: var(--space-8);
+        }
+        
+        .stat-card {
+            background-color: var(--surface-1);
+            border: var(--border-width) solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: var(--space-6);
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-2);
+            transition: all var(--transition-duration);
+        }
+        
+        .stat-card:hover {
+            background-color: var(--surface-2);
+            border-color: var(--accent);
+        }
+        
+        .stat-value {
+            font-size: var(--text-4xl);
+            font-weight: var(--fw-bold);
+            color: var(--accent);
+        }
+        
+        .stat-label {
+            font-size: var(--text-sm);
+            font-weight: var(--fw-semibold);
+            color: var(--text-primary);
+        }
+        
+        .stat-subtext {
+            font-size: var(--text-xs);
+            color: var(--text-secondary);
+        }
+        
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: var(--space-4);
+            border-bottom: var(--border-width) solid var(--border);
+            margin-bottom: var(--space-4);
+        }
+    </style>
+{% endblock %}

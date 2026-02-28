@@ -1,0 +1,28 @@
+﻿{% extends "base.html" %}
+
+{% block content %}
+<section class="content-panel p-4 p-md-5 mb-4">
+    <p class="kicker mb-2">Legal and Trust</p>
+    <h1 class="mb-2">Policy Center</h1>
+    <p class="text-body-secondary mb-0">Human-readable policy pages with structured URLs for crawlers and compliance tooling.</p>
+</section>
+
+<div class="row g-3">
+    {% for policy in policies %}
+        <div class="col-lg-6">
+            <article class="content-panel p-3 h-100">
+                <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                    <h5 class="mb-0"><a class="text-decoration-none" href="{% url 'pages:policy_detail' policy.slug %}">{{ policy.title }}</a></h5>
+                    {% if policy.source == 'page' %}
+                        <span class="badge text-bg-info">Page Override</span>
+                    {% else %}
+                        <span class="badge text-bg-secondary">Default</span>
+                    {% endif %}
+                </div>
+                <p class="text-body-secondary mb-2">{{ policy.summary }}</p>
+                <div class="small text-body-secondary">Updated {{ policy.updated_at|date:"Y-m-d" }}</div>
+            </article>
+        </div>
+    {% endfor %}
+</div>
+{% endblock %}

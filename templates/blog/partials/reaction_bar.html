@@ -1,0 +1,46 @@
+<div
+    class="ui-inline-feedback-slot d-none mb-3"
+    data-ui-feedback-slot="reactions"
+    aria-live="polite"
+></div>
+
+<div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+    {% if global_reactions_enabled and post.allow_reactions %}
+        <form
+            method="post"
+            action="{% url 'blog:toggle_like' post.slug %}"
+            hx-post="{% url 'blog:toggle_like' post.slug %}"
+            hx-target="#reaction-bar"
+            hx-swap="outerHTML"
+            hx-confirm="{% if liked %}Remove your like?{% else %}Like this post?{% endif %}"
+            data-ui-feedback-target="reactions"
+            data-ui-action-kind="toggle"
+        >
+            {% csrf_token %}
+            <button class="btn btn-sm {% if liked %}btn-danger{% else %}btn-outline-danger{% endif %}" type="submit">
+                <i class="bi bi-heart-fill"></i> {{ post.likes.count }} Like{% if post.likes.count != 1 %}s{% endif %}
+            </button>
+        </form>
+
+        <form
+            method="post"
+            action="{% url 'blog:toggle_bookmark' post.slug %}"
+            hx-post="{% url 'blog:toggle_bookmark' post.slug %}"
+            hx-target="#reaction-bar"
+            hx-swap="outerHTML"
+            hx-confirm="{% if bookmarked %}Remove this bookmark?{% else %}Bookmark this post?{% endif %}"
+            data-ui-feedback-target="reactions"
+            data-ui-action-kind="toggle"
+        >
+            {% csrf_token %}
+            <button class="btn btn-sm {% if bookmarked %}btn-warning{% else %}btn-outline-warning{% endif %}" type="submit">
+                <i class="bi bi-bookmark-fill"></i> {{ post.bookmarks.count }} Bookmark{% if post.bookmarks.count != 1 %}s{% endif %}
+            </button>
+        </form>
+    {% else %}
+        <span class="badge text-bg-secondary">Reactions disabled</span>
+    {% endif %}
+
+    <span class="small text-body-secondary"><i class="bi bi-eye"></i> {{ post.views_count }} views</span>
+    <span class="small text-body-secondary"><i class="bi bi-chat"></i> {{ post.comments.count }} comments</span>
+</div>

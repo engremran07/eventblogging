@@ -1,0 +1,57 @@
+﻿{% extends "base.html" %}
+
+{% block content %}
+<div class="row g-4">
+    <div class="col-xl-8">
+        <article class="content-panel p-4 p-lg-5">
+            <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+                <div>
+                    <h1 class="mb-2">{{ page.title }}</h1>
+                    <div class="d-flex flex-wrap gap-2">
+                        <span class="badge text-bg-light">{{ page.get_template_key_display }}</span>
+                        {% if page.show_in_navigation %}<span class="badge text-bg-info">Navigation</span>{% endif %}
+                        {% if page.is_featured %}<span class="badge text-bg-warning">Featured</span>{% endif %}
+                    </div>
+                </div>
+
+                {% if user.is_authenticated and user == page.author or user.is_staff %}
+                    <div class="d-flex gap-2">
+                        <a class="btn btn-sm btn-outline-primary" href="{% url 'pages:update' page.slug %}">Edit</a>
+                        <a class="btn btn-sm btn-outline-secondary" href="{% url 'pages:revisions' page.slug %}">Revisions</a>
+                    </div>
+                {% endif %}
+            </div>
+
+            {% if page.summary %}
+                <p class="lead text-body-secondary">{{ page.summary }}</p>
+            {% endif %}
+
+            <div class="markdown-body">{{ page.body_html|safe }}</div>
+
+            <hr>
+            <div class="small text-body-secondary d-flex flex-wrap justify-content-between gap-2">
+                <span>Created: {{ page.created_at|date:"Y-m-d H:i" }}</span>
+                <span>Reading time: {{ page.reading_time }} min</span>
+                {% if page.published_at %}<span>Published: {{ page.published_at|date:"Y-m-d H:i" }}</span>{% endif %}
+                <span>Updated: {{ page.updated_at|date:"Y-m-d H:i" }}</span>
+            </div>
+        </article>
+    </div>
+
+    <aside class="col-xl-4">
+        <div class="stack-panel p-3">
+            <h6 class="mb-2 d-flex justify-content-between align-items-center">
+                <span>Related Pages</span>
+                <span class="badge text-bg-info">Algorithmic</span>
+            </h6>
+            <div class="vstack gap-2">
+                {% for related_page in related_pages %}
+                    <a class="quick-link" href="{{ related_page.get_absolute_url }}">{{ related_page.title }}</a>
+                {% empty %}
+                    <span class="small text-body-secondary">No related pages yet.</span>
+                {% endfor %}
+            </div>
+        </div>
+    </aside>
+</div>
+{% endblock %}

@@ -1,0 +1,48 @@
+﻿{% extends "base.html" %}
+
+{% block title %}Revision History{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-xl-10">
+        <section class="content-panel p-4 p-md-5">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <h2 class="mb-1">Revision History</h2>
+                    <p class="text-body-secondary mb-0">{{ post.title }}</p>
+                </div>
+                <a class="btn btn-outline-secondary" href="{{ post.get_absolute_url }}">Back to Post</a>
+            </div>
+
+            <div class="vstack gap-3">
+                {% for revision in revisions %}
+                    <article class="border rounded-4 p-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <strong>{{ revision.created_at|date:"Y-m-d H:i" }}</strong>
+                            <span class="badge text-bg-secondary">{{ revision.get_status_display }}</span>
+                        </div>
+                        <p class="mb-1 small text-body-secondary">
+                            Editor: {% if revision.editor %}{{ revision.editor.username }}{% else %}System{% endif %}
+                        </p>
+                        {% if revision.note %}
+                            <p class="small mb-2">{{ revision.note }}</p>
+                        {% endif %}
+                        <details>
+                            <summary>Snapshot</summary>
+                            <div class="small mt-2">
+                                <div><strong>Title:</strong> {{ revision.title }}</div>
+                                {% if revision.subtitle %}<div><strong>Subtitle:</strong> {{ revision.subtitle }}</div>{% endif %}
+                                {% if revision.excerpt %}<div><strong>Excerpt:</strong> {{ revision.excerpt }}</div>{% endif %}
+                                <pre class="mt-2"><code>{{ revision.body_markdown|truncatechars:1200 }}</code></pre>
+                            </div>
+                        </details>
+                    </article>
+                {% empty %}
+                    <p class="text-body-secondary mb-0">No revisions yet.</p>
+                {% endfor %}
+            </div>
+        </section>
+    </div>
+</div>
+{% endblock %}
+

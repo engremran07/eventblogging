@@ -1,0 +1,59 @@
+{
+    "python.analysis.typeCheckingMode": "strict",
+    "python.linting.enabled": true,
+    "python.linting.pylintEnabled": false,
+    "[python]": {
+        "editor.defaultFormatter": "ms-python.python",
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+            "source.organizeImports": "explicit"
+        }
+    },
+    "python.analysis.diagnosticMode": "openFilesOnly",
+    "python.analysis.include": ["."],
+    "python.analysis.logLevel": "Warning",
+    "python.analysis.useLibraryCodeForTypes": true,
+    "python.analysis.reportGeneralTypeIssues": "warning",
+    "python.analysis.reportOptionalOperand": "warning",
+    "python.analysis.reportOptionalMemberAccess": "warning",
+    "python.analysis.reportOptionalSubscript": "warning",
+    "python.analysis.reportOptionalIterable": "warning",
+    "python.analysis.reportOptionalContextManager": "warning",
+    "python.analysis.reportOptionalCallBase": "warning",
+    "python.analysis.reportUnnecessaryIsInstance": "warning",
+    "python.analysis.reportUnnecessaryCast": "warning",
+    "python.analysis.reportUnnecessaryComparison": "warning",
+    "python.analysis.reportConstantRedefinition": "error",
+    "python.analysis.reportInvalidTypeForm": "error",
+    "python.analysis.reportIncompatibleMethodOverride": "warning",
+    "python.analysis.reportIncompatibleVariableOverride": "warning",
+    "python.analysis.reportInconsistentConstructor": "warning",
+    "python.analysis.reportUnusedVariable": "warning",
+    "python.analysis.reportPrivateUsage": "warning",
+    "[html]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.formatOnSave": true
+    },
+    "[css]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.formatOnSave": true
+    },
+    "[javascript]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.formatOnSave": true
+    },
+    "files.exclude": {
+        "**/__pycache__": true,
+        "**/*.pyc": true,
+        "**/.pytest_cache": true,
+        "**/.venv": true,
+        ".venv": true,
+        "**/.git": true
+    },
+    "search.exclude": {
+        "**/__pycache__": true,
+        "**/node_modules": true,
+        ".venv": true,
+        "**/*.pyc": true
+    }
+}

@@ -1,0 +1,111 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block title %}Groups | Admin{% endblock %}
+
+{% block extrahead %}
+    {{ block.super }}
+    <link rel="stylesheet" href="{% static 'css/admin/workspace.css' %}">
+{% endblock %}
+
+{% block content %}
+    <div class="workspace-shell" data-admin-workspace="groups">
+        <section class="card workspace-hero">
+            <div>
+                <p class="workspace-eyebrow">Identity Operations</p>
+                <h1 class="workspace-title">Groups Workspace</h1>
+                <p class="workspace-subtitle">
+                    Manage roles and permission groups in the same workspace style.
+                </p>
+            </div>
+            <div class="workspace-hero-actions">
+                <a href="{% url 'admin:auth_group_add' %}" class="btn btn-primary btn-sm">
+                    <i class="fas fa-plus"></i> New Group
+                </a>
+                <a href="{% url 'admin:index' %}" class="btn btn-secondary btn-sm">Dashboard</a>
+            </div>
+        </section>
+
+        <section class="workspace-kpis">
+            <article class="workspace-kpi">
+                <small>Total</small>
+                <strong>{{ total_groups }}</strong>
+                <span>All groups</span>
+            </article>
+            <article class="workspace-kpi">
+                <small>With Users</small>
+                <strong>{{ groups_with_users }}</strong>
+                <span>Assigned groups</span>
+            </article>
+            <article class="workspace-kpi">
+                <small>With Permissions</small>
+                <strong>{{ groups_with_permissions }}</strong>
+                <span>Configured access rules</span>
+            </article>
+            <article class="workspace-kpi">
+                <small>Unassigned</small>
+                <strong>{{ unassigned_groups }}</strong>
+                <span>No members yet</span>
+            </article>
+        </section>
+
+        <section class="card workspace-filter-card">
+            <form
+                method="get"
+                action="{% url 'admin_groups_list' %}"
+                class="workspace-filter-grid"
+                data-workspace-filter
+                data-filter-url="{% url 'admin_groups_list' %}"
+                data-filter-target="#groups-table-container"
+                hx-get="{% url 'admin_groups_list' %}"
+                hx-target="#groups-table-container"
+                hx-swap="innerHTML"
+                hx-push-url="true"
+            >
+                <div class="workspace-field workspace-field--has-users">
+                    <label for="groups-has-users">Has Users</label>
+                    <select id="groups-has-users" name="has_users">
+                        <option value="" {% if not has_users_filter %}selected{% endif %}>Any</option>
+                        <option value="yes" {% if has_users_filter == "yes" %}selected{% endif %}>Yes</option>
+                        <option value="no" {% if has_users_filter == "no" %}selected{% endif %}>No</option>
+                    </select>
+                </div>
+
+                <div class="workspace-field workspace-field--sort">
+                    <label for="groups-sort">Sort</label>
+                    <select id="groups-sort" name="sort">
+                        <option value="name" {% if sort_by == "name" %}selected{% endif %}>Name A-Z</option>
+                        <option value="-user_count" {% if sort_by == "-user_count" %}selected{% endif %}>Most users</option>
+                        <option value="-permission_count" {% if sort_by == "-permission_count" %}selected{% endif %}>Most permissions</option>
+                    </select>
+                </div>
+
+                <div class="workspace-field workspace-field--search">
+                    <label for="groups-search">Search</label>
+                    <input
+                        id="groups-search"
+                        type="search"
+                        name="search"
+                        value="{{ search_query }}"
+                        placeholder="Search group name"
+                        data-filter-live
+                    >
+                </div>
+
+                <div class="workspace-filter-actions">
+                    <button type="submit" class="btn btn-secondary btn-sm">Apply</button>
+                    <a href="{% url 'admin_groups_list' %}" class="btn btn-ghost btn-sm">Reset</a>
+                </div>
+            </form>
+        </section>
+
+        <div id="groups-table-container">
+            {% include "admin/groups/table.html" %}
+        </div>
+    </div>
+{% endblock %}
+
+{% block extrajs %}
+    {{ block.super }}
+    <script defer src="{% static 'js/admin/workspace.js' %}"></script>
+{% endblock %}

@@ -1,0 +1,49 @@
+﻿<article class="comment-card" id="comment-{{ comment.id }}">
+    <header class="comment-head">
+        <div>
+            <p class="comment-author">
+                <input
+                    type="checkbox"
+                    class="form-check-input me-2"
+                    name="selected_comments"
+                    value="{{ comment.id }}"
+                    form="admin-comments-bulk-form"
+                    aria-label="Select comment {{ comment.id }}"
+                >
+                {{ comment.author.username }}
+            </p>
+            <p class="comment-meta">
+                on <a href="{% url 'blog:admin_post_editor' comment.post.id %}" class="workspace-link">{{ comment.post.title|truncatechars:70 }}</a>
+            </p>
+        </div>
+        <div class="workspace-chip-list">
+            {% if comment.is_approved %}
+                <span class="badge badge-success">Approved</span>
+            {% else %}
+                <span class="badge badge-warning">Pending</span>
+            {% endif %}
+            <span class="workspace-chip" title="{{ comment.moderation_reasons|join:', ' }}">
+                Risk {{ comment.moderation_score }}%
+            </span>
+            <span class="workspace-chip">{{ comment.created_at|date:'M d, Y H:i' }}</span>
+        </div>
+    </header>
+
+    <p class="comment-body">{{ comment.body|linebreaksbr }}</p>
+
+    <footer class="comment-footer">
+        <div class="comment-actions">
+            {% if not comment.is_approved %}
+                <form method="post" hx-post="{% url 'blog:admin_comment_approve' comment.id %}" hx-target="#comment-{{ comment.id }}" hx-swap="outerHTML">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-primary btn-sm">Approve</button>
+                </form>
+            {% endif %}
+
+            <form method="post" hx-post="{% url 'blog:admin_comment_delete' comment.id %}" hx-target="#comment-{{ comment.id }}" hx-swap="delete" hx-confirm="Delete this comment?">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+            </form>
+        </div>
+    </footer>
+</article>

@@ -1,0 +1,68 @@
+<div
+    id="post-reaction-{{ post.id }}"
+    class="post-card-reaction-bar"
+    role="group"
+    aria-label="Post reactions and activity"
+>
+    <div class="post-card-reaction-group post-card-reaction-group--interactive">
+        {% if global_reactions_enabled and post.allow_reactions %}
+            {% if user.is_authenticated %}
+                <form
+                    method="post"
+                    action="{% url 'blog:toggle_like' post.slug %}"
+                    hx-post="{% url 'blog:toggle_like' post.slug %}"
+                    hx-target="#post-reaction-{{ post.id }}"
+                    hx-swap="outerHTML"
+                    data-ui-feedback-target="global"
+                    data-ui-action-kind="toggle"
+                >
+                    {% csrf_token %}
+                    <input type="hidden" name="reaction_context" value="card">
+                    <button class="post-reaction-btn btn-ghost {% if liked %}is-active{% endif %}" type="submit" aria-label="{% if liked %}Remove like{% else %}Like post{% endif %}">
+                        <i class="bi bi-heart{% if liked %}-fill{% endif %}"></i>
+                        <span class="post-reaction-count">{{ like_total|default:0 }}</span>
+                    </button>
+                </form>
+
+                <form
+                    method="post"
+                    action="{% url 'blog:toggle_bookmark' post.slug %}"
+                    hx-post="{% url 'blog:toggle_bookmark' post.slug %}"
+                    hx-target="#post-reaction-{{ post.id }}"
+                    hx-swap="outerHTML"
+                    data-ui-feedback-target="global"
+                    data-ui-action-kind="toggle"
+                >
+                    {% csrf_token %}
+                    <input type="hidden" name="reaction_context" value="card">
+                    <button class="post-reaction-btn btn-ghost {% if bookmarked %}is-active{% endif %}" type="submit" aria-label="{% if bookmarked %}Remove bookmark{% else %}Bookmark post{% endif %}">
+                        <i class="bi bi-bookmark{% if bookmarked %}-fill{% endif %}"></i>
+                        <span class="post-reaction-count">{{ bookmark_total|default:0 }}</span>
+                    </button>
+                </form>
+            {% else %}
+                <a class="post-reaction-btn" href="{% url 'login' %}?next={{ request.get_full_path|urlencode }}" aria-label="Sign in to like">
+                    <i class="bi bi-heart"></i>
+                    <span class="post-reaction-count">{{ like_total|default:0 }}</span>
+                </a>
+                <a class="post-reaction-btn" href="{% url 'login' %}?next={{ request.get_full_path|urlencode }}" aria-label="Sign in to bookmark">
+                    <i class="bi bi-bookmark"></i>
+                    <span class="post-reaction-count">{{ bookmark_total|default:0 }}</span>
+                </a>
+            {% endif %}
+        {% else %}
+            <span class="badge text-bg-secondary">Reactions off</span>
+        {% endif %}
+    </div>
+
+    <div class="post-card-reaction-group post-card-reaction-group--metrics">
+        <span class="post-reaction-metric">
+            <i class="bi bi-chat"></i>
+            <span class="post-reaction-count">{{ comment_total|default:0 }}</span>
+        </span>
+        <span class="post-reaction-metric">
+            <i class="bi bi-eye"></i>
+            <span class="post-reaction-count">{{ post.views_count }}</span>
+        </span>
+    </div>
+</div>

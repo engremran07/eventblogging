@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block title %}Profile{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+    <div class="col-lg-8">
+        <section class="content-panel p-4">
+            <h3 class="mb-3">Profile Settings</h3>
+            <form method="post" class="vstack gap-3">
+                {% csrf_token %}
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label" for="{{ account_form.first_name.id_for_label }}">First name</label>
+                        {{ account_form.first_name }}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="{{ account_form.last_name.id_for_label }}">Last name</label>
+                        {{ account_form.last_name }}
+                    </div>
+                    <div class="col-md-12">
+                        <label class="form-label" for="{{ account_form.email.id_for_label }}">Email</label>
+                        {{ account_form.email }}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="{{ profile_form.display_name.id_for_label }}">Display name</label>
+                        {{ profile_form.display_name }}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="{{ profile_form.timezone.id_for_label }}">Timezone</label>
+                        {{ profile_form.timezone }}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="{{ profile_form.location.id_for_label }}">Location</label>
+                        {{ profile_form.location }}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="{{ profile_form.website_url.id_for_label }}">Website</label>
+                        {{ profile_form.website_url }}
+                    </div>
+                    <div class="col-md-12">
+                        <label class="form-label" for="{{ profile_form.avatar_url.id_for_label }}">Avatar URL</label>
+                        {{ profile_form.avatar_url }}
+                    </div>
+                    <div class="col-md-12">
+                        <label class="form-label" for="{{ profile_form.bio.id_for_label }}">Bio</label>
+                        {{ profile_form.bio }}
+                    </div>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">Save Profile</button>
+                    <a href="{% url 'password_change' %}" class="btn btn-outline-secondary">Change Password</a>
+                </div>
+            </form>
+        </section>
+    </div>
+    <div class="col-lg-4">
+        <section class="stack-panel p-3">
+            <h6 class="mb-3">Profile Metrics</h6>
+            <dl class="mb-0 small">
+                <dt>Posts</dt>
+                <dd>{{ profile_metrics.post_count }}</dd>
+                <dt>Comments</dt>
+                <dd>{{ profile_metrics.comment_count }}</dd>
+                <dt>Likes</dt>
+                <dd>{{ profile_metrics.like_count }}</dd>
+                <dt>Bookmarks</dt>
+                <dd>{{ profile_metrics.bookmark_count }}</dd>
+            </dl>
+        </section>
+    </div>
+</div>
+{% endblock %}

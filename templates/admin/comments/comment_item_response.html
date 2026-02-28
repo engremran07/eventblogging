@@ -1,0 +1,9 @@
+{% include "admin/comments/comment_item.html" with comment=comment %}
+
+<div id="admin-messages" hx-swap-oob="outerHTML">
+    {% include "admin/partials/messages.html" %}
+</div>
+
+<span id="admin-comments-nav-badge" hx-swap-oob="outerHTML">
+    {% include "admin/partials/comment_nav_badge.html" with pending_comments=pending_comments %}
+</span>

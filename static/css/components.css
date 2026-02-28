@@ -1,0 +1,621 @@
+/**
+ * =============================================================================
+ * COMPONENTS - Buttons, forms, cards, badges, tables, modals
+ * =============================================================================
+ * 
+ * Standardized components used across admin and public interfaces.
+ * All colors use tokens. All sizes follow the spacing scale.
+ * Three button variants: primary, secondary, ghost, danger.
+ * One hover treatment: background darkens, same hue.
+ */
+
+/* =============================================================================
+   BUTTONS
+   ============================================================================= */
+
+.btn, a.btn, input[type="button"], input[type="submit"] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--text-base);
+  font-weight: var(--fw-semibold);
+  border: var(--border-width) solid transparent;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-duration) var(--transition-timing);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+/* PRIMARY BUTTON - Accent background, highest visual weight */
+.btn-primary {
+  background-color: var(--accent);
+  color: var(--text-inverse);
+  border-color: var(--accent);
+}
+
+.btn-primary:hover {
+  background-color: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+.btn-primary:disabled {
+  background-color: var(--surface-2);
+  color: var(--text-muted);
+  border-color: var(--border);
+  cursor: not-allowed;
+}
+
+/* SECONDARY BUTTON - Surface background, secondary action */
+.btn-secondary {
+  background-color: var(--surface-3);
+  color: var(--text-primary);
+  border-color: var(--border);
+}
+
+.btn-secondary:hover {
+  background-color: var(--border-focus);
+  border-color: var(--border-focus);
+}
+
+.btn-secondary:disabled {
+  background-color: var(--surface-2);
+  color: var(--text-muted);
+  border-color: var(--border);
+  cursor: not-allowed;
+}
+
+/* GHOST BUTTON - Transparent, minimal visual weight */
+.btn-ghost {
+  background-color: transparent;
+  color: var(--text-secondary);
+  border-color: transparent;
+}
+
+.btn-ghost:hover {
+  background-color: var(--surface-2);
+  border-color: transparent;
+}
+
+.btn-ghost:disabled {
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
+/* DANGER BUTTON - For destructive actions */
+.btn-danger {
+  background-color: var(--danger-muted);
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.btn-danger:hover {
+  background-color: var(--danger);
+  color: white;
+  border-color: var(--danger);
+}
+
+.btn-danger:disabled {
+  background-color: var(--surface-2);
+  color: var(--text-muted);
+  border-color: var(--border);
+  cursor: not-allowed;
+}
+
+/* BUTTON SIZES */
+.btn-sm {
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+}
+
+.btn-lg {
+  padding: var(--space-4) var(--space-6);
+  font-size: var(--text-lg);
+}
+
+/* Button icons */
+.btn i, .btn svg {
+  width: 1em;
+  height: 1em;
+}
+
+/* Close button */
+button.btn-close {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background-color: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: var(--text-lg);
+  cursor: pointer;
+  transition: color var(--transition-duration);
+}
+
+button.btn-close:hover {
+  color: var(--text-primary);
+}
+
+/* =============================================================================
+   FORM FIELDS
+   ============================================================================= */
+
+label {
+  display: block;
+  margin-bottom: var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-medium);
+  color: var(--text-secondary);
+}
+
+.form-group {
+  margin-bottom: var(--space-4);
+}
+
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="url"],
+input[type="number"],
+input[type="search"],
+input[type="date"],
+input[type="time"],
+textarea,
+select {
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--text-base);
+  font-family: var(--font-sans);
+  background-color: var(--surface-2);
+  color: var(--text-primary);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-md);
+  transition: border-color var(--transition-duration), box-shadow var(--transition-duration);
+}
+
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+input[type="url"]:focus,
+input[type="number"]:focus,
+input[type="search"]:focus,
+input[type="date"]:focus,
+input[type="time"]:focus,
+textarea:focus,
+select:focus {
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px var(--accent-muted);
+  outline: none;
+}
+
+/* Summernote bridge keeps markdown as source while exposing rich editor UI. */
+.summernote-source-hidden {
+  display: none;
+}
+
+.summernote-bridge-host .note-editor.note-frame {
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-1);
+}
+
+.summernote-bridge-host .note-toolbar {
+  background: var(--surface-2);
+  border-bottom: var(--border-width) solid var(--border);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.summernote-bridge-host .note-toolbar .note-btn-group {
+  display: inline-flex;
+  align-items: center;
+  margin: 0;
+}
+
+.summernote-bridge-host .note-btn {
+  border-color: var(--border);
+  color: var(--text-secondary);
+  background: var(--surface-1);
+  padding: 0.35rem 0.55rem;
+  min-height: 2rem;
+  font-size: 0.9rem;
+  font-weight: var(--fw-medium);
+  gap: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+.summernote-bridge-host .sn-note-icon {
+  width: 1rem;
+  height: 1rem;
+  display: block;
+}
+
+.summernote-bridge-host .note-btn:hover,
+.summernote-bridge-host .note-btn:focus {
+  color: var(--text-primary);
+  background: var(--surface-2);
+  border-color: var(--border-focus);
+}
+
+.summernote-bridge-host .note-editing-area {
+  overflow: visible;
+}
+
+.summernote-bridge-host .note-editing-area .note-editable {
+  background: var(--surface-1);
+  color: var(--text-primary);
+  min-height: 400px;
+  max-height: none;
+  overflow-y: auto;
+  padding: var(--space-4);
+}
+
+.summernote-bridge-host .note-editing-area .note-editable a {
+  color: var(--accent);
+}
+
+.summernote-bridge-host .note-editing-area .note-editable blockquote {
+  margin: var(--space-3) 0;
+  padding: var(--space-3) var(--space-4);
+  border-left: 3px solid var(--accent);
+  background: color-mix(in srgb, var(--accent-muted) 40%, transparent);
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+}
+
+.note-modal-content,
+.note-dropdown-menu,
+.note-popover {
+  background: var(--surface-1);
+  color: var(--text-primary);
+  border-color: var(--border);
+  z-index: 2000;
+}
+
+.summernote-bridge-host .note-dropdown-menu {
+  z-index: 2000;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.summernote-bridge-host .note-popover {
+  z-index: 2000;
+}
+
+.summernote-bridge-host .CodeMirror {
+  min-height: 400px;
+  height: auto;
+  max-height: none;
+  border-top: var(--border-width) solid var(--border);
+  background: var(--surface-1);
+  color: var(--text-primary);
+}
+
+/* Fullscreen mode improvements */
+.note-fullscreen .summernote-bridge-host {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1050;
+  border-radius: 0;
+}
+
+.note-fullscreen .summernote-bridge-host .note-editing-area .note-editable {
+  min-height: calc(100vh - 200px);
+}
+
+.summernote-bridge-host .CodeMirror-gutters {
+  background: var(--surface-2);
+  border-right: var(--border-width) solid var(--border);
+}
+
+.summernote-bridge-host .summernote-cleanerAlert {
+  border-color: var(--success);
+  background: color-mix(in srgb, var(--success) 14%, var(--surface-1));
+  color: var(--success);
+}
+
+/* Placeholder text */
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-muted);
+}
+
+/* Disabled state */
+input:disabled,
+textarea:disabled,
+select:disabled {
+  background-color: var(--surface-1);
+  color: var(--text-muted);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Small help text under inputs */
+.help-text {
+  display: block;
+  margin-top: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* Form error state */
+.form-error input,
+.form-error textarea,
+.form-error select {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 3px var(--danger-muted);
+}
+
+.error-message {
+  display: block;
+  margin-top: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--danger);
+}
+
+/* Checkboxes and radios */
+input[type="checkbox"],
+input[type="radio"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: var(--accent);
+}
+
+/* Checkbox wrapper */
+.checkbox-wrapper, .radio-wrapper {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.checkbox-wrapper label,
+.radio-wrapper label {
+  margin: 0;
+  font-weight: var(--fw-normal);
+}
+
+/* =============================================================================
+   CARDS - Containers with border and padding
+   ============================================================================= */
+
+.card {
+  background-color: var(--surface-1);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  transition: border-color var(--transition-duration);
+}
+
+.card:hover {
+  border-color: var(--border-focus);
+}
+
+.card-header {
+  font-weight: var(--fw-semibold);
+  font-size: var(--text-lg);
+  margin-bottom: var(--space-4);
+  color: var(--text-primary);
+}
+
+.card-body {
+  color: var(--text-secondary);
+}
+
+.card-footer {
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: var(--border-width) solid var(--border);
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+/* =============================================================================
+   BADGES - Inline status indicators
+   ============================================================================= */
+
+.badge {
+  display: inline-block;
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--text-xs);
+  font-weight: var(--fw-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+}
+
+.badge-success {
+  background-color: var(--success-muted);
+  color: var(--success);
+}
+
+.badge-warning {
+  background-color: var(--warning-muted);
+  color: var(--warning);
+}
+
+.badge-danger {
+  background-color: var(--danger-muted);
+  color: var(--danger);
+}
+
+.badge-info {
+  background-color: var(--info-muted);
+  color: var(--info);
+}
+
+.badge-muted {
+  background-color: var(--surface-2);
+  color: var(--text-muted);
+}
+
+/* Badges with counts */
+.badge-dot {
+  position: relative;
+  padding-left: var(--space-3);
+}
+
+.badge-dot::before {
+  content: "";
+  position: absolute;
+  left: 6px;
+  width: 6px;
+  height: 6px;
+  background-color: currentColor;
+  border-radius: 50%;
+}
+
+/* =============================================================================
+   ALERTS - System messages and feedback
+   ============================================================================= */
+
+.alert {
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  border: var(--border-width) solid transparent;
+  margin-bottom: var(--space-4);
+}
+
+.alert-success {
+  background-color: var(--success-muted);
+  color: var(--success);
+  border-color: var(--success);
+}
+
+.alert-warning {
+  background-color: var(--warning-muted);
+  color: var(--warning);
+  border-color: var(--warning);
+}
+
+.alert-danger {
+  background-color: var(--danger-muted);
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.alert-info {
+  background-color: var(--info-muted);
+  color: var(--info);
+  border-color: var(--info);
+}
+
+.alert a {
+  font-weight: var(--fw-semibold);
+  text-decoration: underline;
+}
+
+/* =============================================================================
+   PROGRESS BARS - For scores, status
+   ============================================================================= */
+
+.progress {
+  display: flex;
+  width: 100%;
+  height: 4px;
+  background-color: var(--surface-2);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.progress-bar {
+  background-color: var(--accent);
+  height: 100%;
+  transition: width var(--transition-duration) var(--transition-timing);
+}
+
+.progress-bar.success {
+  background-color: var(--success);
+}
+
+.progress-bar.warning {
+  background-color: var(--warning);
+}
+
+.progress-bar.danger {
+  background-color: var(--danger);
+}
+
+/* Progress with label */
+.progress-with-label {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.progress-label {
+  min-width: 40px;
+  font-size: var(--text-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+  text-align: center;
+}
+
+/* =============================================================================
+   TOOLTIPS
+   ============================================================================= */
+
+.tooltip {
+  position: relative;
+  display: inline-block;
+}
+
+.tooltip-text {
+  visibility: hidden;
+  width: 200px;
+  background-color: var(--text-primary);
+  color: var(--bg);
+  text-align: center;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  position: absolute;
+  z-index: 1000;
+  bottom: 125%;
+  left: 50%;
+  transform: translateX(-50%);
+  opacity: 0;
+  transition: opacity var(--transition-duration);
+  font-size: var(--text-sm);
+  white-space: nowrap;
+}
+
+.tooltip:hover .tooltip-text {
+  visibility: visible;
+  opacity: 1;
+}
+
+/* =============================================================================
+   DIVIDER
+   ============================================================================= */
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin: var(--space-6) 0;
+  color: var(--text-muted);
+}
+
+.divider::before,
+.divider::after {
+  content: "";
+  flex: 1;
+  height: var(--border-width);
+  background-color: var(--border);
+}

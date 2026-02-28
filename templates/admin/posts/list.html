@@ -1,0 +1,126 @@
+﻿{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block title %}Posts | Admin{% endblock %}
+
+{% block extrahead %}
+    {{ block.super }}
+    <link rel="stylesheet" href="{% static 'css/admin/workspace.css' %}">
+{% endblock %}
+
+{% block content %}
+    <div class="workspace-shell" data-admin-workspace="posts" data-list-url="{% url 'blog:admin_posts_list' %}">
+        <section class="card workspace-hero">
+            <div>
+                <p class="workspace-eyebrow">Editorial Operations</p>
+                <h1 class="workspace-title">Posts Workspace</h1>
+                <p class="workspace-subtitle">
+                    Centralized publishing control for drafting, review, and release workflows.
+                </p>
+            </div>
+            <div class="workspace-hero-actions">
+                <a href="{% url 'blog:admin_post_create' %}" class="btn btn-primary btn-sm">
+                    <i class="fas fa-plus"></i> New Post
+                </a>
+                <a href="{% url 'admin:index' %}" class="btn btn-secondary btn-sm">Dashboard</a>
+            </div>
+        </section>
+
+        <section class="workspace-kpis">
+            <article class="workspace-kpi">
+                <small>Total</small>
+                <strong>{{ total_posts }}</strong>
+                <span>All posts in catalog</span>
+            </article>
+            <article class="workspace-kpi">
+                <small>Published</small>
+                <strong>{{ published_posts }}</strong>
+                <span>Live content</span>
+            </article>
+            <article class="workspace-kpi">
+                <small>In Review</small>
+                <strong>{{ review_posts }}</strong>
+                <span>Ready for editorial decisions</span>
+            </article>
+            <article class="workspace-kpi">
+                <small>Drafts</small>
+                <strong>{{ draft_posts }}</strong>
+                <span>Work in progress</span>
+            </article>
+        </section>
+
+        <section class="card workspace-filter-card">
+            <form
+                method="get"
+                action="{% url 'blog:admin_posts_list' %}"
+                class="workspace-filter-grid"
+                data-workspace-filter
+                data-filter-url="{% url 'blog:admin_posts_list' %}"
+                data-filter-target="#posts-table-container"
+                hx-get="{% url 'blog:admin_posts_list' %}"
+                hx-target="#posts-table-container"
+                hx-swap="innerHTML"
+                hx-push-url="true"
+            >
+                <div class="workspace-field workspace-field--status">
+                    <label for="posts-status">Status</label>
+                    <select id="posts-status" name="status">
+                        <option value="">All statuses</option>
+                        {% for value, label in status_choices %}
+                            <option value="{{ value }}" {% if status_filter == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="workspace-field workspace-field--category">
+                    <label for="posts-category">Category</label>
+                    <select id="posts-category" name="category">
+                        <option value="">All categories</option>
+                        {% for category in categories %}
+                            <option value="{{ category.name }}" {% if category_filter == category.name %}selected{% endif %}>
+                                {{ category.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="workspace-field workspace-field--sort">
+                    <label for="posts-sort">Sort</label>
+                    <select id="posts-sort" name="sort">
+                        <option value="-published_at" {% if sort_by == "-published_at" %}selected{% endif %}>Newest first</option>
+                        <option value="published_at" {% if sort_by == "published_at" %}selected{% endif %}>Oldest first</option>
+                        <option value="title" {% if sort_by == "title" %}selected{% endif %}>Title A-Z</option>
+                        <option value="-views_count" {% if sort_by == "-views_count" %}selected{% endif %}>Most views</option>
+                        <option value="-seo_audit_score" {% if sort_by == "-seo_audit_score" %}selected{% endif %}>Highest SEO score</option>
+                    </select>
+                </div>
+
+                <div class="workspace-field workspace-field--search">
+                    <label for="posts-search">Search</label>
+                    <input
+                        id="posts-search"
+                        type="search"
+                        name="search"
+                        value="{{ search_query }}"
+                        placeholder="Search title, slug, tags"
+                        data-filter-live
+                    >
+                </div>
+
+                <div class="workspace-filter-actions">
+                    <button type="submit" class="btn btn-secondary btn-sm">Apply</button>
+                    <a href="{% url 'blog:admin_posts_list' %}" class="btn btn-ghost btn-sm">Reset</a>
+                </div>
+            </form>
+        </section>
+
+        <div id="posts-table-container">
+            {% include "admin/posts/table.html" %}
+        </div>
+    </div>
+{% endblock %}
+
+{% block extrajs %}
+    {{ block.super }}
+    <script defer src="{% static 'js/admin/workspace.js' %}"></script>
+{% endblock %}

@@ -1,0 +1,141 @@
+﻿{% extends "base.html" %}
+
+{% block content %}
+<section class="hero-stage p-4 p-lg-5 mb-4">
+    <div class="row align-items-center g-4">
+        <div class="col-lg-7">
+            <p class="kicker mb-2">Full-Stack Content Platform</p>
+            <h1 class="display-5 mb-3">Ship editorial workflows with Django, HTMX, Alpine, and Bootstrap.</h1>
+            <p class="lead text-body-secondary mb-4">
+                {{ site_identity.site_tagline|default:"Structured backend, responsive frontend, smart tagging with Tagulous, and interactive UX patterns for modern publishing." }}
+            </p>
+            {% if site_identity.homepage_cta_label and site_identity.homepage_cta_url %}
+            <div class="mb-4">
+                <a class="btn btn-primary" href="{{ site_identity.homepage_cta_url }}">{{ site_identity.homepage_cta_label }}</a>
+            </div>
+            {% endif %}
+            <div class="metric-grid">
+                <div class="metric-card">
+                    <span>Published</span>
+                    <strong>{{ metric_posts }}</strong>
+                </div>
+                <div class="metric-card">
+                    <span>Authors</span>
+                    <strong>{{ metric_authors }}</strong>
+                </div>
+                <div class="metric-card">
+                    <span>Total Views</span>
+                    <strong>{{ metric_views }}</strong>
+                </div>
+                <div class="metric-card">
+                    <span>Subscribers</span>
+                    <strong>{{ metric_subscribers }}</strong>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-5">
+            <div class="content-panel spotlight-shell p-3 h-100">
+                <h6 class="mb-3">Featured Spotlight</h6>
+                {% if featured_posts %}
+                    <div id="featuredCarousel" class="carousel slide" data-bs-ride="carousel">
+                        <div class="carousel-inner rounded-4">
+                            {% for spotlight in featured_posts %}
+                                <div class="carousel-item {% if forloop.first %}active{% endif %}">
+                                    {% if spotlight.cover_image %}
+                                        <img src="{{ spotlight.cover_image.url }}" class="d-block w-100 carousel-cover" alt="{{ spotlight.title }}">
+                                    {% else %}
+                                        <div class="carousel-cover fallback-gradient"></div>
+                                    {% endif %}
+                                    <div class="carousel-caption d-block text-start">
+                                        <h5><a class="text-white text-decoration-none" href="{{ spotlight.get_absolute_url }}">{{ spotlight.title }}</a></h5>
+                                        <p class="small mb-0">{{ spotlight.excerpt|truncatechars:90 }}</p>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        <button class="carousel-control-prev btn-ghost" type="button" data-bs-target="#featuredCarousel" data-bs-slide="prev">
+                            <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                            <span class="visually-hidden">Previous</span>
+                        </button>
+                        <button class="carousel-control-next btn-ghost" type="button" data-bs-target="#featuredCarousel" data-bs-slide="next">
+                            <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                            <span class="visually-hidden">Next</span>
+                        </button>
+                    </div>
+                {% else %}
+                    <div class="empty-shell">No featured posts yet.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</section>
+
+<div class="row g-4">
+    <aside class="col-xl-3 order-2 order-xl-2 widget-column">
+        <div class="stack-panel p-3 mb-3">
+            <h6 class="mb-2">Trending Posts</h6>
+            <div class="vstack gap-2">
+                {% for post in trending_posts %}
+                    <a class="quick-link" href="{{ post.get_absolute_url }}">{{ post.title }}</a>
+                {% empty %}
+                    <span class="text-body-secondary small">No trending posts yet.</span>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="stack-panel p-3 mb-3">
+            <h6 class="mb-2 d-flex justify-content-between align-items-center">
+                <span>Related Posts</span>
+                <span class="badge text-bg-info">Algorithmic</span>
+            </h6>
+            <div class="vstack gap-2">
+                {% for post in related_posts %}
+                    <a class="quick-link" href="{{ post.get_absolute_url }}">{{ post.title }}</a>
+                {% empty %}
+                    <span class="text-body-secondary small">No related matches yet.</span>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="stack-panel p-3 mb-3">
+            <h6 class="mb-2">Fresh Posts</h6>
+            <div class="vstack gap-2">
+                {% for post in fresh_posts %}
+                    <a class="quick-link" href="{{ post.get_absolute_url }}">{{ post.title }}</a>
+                {% empty %}
+                    <span class="text-body-secondary small">No recent posts yet.</span>
+                {% endfor %}
+            </div>
+        </div>
+
+        {% if feature_controls.enable_newsletter and newsletter_form %}
+            {% include "blog/partials/newsletter_panel.html" %}
+        {% endif %}
+    </aside>
+
+    <section class="col-xl-9 order-1 order-xl-1 posts-column">
+        <div id="feed-panel">
+            {% include "blog/partials/feed_panel.html" %}
+        </div>
+    </section>
+</div>
+
+{% if feature_controls.enable_quick_preview %}
+<div class="modal fade" id="quickPreviewModal" tabindex="-1" aria-labelledby="quickPreviewModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div id="quick-preview-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="quickPreviewModalLabel">Quick Preview</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-body-secondary mb-0">Select a post card and click Quick View.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

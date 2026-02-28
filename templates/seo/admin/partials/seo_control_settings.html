@@ -1,0 +1,368 @@
+<div class="row g-3">
+    <div class="col-xl-6">
+        <div class="card" id="seo-global">
+            <div class="card-header">Global SEO + Verification Settings</div>
+            <div class="card-body">
+                <form method="post" action="{% url 'admin_config:seo_control_settings_save' %}">
+                    {% csrf_token %}
+                    <div class="row g-2">
+                        <div class="col-md-6">
+                            <label class="form-label">Default Meta Title</label>
+                            <input
+                                type="text"
+                                name="default_meta_title"
+                                class="form-control"
+                                maxlength="70"
+                                value="{{ seo_defaults.default_meta_title }}"
+                            >
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Twitter Site Handle</label>
+                            <input
+                                type="text"
+                                name="twitter_site_handle"
+                                class="form-control"
+                                maxlength="40"
+                                placeholder="@yourhandle"
+                                value="{{ seo_defaults.twitter_site_handle }}"
+                            >
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label">Canonical Base URL</label>
+                            <input
+                                type="url"
+                                name="canonical_base_url"
+                                class="form-control"
+                                maxlength="200"
+                                placeholder="https://example.com"
+                                value="{{ seo_defaults.canonical_base_url }}"
+                            >
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Default OG Image URL</label>
+                            <input
+                                type="url"
+                                name="default_og_image_url"
+                                class="form-control"
+                                maxlength="200"
+                                value="{{ seo_defaults.default_og_image_url }}"
+                            >
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Default Meta Description</label>
+                            <textarea
+                                name="default_meta_description"
+                                rows="3"
+                                class="form-control"
+                                maxlength="170"
+                            >{{ seo_defaults.default_meta_description }}</textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Organization Schema Name</label>
+                            <input
+                                type="text"
+                                name="organization_schema_name"
+                                class="form-control"
+                                maxlength="120"
+                                value="{{ seo_defaults.organization_schema_name }}"
+                            >
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Organization Schema URL</label>
+                            <input
+                                type="url"
+                                name="organization_schema_url"
+                                class="form-control"
+                                maxlength="200"
+                                placeholder="https://example.com"
+                                value="{{ seo_defaults.organization_schema_url }}"
+                            >
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check">
+                                <input type="hidden" name="robots_index" value="">
+                                <input class="form-check-input" type="checkbox" id="robots-index" name="robots_index" {% if seo_defaults.robots_index %}checked{% endif %}>
+                                <label class="form-check-label" for="robots-index">
+                                    Allow indexing
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check">
+                                <input type="hidden" name="robots_follow" value="">
+                                <input class="form-check-input" type="checkbox" id="robots-follow" name="robots_follow" {% if seo_defaults.robots_follow %}checked{% endif %}>
+                                <label class="form-check-label" for="robots-follow">
+                                    Allow link following
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check">
+                                <input type="hidden" name="enable_open_graph" value="">
+                                <input class="form-check-input" type="checkbox" id="enable-open-graph" name="enable_open_graph" {% if seo_defaults.enable_open_graph %}checked{% endif %}>
+                                <label class="form-check-label" for="enable-open-graph">
+                                    Emit Open Graph tags
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check">
+                                <input type="hidden" name="enable_twitter_cards" value="">
+                                <input class="form-check-input" type="checkbox" id="enable-twitter-cards" name="enable_twitter_cards" {% if seo_defaults.enable_twitter_cards %}checked{% endif %}>
+                                <label class="form-check-label" for="enable-twitter-cards">
+                                    Emit Twitter Card tags
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="my-3">
+                    <h6 class="mb-2" id="seo-verification">Ownership Verification Tokens</h6>
+                    <div class="row g-2">
+                        <div class="col-md-6">
+                            <label class="form-label">Google Verification</label>
+                            <input
+                                type="text"
+                                name="google_site_verification"
+                                class="form-control"
+                                maxlength="180"
+                                placeholder="google-site-verification token"
+                                value="{{ seo_defaults.google_site_verification }}"
+                            >
+                            <small class="text-muted">{% if seo_defaults.google_site_verification %}Configured{% else %}Pending{% endif %}</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Bing Verification</label>
+                            <input
+                                type="text"
+                                name="bing_site_verification"
+                                class="form-control"
+                                maxlength="180"
+                                placeholder="msvalidate.01 token"
+                                value="{{ seo_defaults.bing_site_verification }}"
+                            >
+                            <small class="text-muted">{% if seo_defaults.bing_site_verification %}Configured{% else %}Pending{% endif %}</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Yandex Verification</label>
+                            <input
+                                type="text"
+                                name="yandex_site_verification"
+                                class="form-control"
+                                maxlength="180"
+                                placeholder="yandex verification token"
+                                value="{{ seo_defaults.yandex_site_verification }}"
+                            >
+                            <small class="text-muted">{% if seo_defaults.yandex_site_verification %}Configured{% else %}Pending{% endif %}</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Pinterest Verification</label>
+                            <input
+                                type="text"
+                                name="pinterest_site_verification"
+                                class="form-control"
+                                maxlength="180"
+                                placeholder="p:domain_verify token"
+                                value="{{ seo_defaults.pinterest_site_verification }}"
+                            >
+                            <small class="text-muted">{% if seo_defaults.pinterest_site_verification %}Configured{% else %}Pending{% endif %}</small>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary mt-3" type="submit">Save Global SEO Settings</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-6">
+        <div class="card" id="seo-engine">
+            <div class="card-header">Engine + Autopilot Settings</div>
+            <div class="card-body">
+                <form method="post" action="{% url 'admin_config:seo_control_settings_save' %}">
+                    {% csrf_token %}
+                    <div class="row g-2">
+                        <div class="col-md-6">
+                            <label class="form-label">Autopilot Min Confidence</label>
+                            <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                max="1"
+                                name="autopilot_min_confidence"
+                                class="form-control"
+                                value="{{ engine_settings.autopilot_min_confidence|floatformat:2 }}"
+                            >
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Link Suggestion Min Score</label>
+                            <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                max="1"
+                                name="link_suggestion_min_score"
+                                class="form-control"
+                                value="{{ engine_settings.link_suggestion_min_score|floatformat:2 }}"
+                            >
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Min Links Per Doc</label>
+                            <input type="number" min="1" name="min_links_per_doc" class="form-control" value="{{ engine_settings.min_links_per_doc }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Whitehat Cap Max Links</label>
+                            <input type="number" min="1" name="whitehat_cap_max_links" class="form-control" value="{{ engine_settings.whitehat_cap_max_links }}">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Canonical Query Allowlist</label>
+                            <input
+                                type="text"
+                                name="canonical_query_allowlist"
+                                class="form-control"
+                                value="{{ engine_settings.canonical_query_allowlist }}"
+                                placeholder="utm_source,utm_medium"
+                            >
+                        </div>
+                        <div class="col-12">
+                            <div class="form-check">
+                                <input type="hidden" name="enable_checks" value="">
+                                <input class="form-check-input" type="checkbox" id="enable-checks" name="enable_checks" {% if engine_settings.enable_checks %}checked{% endif %}>
+                                <label class="form-check-label" for="enable-checks">
+                                    Enable SEO checks engine
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="form-check">
+                                <input type="hidden" name="enable_live_checks" value="">
+                                <input class="form-check-input" type="checkbox" id="enable-live-checks" name="enable_live_checks" {% if engine_settings.enable_live_checks %}checked{% endif %}>
+                                <label class="form-check-label" for="enable-live-checks">
+                                    Enable realtime inline checks in editors
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="form-check">
+                                <input type="hidden" name="auto_fix_enabled" value="">
+                                <input class="form-check-input" type="checkbox" id="auto-fix-enabled" name="auto_fix_enabled" {% if engine_settings.auto_fix_enabled %}checked{% endif %}>
+                                <label class="form-check-label" for="auto-fix-enabled">
+                                    Enable autopilot approvals on content changes
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="form-check">
+                                <input type="hidden" name="auto_update_published_links" value="">
+                                <input class="form-check-input" type="checkbox" id="auto-update-published-links" name="auto_update_published_links" {% if engine_settings.auto_update_published_links %}checked{% endif %}>
+                                <label class="form-check-label" for="auto-update-published-links">
+                                    Allow interlink auto-updates on published content
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="form-check">
+                                <input type="hidden" name="noindex_paginated_filters" value="">
+                                <input class="form-check-input" type="checkbox" id="noindex-paginated-filters" name="noindex_paginated_filters" {% if engine_settings.noindex_paginated_filters %}checked{% endif %}>
+                                <label class="form-check-label" for="noindex-paginated-filters">
+                                    Mark paginated filtered pages as noindex
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="form-check">
+                                <input type="hidden" name="apply_interlinks_on_audit" value="">
+                                <input class="form-check-input" type="checkbox" id="apply-interlinks-on-audit" name="apply_interlinks_on_audit" {% if engine_settings.apply_interlinks_on_audit %}checked{% endif %}>
+                                <label class="form-check-label" for="apply-interlinks-on-audit">
+                                    Apply interlinks suggestions during audit pipeline
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary mt-3" type="submit">Save Engine Settings</button>
+                </form>
+
+                <form method="post" action="{% url 'admin_config:seo_control_autopilot' %}" class="row g-2 mt-3">
+                    {% csrf_token %}
+                    <div class="col-md-5">
+                        <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            max="1"
+                            name="min_confidence"
+                            value="{{ engine_settings.autopilot_min_confidence|floatformat:2 }}"
+                            class="form-control"
+                        >
+                    </div>
+                    <div class="col-md-4">
+                        <input type="number" min="1" max="1000" name="limit" value="200" class="form-control">
+                    </div>
+                    <div class="col-md-3 d-grid">
+                        <button class="btn btn-outline-primary" type="submit">Run Autopilot</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card mt-3" id="seo-synonyms">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Synonym Dictionary</span>
+        <a class="btn btn-sm btn-outline-secondary" href="{% url 'admin_config:taxonomy_synonym_export' %}">Export JSON</a>
+    </div>
+    <div class="card-body">
+        <p class="small text-muted mb-2">Synonyms are used by auto-tagging, lexical scoring, and interlink matching.</p>
+        <div class="small mb-3">
+            Active groups: <strong>{{ synonym_groups|length }}</strong>
+        </div>
+
+        <form method="post" action="{% url 'admin_config:taxonomy_synonym_group_create' %}" class="row g-2 mb-3">
+            {% csrf_token %}
+            <div class="col-md-5">
+                <input type="text" class="form-control" name="name" placeholder="Group name" required>
+            </div>
+            <div class="col-md-4">
+                <select name="scope" class="form-select">
+                    <option value="all">All</option>
+                    <option value="tags">Tags</option>
+                    <option value="topics">Topics</option>
+                    <option value="categories">Categories</option>
+                </select>
+            </div>
+            <div class="col-md-3 d-grid">
+                <button class="btn btn-outline-primary" type="submit">Add Group</button>
+            </div>
+        </form>
+
+        <form method="post" action="{% url 'admin_config:taxonomy_synonym_import' %}">
+            {% csrf_token %}
+            <label class="form-label">Import Synonyms JSON</label>
+            <textarea name="payload" rows="8" class="form-control font-monospace" placeholder='[{"name":"cloud","scope":"tags","terms":[{"term":"saas","is_canonical":true}]}]'></textarea>
+            <button class="btn btn-outline-primary mt-2" type="submit">Import</button>
+        </form>
+    </div>
+</div>
+
+<div class="card mt-3">
+    <div class="card-header">Existing Synonym Groups</div>
+    <div class="card-body p-0">
+        <table class="table table-sm mb-0">
+            <thead>
+                <tr><th>Group</th><th>Scope</th><th>Terms</th><th>Updated</th></tr>
+            </thead>
+            <tbody>
+                {% for group in synonym_groups %}
+                    <tr>
+                        <td>{{ group.name }}</td>
+                        <td>{{ group.scope }}</td>
+                        <td>{{ group.terms.count }}</td>
+                        <td>{{ group.updated_at|date:"Y-m-d H:i" }}</td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="4" class="text-muted">No synonym groups configured yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>

@@ -1,0 +1,9 @@
+<div id="{{ id }}" class="modal {% if css_class %}{{ css_class }}{% endif %}" x-show="$store.ui.modalOpen == '{{ id }}'" style="position: fixed; inset: 0; background-color: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: var(--z-modal);">
+  <div style="background-color: var(--color-bg); border-radius: var(--radius-lg); padding: var(--p-lg); max-width: {% if size == 'sm' %}30rem{% elif size == 'lg' %}50rem{% else %}40rem{% endif %}; width: 90%; box-shadow: var(--shadow-xl);">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-6);">
+      <h2 style="margin: 0;">{{ title }}</h2>
+      <button @click="$store.ui.modalOpen = null" style="background: none; border: none; font-size: var(--text-lg); cursor: pointer;">&times;</button>
+    </div>
+    <slot></slot>
+  </div>
+</div>

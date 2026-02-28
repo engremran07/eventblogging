@@ -1,0 +1,125 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block title %}Categories | Admin{% endblock %}
+
+{% block extrahead %}
+    {{ block.super }}
+    <link rel="stylesheet" href="{% static 'css/admin/workspace.css' %}">
+{% endblock %}
+
+{% block content %}
+    <div class="workspace-shell" data-admin-workspace="categories">
+        <section class="card workspace-hero">
+            <div>
+                <p class="workspace-eyebrow">Taxonomy Operations</p>
+                <h1 class="workspace-title">Categories Workspace</h1>
+                <p class="workspace-subtitle">
+                    Manage hierarchical categories with structure-aware filtering.
+                </p>
+                <p class="workspace-muted mt-2 mb-0">
+                    Drag a category row onto another row to make it a child, or drop it in the top-level zone to detach it.
+                </p>
+            </div>
+            <div class="workspace-hero-actions">
+                <a href="{{ add_url }}" class="btn btn-primary btn-sm">
+                    <i class="fas fa-plus"></i> New Category
+                </a>
+                <a href="{% url 'admin:index' %}" class="btn btn-secondary btn-sm">Dashboard</a>
+            </div>
+        </section>
+
+        <section class="workspace-kpis">
+            <article class="workspace-kpi">
+                <small>Total</small>
+                <strong>{{ total_items }}</strong>
+                <span>All categories</span>
+            </article>
+            <article class="workspace-kpi">
+                <small>Root Nodes</small>
+                <strong>{{ root_items }}</strong>
+                <span>Top-level categories</span>
+            </article>
+            <article class="workspace-kpi">
+                <small>Protected</small>
+                <strong>{{ protected_items }}</strong>
+                <span>Protected branches</span>
+            </article>
+            <article class="workspace-kpi">
+                <small>Deepest Level</small>
+                <strong>{{ deepest_level }}</strong>
+                <span>Tree depth</span>
+            </article>
+        </section>
+
+        <section class="card workspace-filter-card">
+            <form
+                method="get"
+                action="{{ request.path }}"
+                class="workspace-filter-grid"
+                data-workspace-filter
+                data-filter-url="{{ request.path }}"
+                data-filter-target="#categories-table-container"
+                hx-get="{{ request.path }}"
+                hx-target="#categories-table-container"
+                hx-swap="innerHTML"
+                hx-push-url="true"
+            >
+                <div class="workspace-field workspace-field--protected">
+                    <label for="categories-protected">Protected</label>
+                    <select id="categories-protected" name="protected">
+                        <option value="" {% if not protected_filter %}selected{% endif %}>All</option>
+                        <option value="yes" {% if protected_filter == "yes" %}selected{% endif %}>Yes</option>
+                        <option value="no" {% if protected_filter == "no" %}selected{% endif %}>No</option>
+                    </select>
+                </div>
+
+                <div class="workspace-field workspace-field--level">
+                    <label for="categories-level">Level</label>
+                    <select id="categories-level" name="level">
+                        <option value="" {% if not level_filter %}selected{% endif %}>Any</option>
+                        {% for level in level_choices %}
+                            <option value="{{ level }}" {% if level_filter == level|stringformat:"s" %}selected{% endif %}>{{ level }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="workspace-field workspace-field--sort">
+                    <label for="categories-sort">Sort</label>
+                    <select id="categories-sort" name="sort">
+                        <option value="path" {% if sort_by == "path" %}selected{% endif %}>Tree path</option>
+                        <option value="-count" {% if sort_by == "-count" %}selected{% endif %}>Most used</option>
+                        <option value="-level" {% if sort_by == "-level" %}selected{% endif %}>Deepest first</option>
+                        <option value="name" {% if sort_by == "name" %}selected{% endif %}>Name A-Z</option>
+                    </select>
+                </div>
+
+                <div class="workspace-field workspace-field--search">
+                    <label for="categories-search">Search</label>
+                    <input
+                        id="categories-search"
+                        type="search"
+                        name="search"
+                        value="{{ search_query }}"
+                        placeholder="Search name, path, label"
+                        data-filter-live
+                    >
+                </div>
+
+                <div class="workspace-filter-actions">
+                    <button type="submit" class="btn btn-secondary btn-sm">Apply</button>
+                    <a href="{{ request.path }}" class="btn btn-ghost btn-sm">Reset</a>
+                </div>
+            </form>
+        </section>
+
+        <div id="categories-table-container">
+            {% include "admin/taxonomy/categories_table.html" %}
+        </div>
+    </div>
+{% endblock %}
+
+{% block extrajs %}
+    {{ block.super }}
+    <script defer src="{% static 'js/admin/workspace.js' %}"></script>
+{% endblock %}

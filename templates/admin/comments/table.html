@@ -1,0 +1,69 @@
+<section class="card workspace-table-card">
+    {% if comments %}
+        <form
+            id="admin-comments-bulk-form"
+            method="post"
+            action="{% url 'blog:admin_comments_bulk_action' %}"
+            class="workspace-bulkbar"
+            hx-post="{% url 'blog:admin_comments_bulk_action' %}"
+            hx-target="#comments-table-container"
+            hx-swap="innerHTML"
+            hx-push-url="true"
+            hx-confirm="Apply this action to selected comments?"
+        >
+            {% csrf_token %}
+            <input type="hidden" name="next_url" value="{{ request.get_full_path }}">
+            <input type="hidden" name="status" value="{{ status_filter }}">
+            <input type="hidden" name="post" value="{{ post_filter }}">
+            <input type="hidden" name="sort" value="{{ sort_by }}">
+            <input type="hidden" name="search" value="{{ search_query }}">
+            {% if page_obj.number %}<input type="hidden" name="page" value="{{ page_obj.number }}">{% endif %}
+            <span class="workspace-muted">Bulk comments action</span>
+            <div class="workspace-bulk-actions">
+                <select name="bulk_action" class="form-select form-select-sm" style="max-width: 220px;">
+                    <option value="approve">Approve selected</option>
+                    <option value="unapprove">Unapprove selected</option>
+                    <option value="delete">Delete selected</option>
+                </select>
+                <button type="submit" class="btn btn-secondary btn-sm">Apply</button>
+            </div>
+        </form>
+
+        <div class="comment-feed">
+            {% for comment in comments %}
+                {% include "admin/comments/comment_item.html" with comment=comment %}
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="workspace-empty">
+            <i class="fas fa-comments"></i>
+            <p>No comments found for this filter.</p>
+        </div>
+    {% endif %}
+
+    {% if is_paginated %}
+        <nav class="workspace-pagination">
+            {% if page_obj.has_previous %}
+                {% if page_query %}
+                    <a href="?{{ page_query }}&page=1" hx-get="?{{ page_query }}&page=1" hx-target="#comments-table-container" hx-swap="innerHTML" hx-push-url="true" class="btn btn-secondary btn-sm">First</a>
+                    <a href="?{{ page_query }}&page={{ page_obj.previous_page_number }}" hx-get="?{{ page_query }}&page={{ page_obj.previous_page_number }}" hx-target="#comments-table-container" hx-swap="innerHTML" hx-push-url="true" class="btn btn-secondary btn-sm">Previous</a>
+                {% else %}
+                    <a href="?page=1" hx-get="?page=1" hx-target="#comments-table-container" hx-swap="innerHTML" hx-push-url="true" class="btn btn-secondary btn-sm">First</a>
+                    <a href="?page={{ page_obj.previous_page_number }}" hx-get="?page={{ page_obj.previous_page_number }}" hx-target="#comments-table-container" hx-swap="innerHTML" hx-push-url="true" class="btn btn-secondary btn-sm">Previous</a>
+                {% endif %}
+            {% endif %}
+
+            <span class="workspace-page-status">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+
+            {% if page_obj.has_next %}
+                {% if page_query %}
+                    <a href="?{{ page_query }}&page={{ page_obj.next_page_number }}" hx-get="?{{ page_query }}&page={{ page_obj.next_page_number }}" hx-target="#comments-table-container" hx-swap="innerHTML" hx-push-url="true" class="btn btn-secondary btn-sm">Next</a>
+                    <a href="?{{ page_query }}&page={{ page_obj.paginator.num_pages }}" hx-get="?{{ page_query }}&page={{ page_obj.paginator.num_pages }}" hx-target="#comments-table-container" hx-swap="innerHTML" hx-push-url="true" class="btn btn-secondary btn-sm">Last</a>
+                {% else %}
+                    <a href="?page={{ page_obj.next_page_number }}" hx-get="?page={{ page_obj.next_page_number }}" hx-target="#comments-table-container" hx-swap="innerHTML" hx-push-url="true" class="btn btn-secondary btn-sm">Next</a>
+                    <a href="?page={{ page_obj.paginator.num_pages }}" hx-get="?page={{ page_obj.paginator.num_pages }}" hx-target="#comments-table-container" hx-swap="innerHTML" hx-push-url="true" class="btn btn-secondary btn-sm">Last</a>
+                {% endif %}
+            {% endif %}
+        </nav>
+    {% endif %}
+</section>

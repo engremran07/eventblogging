@@ -1,0 +1,63 @@
+{% load static %}
+
+<div class="admin-topbar">
+    <!-- Left section - Page title -->
+    <div class="topbar-left">
+        <button class="topbar-hamburger btn-ghost" @click="$dispatch('toggle-sidebar')">
+            <i class="fas fa-bars"></i>
+        </button>
+        <h1 class="page-title">{% block page_title %}{% if title %}{{ title }}{% else %}Admin Dashboard{% endif %}{% endblock %}</h1>
+    </div>
+    
+    <!-- Right section - Search and actions -->
+    <div class="topbar-right">
+        <!-- Global search -->
+        <form class="topbar-search" method="get" action="{% url 'blog:admin_posts_list' %}">
+            <i class="fas fa-search"></i>
+            <input 
+                type="search"
+                name="search"
+                placeholder="Search posts, tags, users..."
+            >
+        </form>
+        
+        <!-- Theme toggle -->
+        <button class="topbar-action btn-ghost" type="button" data-theme-toggle title="Toggle theme">
+            <i class="fas fa-moon theme-toggle-glyph" data-theme-glyph aria-hidden="true"></i>
+        </button>
+        
+        <!-- User menu -->
+        {% if request.user.is_authenticated %}
+            <div class="topbar-user-menu" x-data="{ open: false }" @click.outside="open = false">
+                <button @click="open = !open" class="topbar-action user-avatar topbar-user-avatar btn-ghost">
+                    {% if current_user_profile.avatar_url %}
+                        <img src="{{ current_user_profile.avatar_url }}" alt="{{ request.user.username }}" class="user-avatar-image">
+                    {% elif request.user.first_name %}
+                        {{ request.user.first_name|first|upper }}
+                    {% else %}
+                        {{ request.user.username|first|upper }}
+                    {% endif %}
+                </button>
+                
+                <!-- Dropdown menu -->
+                <div x-show="open" class="topbar-dropdown-menu" x-transition.opacity.duration.150ms>
+                    <div class="topbar-dropdown-head">
+                        <div class="topbar-dropdown-username">{{ current_user_profile.effective_name|default:request.user.get_full_name|default:request.user.username }}</div>
+                        <a href="{% url 'admin_users_list' %}?search={{ request.user.username|urlencode }}" class="topbar-dropdown-profile-link">Profile</a>
+                    </div>
+                    <a href="{% url 'admin_users_list' %}?search={{ request.user.username|urlencode }}" class="topbar-dropdown-item">
+                        <span class="nav-icon"><i class="fas fa-users"></i></span>
+                        <span class="nav-label">Users Workspace</span>
+                    </a>
+                    <form method="post" action="{% url 'admin:logout' %}" class="m-0">
+                        {% csrf_token %}
+                        <button type="submit" class="topbar-dropdown-item btn-ghost w-100 text-start border-0 bg-transparent">
+                            <span class="nav-icon"><i class="fas fa-sign-out-alt"></i></span>
+                            <span class="nav-label">Logout</span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>

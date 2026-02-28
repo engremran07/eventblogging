@@ -1,0 +1,119 @@
+﻿<section class="card workspace-table-card" data-posts-bulk data-bulk-url="{% url 'blog:admin_posts_bulk_action' %}">
+    <div class="workspace-table-scroll">
+        <table class="workspace-table">
+            <thead>
+                <tr>
+                    <th>
+                        <input type="checkbox" data-select-all-posts aria-label="Select all posts">
+                        Title
+                    </th>
+                    <th>Status</th>
+                    <th>Primary Topic</th>
+                    <th>SEO Score</th>
+                    <th>Views</th>
+                    <th>Published</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for post in posts %}
+                    <tr id="post-{{ post.id }}">
+                        <td>
+                            <div>
+                                <label>
+                                    <input
+                                        type="checkbox"
+                                        value="{{ post.id }}"
+                                        data-select-post
+                                        aria-label="Select {{ post.title }}"
+                                    >
+                                </label>
+                                <a href="{% url 'blog:admin_post_editor' post.id %}" class="workspace-link">{{ post.title }}</a>
+                            </div>
+                        </td>
+                        <td>
+                            {% if post.status == 'published' %}
+                                <span class="badge badge-success workspace-status">Published</span>
+                            {% elif post.status == 'review' %}
+                                <span class="badge badge-info workspace-status">Review</span>
+                            {% elif post.status == 'archived' %}
+                                <span class="badge badge-muted workspace-status">Archived</span>
+                            {% else %}
+                                <span class="badge badge-warning workspace-status">Draft</span>
+                            {% endif %}
+                        </td>
+                        <td class="workspace-muted">{{ post.primary_topic|default:"--" }}</td>
+                        <td>
+                            <div class="workspace-score" data-seo-score="{{ post.seo_audit_score|default:0 }}">
+                                <span class="workspace-score-track">
+                                    <span class="workspace-score-fill"></span>
+                                </span>
+                                <span class="workspace-score-value">{{ post.seo_audit_score|default:0 }}%</span>
+                            </div>
+                        </td>
+                        <td class="workspace-muted">{{ post.views_count }}</td>
+                        <td class="workspace-muted">
+                            {% if post.published_at %}
+                                {{ post.published_at|date:'M d, Y' }}
+                            {% else %}
+                                --
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{% url 'blog:admin_post_editor' post.id %}" class="btn btn-secondary btn-sm">Edit</a>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="7">
+                            <div class="workspace-empty">
+                                <i class="fas fa-inbox"></i>
+                                <p>No posts found for this filter.</p>
+                                <a href="{% url 'blog:admin_post_create' %}" class="btn btn-primary btn-sm">Create a post</a>
+                            </div>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if posts %}
+        <div class="workspace-bulkbar" data-posts-bulkbar hidden>
+            <span class="workspace-muted" data-posts-selected-count>0 selected</span>
+            <div class="workspace-bulk-actions">
+                <button type="button" class="btn btn-secondary btn-sm" data-posts-bulk-action="draft">Move to Draft</button>
+                <button type="button" class="btn btn-secondary btn-sm" data-posts-bulk-action="review">Move to Review</button>
+                <button type="button" class="btn btn-primary btn-sm" data-posts-bulk-action="publish">Publish</button>
+                <button type="button" class="btn btn-secondary btn-sm" data-posts-bulk-action="archive">Archive</button>
+                <button type="button" class="btn btn-danger btn-sm" data-posts-bulk-action="delete">Delete</button>
+            </div>
+        </div>
+    {% endif %}
+
+    {% if is_paginated %}
+        <nav class="workspace-pagination">
+            {% if page_obj.has_previous %}
+                {% if page_query %}
+                    <a href="?{{ page_query }}&page=1" hx-get="?{{ page_query }}&page=1" hx-target="#posts-table-container" hx-swap="innerHTML" hx-push-url="true" class="btn btn-secondary btn-sm">First</a>
+                    <a href="?{{ page_query }}&page={{ page_obj.previous_page_number }}" hx-get="?{{ page_query }}&page={{ page_obj.previous_page_number }}" hx-target="#posts-table-container" hx-swap="innerHTML" hx-push-url="true" class="btn btn-secondary btn-sm">Previous</a>
+                {% else %}
+                    <a href="?page=1" hx-get="?page=1" hx-target="#posts-table-container" hx-swap="innerHTML" hx-push-url="true" class="btn btn-secondary btn-sm">First</a>
+                    <a href="?page={{ page_obj.previous_page_number }}" hx-get="?page={{ page_obj.previous_page_number }}" hx-target="#posts-table-container" hx-swap="innerHTML" hx-push-url="true" class="btn btn-secondary btn-sm">Previous</a>
+                {% endif %}
+            {% endif %}
+
+            <span class="workspace-page-status">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+
+            {% if page_obj.has_next %}
+                {% if page_query %}
+                    <a href="?{{ page_query }}&page={{ page_obj.next_page_number }}" hx-get="?{{ page_query }}&page={{ page_obj.next_page_number }}" hx-target="#posts-table-container" hx-swap="innerHTML" hx-push-url="true" class="btn btn-secondary btn-sm">Next</a>
+                    <a href="?{{ page_query }}&page={{ page_obj.paginator.num_pages }}" hx-get="?{{ page_query }}&page={{ page_obj.paginator.num_pages }}" hx-target="#posts-table-container" hx-swap="innerHTML" hx-push-url="true" class="btn btn-secondary btn-sm">Last</a>
+                {% else %}
+                    <a href="?page={{ page_obj.next_page_number }}" hx-get="?page={{ page_obj.next_page_number }}" hx-target="#posts-table-container" hx-swap="innerHTML" hx-push-url="true" class="btn btn-secondary btn-sm">Next</a>
+                    <a href="?page={{ page_obj.paginator.num_pages }}" hx-get="?page={{ page_obj.paginator.num_pages }}" hx-target="#posts-table-container" hx-swap="innerHTML" hx-push-url="true" class="btn btn-secondary btn-sm">Last</a>
+                {% endif %}
+            {% endif %}
+        </nav>
+    {% endif %}
+</section>

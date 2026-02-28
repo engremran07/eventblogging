@@ -1,0 +1,22 @@
+﻿{% if nodes %}
+<ul class="list-unstyled mb-0">
+    {% for node in nodes %}
+        {% with tag=node.0 children=node.1 %}
+            <li class="mb-1">
+                <a class="small text-decoration-none" href="{% url 'blog:posts_by_category' tag.name %}">
+                    {{ tag.label|default:tag.name }}
+                    <span class="text-body-secondary">({{ tag.count }})</span>
+                </a>
+                {% if children %}
+                    <div class="ms-3 mt-1">
+                        {% include "blog/partials/category_tree.html" with nodes=children %}
+                    </div>
+                {% endif %}
+            </li>
+        {% endwith %}
+    {% endfor %}
+</ul>
+{% else %}
+    <span class="text-body-secondary small">No categories yet.</span>
+{% endif %}
+

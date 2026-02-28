@@ -1,0 +1,276 @@
+﻿{% load static %}
+<!doctype html>
+<html lang="en" data-bs-theme="{{ site_appearance.mode|default:'light' }}" data-app-preset="{{ site_appearance.preset|default:'aurora' }}">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}{% if resolved_seo %}{{ resolved_seo.title }}{% else %}{{ site_identity.site_name|default:'Ultimate Blog' }}{% endif %}{% endblock %}</title>
+    <meta name="description" content="{% block meta_description %}{% if resolved_seo %}{{ resolved_seo.description }}{% else %}Ultimate full-stack blog with Django, HTMX, Alpine, Bootstrap, and Tagulous.{% endif %}{% endblock %}">
+    <meta name="color-scheme" content="{{ site_appearance.mode|default:'light' }}">
+    <meta name="theme-color" content="{{ site_appearance.theme_color|default:'#f7f8ff' }}">
+    {% if resolved_seo %}
+    <link rel="canonical" href="{{ resolved_seo.canonical }}">
+    <meta name="robots" content="{{ resolved_seo.robots }}">
+    {% if site_seo_flags.enable_open_graph %}
+    <meta property="og:type" content="{{ resolved_seo.open_graph.type|default:'website' }}">
+    <meta property="og:title" content="{{ resolved_seo.open_graph.title|default:resolved_seo.title }}">
+    <meta property="og:description" content="{{ resolved_seo.open_graph.description|default:resolved_seo.description }}">
+    <meta property="og:url" content="{{ resolved_seo.open_graph.url|default:resolved_seo.canonical }}">
+    {% if resolved_seo.open_graph.image %}
+    <meta property="og:image" content="{{ resolved_seo.open_graph.image }}">
+    {% endif %}
+    {% if resolved_seo.open_graph.published_time %}
+    <meta property="article:published_time" content="{{ resolved_seo.open_graph.published_time }}">
+    {% endif %}
+    {% if resolved_seo.open_graph.modified_time %}
+    <meta property="article:modified_time" content="{{ resolved_seo.open_graph.modified_time }}">
+    {% endif %}
+    {% endif %}
+    {% if site_seo_flags.enable_twitter_cards %}
+    <meta name="twitter:card" content="{{ resolved_seo.twitter.card|default:'summary' }}">
+    <meta name="twitter:title" content="{{ resolved_seo.twitter.title|default:resolved_seo.title }}">
+    <meta name="twitter:description" content="{{ resolved_seo.twitter.description|default:resolved_seo.description }}">
+    {% if resolved_seo.twitter.image %}
+    <meta name="twitter:image" content="{{ resolved_seo.twitter.image }}">
+    {% endif %}
+    {% if resolved_seo.twitter.site %}
+    <meta name="twitter:site" content="{{ resolved_seo.twitter.site }}">
+    {% endif %}
+    {% endif %}
+    {% for json_ld_entry in resolved_seo_json_ld %}
+    <script type="application/ld+json">{{ json_ld_entry|safe }}</script>
+    {% endfor %}
+    {% endif %}
+    {% if site_verification.google %}<meta name="google-site-verification" content="{{ site_verification.google }}">{% endif %}
+    {% if site_verification.bing %}<meta name="msvalidate.01" content="{{ site_verification.bing }}">{% endif %}
+    {% if site_verification.yandex %}<meta name="yandex-verification" content="{{ site_verification.yandex }}">{% endif %}
+    {% if site_verification.pinterest %}<meta name="p:domain_verify" content="{{ site_verification.pinterest }}">{% endif %}
+
+    {% static 'img/home-logo.svg' as default_logo_url %}
+    <link rel="icon" href="{{ site_identity.favicon_url|default:default_logo_url }}">
+    <link rel="icon" href="{{ site_identity.favicon_dark_url|default:site_identity.favicon_url|default:default_logo_url }}" media="(prefers-color-scheme: dark)">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Literata:opsz,wght@7..72,400;7..72,600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
+    
+    <!-- CUSTOM DESIGN SYSTEM - Single source of truth -->
+    <link rel="stylesheet" href="{% static 'css/tokens.css' %}">
+    <link rel="stylesheet" href="{% static 'css/design-system.css' %}">
+    <link rel="stylesheet" href="{% static 'css/base.css' %}">
+    <link rel="stylesheet" href="{% static 'css/components.css' %}">
+    <link rel="stylesheet" href="{% static 'css/layout.css' %}">
+    
+    <!-- Site-specific overrides -->
+    <link rel="stylesheet" href="{% static 'css/site/core.css' %}">
+    {% if site_appearance and site_appearance.css_variables %}
+    <style id="site-appearance-vars">
+        :root {
+            {% for var_name, var_value in site_appearance.css_variables.items %}
+            {{ var_name }}: {{ var_value }};
+            {% endfor %}
+        }
+    </style>
+    {% endif %}
+
+    {% if site_integrations.analytics_provider == "ga4" and site_integrations.ga4_measurement_id %}
+    <script async src="https://www.googletagmanager.com/gtag/js?id={{ site_integrations.ga4_measurement_id }}"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', '{{ site_integrations.ga4_measurement_id|escapejs }}');
+    </script>
+    {% elif site_integrations.analytics_provider == "gtm" and site_integrations.gtm_container_id %}
+    <script>
+        (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+        new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+        j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+        'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+        })(window,document,'script','dataLayer','{{ site_integrations.gtm_container_id|escapejs }}');
+    </script>
+    {% elif site_integrations.analytics_provider == "plausible" and site_integrations.plausible_domain %}
+    <script defer data-domain="{{ site_integrations.plausible_domain }}" src="https://plausible.io/js/script.js"></script>
+    {% elif site_integrations.analytics_provider == "custom" and site_integrations.custom_analytics_snippet %}
+    {{ site_integrations.custom_analytics_snippet|safe }}
+    {% endif %}
+
+    <script src="https://unpkg.com/htmx.org@2.0.8"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.15.0/dist/cdn.min.js"></script>
+    <script defer src="{% static 'js/alpine-store.js' %}"></script>
+    <script defer src="{% static 'js/site/alpine-htmx-utils.js' %}"></script>
+    <script defer src="{% static 'js/site/core.js' %}"></script>
+    {% block extra_head %}{% endblock %}
+</head>
+<body
+    x-data="appShell()"
+    class="app-body mode-{{ site_appearance.mode|default:'light' }} preset-{{ site_appearance.preset|default:'aurora' }}"
+    data-theme-state-url="{% url 'blog:api_appearance_state' %}"
+>
+{% if site_integrations.analytics_provider == "gtm" and site_integrations.gtm_container_id %}
+<noscript>
+    <iframe
+        src="https://www.googletagmanager.com/ns.html?id={{ site_integrations.gtm_container_id }}"
+        height="0"
+        width="0"
+        style="display:none;visibility:hidden"
+    ></iframe>
+</noscript>
+{% endif %}
+<div id="ui-toast-stack" class="ui-toast-stack" x-cloak aria-live="polite" aria-atomic="true">
+    <template x-for="toast in $store.ui.toasts" :key="toast.id">
+        <div class="ui-toast" :class="'ui-toast-' + toast.level" x-show="toast.visible" x-transition.opacity.duration.180ms>
+            <div class="ui-toast-icon" x-text="$store.ui.toastIcon(toast.level)"></div>
+            <div class="ui-toast-body">
+                <div class="ui-toast-message" x-text="toast.message"></div>
+            </div>
+            <button class="btn-close ui-toast-close" type="button" aria-label="Close" @click="$store.ui.dismissToast(toast.id)"></button>
+        </div>
+    </template>
+</div>
+
+<div class="modal fade" id="ui-confirm-modal" tabindex="-1" aria-labelledby="uiConfirmTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content ui-confirm-modal">
+            <div class="modal-header">
+                <h5 class="modal-title" id="uiConfirmTitle">Confirm Action</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cancel"></button>
+            </div>
+            <div class="modal-body">
+                <p id="uiConfirmMessage" class="mb-0"></p>
+            </div>
+            <div class="modal-footer">
+                <button id="ui-confirm-cancel" type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button id="ui-confirm-approve" type="button" class="btn btn-primary">Confirm</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<nav class="navbar navbar-expand-lg sticky-top app-nav border-bottom">
+    <div class="container-fluid px-4">
+        <a class="navbar-brand brand-mark" href="{% url 'blog:home' %}">
+            {% with logo_light=site_identity.brand_logo_url|default:default_logo_url %}
+                {% with logo_dark=site_identity.brand_logo_dark_url|default:logo_light %}
+                    <img
+                        src="{{ logo_light }}"
+                        class="brand-home-logo"
+                        alt="{{ site_identity.site_name|default:'Site' }} logo"
+                        data-theme-logo
+                        data-logo-light="{{ logo_light }}"
+                        data-logo-dark="{{ logo_dark }}"
+                    >
+                {% endwith %}
+            {% endwith %}
+            <span class="brand-text">{{ site_identity.site_name|default:'Ultimate Blog' }}</span>
+        </a>
+        <button class="navbar-toggler btn-ghost" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                <li class="nav-item"><a class="nav-link" href="{% url 'blog:home' %}">Explore</a></li>
+                <li class="nav-item"><a class="nav-link" href="{% url 'pages:list' %}">Pages</a></li>
+                {% if user.is_authenticated %}
+                    <li class="nav-item"><a class="nav-link" href="{% url 'blog:dashboard' %}">Dashboard</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'blog:post_create' %}">Editor</a></li>
+                {% endif %}
+                {% for nav_page in navigation_pages|slice:":4" %}
+                    <li class="nav-item"><a class="nav-link" href="{{ nav_page.get_absolute_url }}">{{ nav_page.effective_nav_label|truncatechars:16 }}</a></li>
+                {% endfor %}
+                <li class="nav-item"><a class="nav-link" href="{% url 'admin:index' %}">Admin</a></li>
+            </ul>
+
+            <div class="d-flex gap-2 align-items-center flex-wrap">
+                {% if site_identity.homepage_cta_label and site_identity.homepage_cta_url %}
+                    <a class="btn btn-sm btn-outline-primary" href="{{ site_identity.homepage_cta_url }}">{{ site_identity.homepage_cta_label }}</a>
+                {% endif %}
+                {% if user.is_authenticated %}
+                    <div class="frontend-user-identity">
+                        <span class="frontend-user-name">{{ current_user_profile.effective_name|default:user.get_full_name|default:user.username }}</span>
+                        <a class="frontend-user-profile" href="{% url 'profile' %}">Profile</a>
+                    </div>
+                    <form method="post" action="{% url 'logout' %}" style="display: inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-outline-secondary">Sign out</button>
+                    </form>
+                {% else %}
+                    <a class="btn btn-sm btn-primary" href="{% url 'login' %}">Sign in</a>
+                    {% if feature_controls.enable_user_registration %}
+                        <a class="btn btn-sm btn-outline-secondary" href="{% url 'register' %}">Register</a>
+                    {% endif %}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</nav>
+
+<main class="container-fluid px-4 py-4">
+    {% if messages %}
+        <div class="row mb-3">
+            <div class="col-12">
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+    <div id="ui-inline-feedback-host" class="ui-inline-feedback-slot d-none mb-3" data-ui-feedback-slot="global" aria-live="polite"></div>
+
+    {% block content %}{% endblock %}
+</main>
+
+<footer class="app-footer border-top mt-5">
+    <div class="container-fluid px-4 py-4 d-flex flex-wrap justify-content-between gap-3">
+        <div>
+            <h6 class="mb-1">{{ site_identity.site_name|default:'Ultimate Blog' }} Platform</h6>
+            <p class="mb-0 text-body-secondary small">
+                {% if site_identity.footer_notice %}
+                    {{ site_identity.footer_notice }}
+                {% else %}
+                    {{ site_identity.site_tagline|default:"Django + HTMX + Alpine + Bootstrap + Tagulous, unified for rapid content operations." }}
+                {% endif %}
+            </p>
+            <p class="mb-0 text-body-secondary small mt-1">
+                {% if site_identity.legal_company_name %}
+                    {{ site_identity.legal_company_name }}
+                {% endif %}
+                {% if site_identity.support_email %}
+                    · Support: <a class="text-decoration-none" href="mailto:{{ site_identity.support_email }}">{{ site_identity.support_email }}</a>
+                {% endif %}
+                {% if site_identity.contact_email %}
+                    · Contact: <a class="text-decoration-none" href="mailto:{{ site_identity.contact_email }}">{{ site_identity.contact_email }}</a>
+                {% endif %}
+            </p>
+            <div class="small mt-2 d-flex flex-wrap gap-2">
+                {% if feature_controls.enable_policy_pages %}
+                <a class="text-decoration-none" href="{% url 'pages:policy_detail' 'privacy-policy' %}">Privacy</a>
+                <a class="text-decoration-none" href="{% url 'pages:policy_detail' 'terms-of-service' %}">Terms</a>
+                <a class="text-decoration-none" href="{% url 'pages:policy_detail' 'cookie-policy' %}">Cookies</a>
+                <a class="text-decoration-none" href="{% url 'pages:policy_index' %}">All Policies</a>
+                {% endif %}
+            </div>
+        </div>
+        <div class="small text-body-secondary">
+            {% if feature_controls.enable_public_api %}
+            <div>API endpoint: <code>{% url 'blog:api_posts' %}</code></div>
+            <div>Pages API: <code>{% url 'pages:api_pages' %}</code></div>
+            {% endif %}
+            {% if feature_controls.enable_sitemap %}
+            <div>Sitemap: <a class="text-decoration-none" href="{% url 'sitemap-index' %}">{% url 'sitemap-index' %}</a></div>
+            {% endif %}
+            <div>Server time: {% now "Y-m-d H:i" %}</div>
+        </div>
+    </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

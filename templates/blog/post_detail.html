@@ -1,0 +1,109 @@
+﻿{% extends "base.html" %}
+
+{% block content %}
+<div class="reading-progress-wrap">
+    <div class="reading-progress" x-data="{ progress: 0 }" x-init="window.addEventListener('scroll', () => { const d = document.documentElement; const max = d.scrollHeight - d.clientHeight; progress = max > 0 ? ((d.scrollTop / max) * 100) : 0; });">
+        <div class="reading-progress-bar" :style="`width: ${progress}%`"></div>
+    </div>
+</div>
+
+<div class="row justify-content-center g-4">
+    <div class="col-xl-8">
+        <article class="content-panel p-4 p-md-5 mb-4">
+            <div class="d-flex justify-content-between align-items-start mb-3 gap-3">
+                <div>
+                    <p class="small text-uppercase text-body-secondary mb-1">{{ post.get_status_display }}</p>
+                    <h1 class="mb-1">{{ post.title }}</h1>
+                    {% if post.subtitle %}
+                        <p class="lead mb-2">{{ post.subtitle }}</p>
+                    {% endif %}
+                    <p class="text-body-secondary mb-0">
+                        By {{ post.author.get_full_name|default:site_identity.default_author_display|default:post.author.username }}
+                        {% if post.published_at %}
+                            on {{ post.published_at|date:"M d, Y H:i" }}
+                        {% endif %}
+                        | Created {{ post.created_at|date:"M d, Y H:i" }}
+                        | Updated {{ post.updated_at|date:"M d, Y H:i" }}
+                        | {{ post.reading_time }} min read
+                    </p>
+                </div>
+                <div class="d-flex gap-2">
+                    {% if request.user == post.author %}
+                        <a class="btn btn-sm btn-outline-primary" href="{% url 'blog:post_update' post.slug %}">Edit</a>
+                        <a class="btn btn-sm btn-outline-secondary" href="{% url 'blog:post_revisions' post.slug %}">Revisions</a>
+                        <a class="btn btn-sm btn-outline-danger" href="{% url 'blog:post_delete' post.slug %}">Delete</a>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if post.cover_image %}
+                <img class="img-fluid rounded-4 mb-4" src="{{ post.cover_image.url }}" alt="{{ post.title }}">
+            {% endif %}
+
+            <div class="post-meta mb-3 d-flex flex-wrap gap-2">
+                {% if post.primary_topic %}
+                    <a class="badge text-bg-primary text-decoration-none" href="{% url 'blog:posts_by_topic' post.primary_topic.name %}">{{ post.primary_topic.name }}</a>
+                {% endif %}
+                {% for category in post.categories.all %}
+                    <a class="badge text-bg-warning text-decoration-none" href="{% url 'blog:posts_by_category' category.name %}">{{ category.label|default:category.name }}</a>
+                {% endfor %}
+                {% for tag in post.tags.all %}
+                    <a class="badge text-bg-light text-decoration-none" href="{% url 'blog:posts_by_tag' tag.name %}">#{{ tag.name }}</a>
+                {% endfor %}
+            </div>
+
+            <div id="reaction-bar">
+                {% include "blog/partials/reaction_bar.html" %}
+            </div>
+
+            <hr>
+
+            <div class="markdown-body">
+                {{ post.body_html|safe }}
+            </div>
+        </article>
+
+        <section id="comments" class="content-panel p-4 p-md-5 mb-4">
+            <h3 class="mb-3">Discussion</h3>
+            <div id="comments-section">
+                {% include "blog/partials/comments_section.html" %}
+            </div>
+        </section>
+    </div>
+
+    <aside class="col-xl-4">
+        <div class="stack-panel p-3 mb-3">
+            <h6 class="mb-3">Related Posts</h6>
+            <div class="vstack gap-3">
+                {% for related in related_posts %}
+                    <div class="border-bottom pb-2">
+                        <a class="fw-semibold text-decoration-none" href="{{ related.get_absolute_url }}">{{ related.title }}</a>
+                        <div class="small text-body-secondary">{{ related.excerpt|truncatechars:90 }}</div>
+                    </div>
+                {% empty %}
+                    <div class="text-body-secondary small">No related content yet.</div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="stack-panel p-3">
+            <h6 class="mb-2">Post Metadata</h6>
+            <dl class="mb-0 small">
+                <dt>Word count</dt>
+                <dd>{{ post.word_count }}</dd>
+                <dt>Canonical URL</dt>
+                <dd>{% if post.canonical_url %}<a href="{{ post.canonical_url }}">{{ post.canonical_url }}</a>{% else %}None{% endif %}</dd>
+                <dt>Updated</dt>
+                <dd>{{ post.updated_at|date:"Y-m-d H:i" }}</dd>
+                <dt>Created</dt>
+                <dd>{{ post.created_at|date:"Y-m-d H:i" }}</dd>
+                {% if post.published_at %}
+                <dt>Published</dt>
+                <dd>{{ post.published_at|date:"Y-m-d H:i" }}</dd>
+                {% endif %}
+            </dl>
+        </div>
+    </aside>
+</div>
+{% endblock %}
+

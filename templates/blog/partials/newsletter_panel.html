@@ -1,0 +1,34 @@
+<div id="newsletter-panel" class="stack-panel p-3">
+    <h6 class="mb-2">Newsletter</h6>
+    <p class="small text-body-secondary">Product updates, editorial workflows, and growth playbooks.</p>
+
+    <div
+        class="ui-inline-feedback-slot d-none mb-2"
+        data-ui-feedback-slot="newsletter"
+        aria-live="polite"
+    ></div>
+
+    {% if status %}
+        <div class="alert alert-{% if status == 'success' %}success{% elif status == 'info' %}info{% else %}danger{% endif %} py-2 small">
+            {{ message }}
+        </div>
+    {% endif %}
+
+    <form
+        method="post"
+        action="{% url 'blog:newsletter_subscribe' %}"
+        hx-post="{% url 'blog:newsletter_subscribe' %}"
+        hx-target="#newsletter-panel"
+        hx-swap="outerHTML"
+        hx-confirm="Subscribe to this newsletter?"
+        data-ui-feedback-target="newsletter"
+        data-ui-action-kind="subscribe"
+        class="vstack gap-2"
+    >
+        {% csrf_token %}
+        {{ newsletter_form.company }}
+        {{ newsletter_form.full_name }}
+        {{ newsletter_form.email }}
+        <button class="btn btn-sm btn-primary" type="submit">Join Newsletter</button>
+    </form>
+</div>

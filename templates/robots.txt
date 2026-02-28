@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+
+{% if sitemap_enabled %}
+Sitemap: {{ sitemap_url }}
+Sitemap: {{ sitemap_sections_url }}
+{% endif %}

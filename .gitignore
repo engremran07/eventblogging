@@ -1,0 +1,13 @@
+﻿.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.sqlite3
+.env
+server.out.log
+server.err.log
+runserver.pid
+media/
+staticfiles/
+

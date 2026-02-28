@@ -1,0 +1,44 @@
+<div
+    class="ui-inline-feedback-slot d-none mb-3"
+    data-ui-feedback-slot="comments"
+    aria-live="polite"
+></div>
+
+{% if post.allow_comments %}
+    {% if request.user.is_authenticated %}
+        <form
+            method="post"
+            action="{% url 'blog:comment_create' post.slug %}"
+            hx-post="{% url 'blog:comment_create' post.slug %}"
+            hx-target="#comments-section"
+            hx-swap="outerHTML"
+            hx-confirm="Post this comment?"
+            data-ui-feedback-target="comments"
+            data-ui-action-kind="create"
+            class="mb-4"
+        >
+            {% csrf_token %}
+            <label class="form-label" for="{{ comment_form.body.id_for_label }}">Your comment</label>
+            {{ comment_form.body }}
+            {% if comment_form.body.errors %}
+                <div class="text-danger small mt-1">{{ comment_form.body.errors|join:', ' }}</div>
+            {% endif %}
+            <div class="d-flex justify-content-between mt-2">
+                <small class="text-body-secondary">Constructive, specific comments get better replies.</small>
+                <button class="btn btn-primary btn-sm" type="submit">Post Comment</button>
+            </div>
+        </form>
+    {% else %}
+        <div class="alert alert-info">
+            <a href="{% url 'login' %}">Sign in</a> to comment.
+        </div>
+    {% endif %}
+{% else %}
+    <div class="alert alert-secondary">Comments are disabled for this post.</div>
+{% endif %}
+
+{% if can_manage_comments %}
+    <div class="small text-body-secondary mb-3">Moderation mode is active for this post. You can bulk-manage comments below.</div>
+{% endif %}
+
+{% include "blog/partials/comment_list.html" with comments=comments %}

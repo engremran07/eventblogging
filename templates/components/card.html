@@ -1,0 +1,9 @@
+<div class="card {% if css_class %}{{ css_class }}{% endif %}" style="border-radius: var(--radius-lg); border: 1px solid var(--color-border); padding: var(--p-md);">
+  {% if title or icon %}
+  <div style="display: flex; align-items: center; margin-bottom: var(--space-4);">
+    {% if icon %}<i class="{{ icon }}" style="margin-right: var(--space-2);"></i>{% endif %}
+    {% if title %}<h3 style="margin: 0;">{{ title }}</h3>{% endif %}
+  </div>
+  {% endif %}
+  {% if content %}<div>{{ content|safe }}</div>{% endif %}
+</div>

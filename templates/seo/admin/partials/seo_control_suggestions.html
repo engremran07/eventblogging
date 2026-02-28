@@ -1,0 +1,219 @@
+<div class="row g-3 mb-3">
+    <div class="col-md-3 col-6"><div class="admin-control-metric"><span class="label">Open SEO Issues</span><strong>{{ seo_issue_rows|length }}</strong></div></div>
+    <div class="col-md-3 col-6"><div class="admin-control-metric"><span class="label">Pending Redirects</span><strong>{{ onsite_queue_counts.pending }}</strong></div></div>
+    <div class="col-md-3 col-6"><div class="admin-control-metric"><span class="label">Needs Correction</span><strong>{{ onsite_queue_counts.needs_correction }}</strong></div></div>
+    <div class="col-md-3 col-6"><div class="admin-control-metric"><span class="label">Closed Redirects</span><strong>{{ onsite_queue_counts.approved|add:onsite_queue_counts.rejected }}</strong></div></div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>On-site SEO Backlog (Posts + Pages)</span>
+        <div class="small text-muted">
+            Total: {{ pending_seo_task_summary.total }} |
+            High Priority: {{ pending_seo_task_summary.high }} |
+            Open Issues: {{ seo_issue_rows|length }}
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-sm mb-0">
+            <thead>
+                <tr>
+                    <th>Task</th>
+                    <th>Priority</th>
+                    <th>Target</th>
+                    <th>Description</th>
+                    <th>Recommended Fix</th>
+                    <th>Evidence</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for task in pending_seo_task_rows %}
+                    <tr>
+                        <td>
+                            <div><strong>{{ task.task_ref }}</strong></div>
+                            <div class="small text-muted">{{ task.type_label }}</div>
+                            {% if task.confidence != None %}
+                                <div class="small text-muted">conf {{ task.confidence|floatformat:3 }}</div>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge {% if task.priority == 'high' %}bg-danger{% elif task.priority == 'medium' %}bg-warning text-dark{% else %}bg-light text-dark{% endif %}">
+                                {{ task.priority }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if task.target_admin_url %}
+                                <a href="{{ task.target_admin_url }}">{{ task.target_title|truncatechars:42 }}</a>
+                            {% elif task.target_public_url %}
+                                <a href="{{ task.target_public_url }}" target="_blank" rel="noopener">{{ task.target_title|truncatechars:42 }}</a>
+                            {% else %}
+                                {{ task.target_title|truncatechars:42 }}
+                            {% endif %}
+                        </td>
+                        <td>{{ task.description|truncatechars:180 }}</td>
+                        <td>{{ task.recommendation|truncatechars:180 }}</td>
+                        <td>{{ task.evidence|truncatechars:140 }}</td>
+                        <td>
+                            {% if task.task_kind == "suggestion" %}
+                                <div class="d-flex gap-1 flex-wrap">
+                                    <a class="btn btn-xs btn-outline-primary" href="{% url 'admin_config:seo_control_suggestion_edit' task.suggestion_id %}?section=onsite">Edit</a>
+                                    <form method="post" action="{% url 'admin_config:seo_control_suggestion_action' task.suggestion_id 'approve' %}">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="return_section" value="onsite">
+                                        <button class="btn btn-xs btn-success">Approve</button>
+                                    </form>
+                                    <form method="post" action="{% url 'admin_config:seo_control_suggestion_action' task.suggestion_id 'reject' %}">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="return_section" value="onsite">
+                                        <button class="btn btn-xs btn-outline-danger">Reject</button>
+                                    </form>
+                                </div>
+                            {% else %}
+                                <a class="btn btn-xs btn-outline-secondary" href="{% url 'admin_config:seo_control_canonical_section' 'results' %}">Review</a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="7" class="text-muted">No pending on-site SEO tasks right now.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% if pending_seo_task_page_obj.paginator.num_pages > 1 %}
+        <div class="card-footer d-flex justify-content-between align-items-center">
+            <span class="small text-muted">Page {{ pending_seo_task_page_obj.number }} of {{ pending_seo_task_page_obj.paginator.num_pages }}</span>
+            <div class="btn-group btn-group-sm" role="group" aria-label="On-site backlog pagination">
+                {% if pending_seo_task_page_obj.has_previous %}
+                    <a class="btn btn-outline-secondary" href="?{% if onsite_page_query %}{{ onsite_page_query }}&{% endif %}onsite_page=1">First</a>
+                    <a class="btn btn-outline-secondary" href="?{% if onsite_page_query %}{{ onsite_page_query }}&{% endif %}onsite_page={{ pending_seo_task_page_obj.previous_page_number }}">Previous</a>
+                {% endif %}
+                {% if pending_seo_task_page_obj.has_next %}
+                    <a class="btn btn-outline-secondary" href="?{% if onsite_page_query %}{{ onsite_page_query }}&{% endif %}onsite_page={{ pending_seo_task_page_obj.next_page_number }}">Next</a>
+                    <a class="btn btn-outline-secondary" href="?{% if onsite_page_query %}{{ onsite_page_query }}&{% endif %}onsite_page={{ pending_seo_task_page_obj.paginator.num_pages }}">Last</a>
+                {% endif %}
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<div class="card mb-3">
+    <div class="card-header">Redirect Queue Board</div>
+    <div class="card-body">
+        <div class="admin-control-kanban">
+            <section class="lane">
+                <h6>Pending</h6>
+                {% for item in onsite_lane_rows.pending %}
+                    <article class="lane-card">
+                        <div class="lane-card-title">#{{ item.id }} {{ item.type }}</div>
+                        <div class="small text-muted">{{ item.target_title|truncatechars:50 }}</div>
+                        <div class="small">conf: {{ item.confidence|floatformat:2 }}</div>
+                        <div class="mt-2 d-flex gap-1 flex-wrap">
+                            <a class="btn btn-xs btn-outline-primary" href="{% url 'admin_config:seo_control_suggestion_edit' item.id %}?section=onsite">Edit</a>
+                            <form method="post" action="{% url 'admin_config:seo_control_suggestion_action' item.id 'approve' %}">{% csrf_token %}<input type="hidden" name="return_section" value="onsite"><button class="btn btn-xs btn-success">Approve</button></form>
+                            <form method="post" action="{% url 'admin_config:seo_control_suggestion_action' item.id 'reject' %}">{% csrf_token %}<input type="hidden" name="return_section" value="onsite"><button class="btn btn-xs btn-outline-danger">Reject</button></form>
+                        </div>
+                    </article>
+                {% empty %}
+                    <p class="small text-muted">No pending cards.</p>
+                {% endfor %}
+            </section>
+            <section class="lane">
+                <h6>Needs Correction</h6>
+                {% for item in onsite_lane_rows.needs_correction %}
+                    <article class="lane-card">
+                        <div class="lane-card-title">#{{ item.id }} {{ item.type }}</div>
+                        <div class="small text-muted">{{ item.target_title|truncatechars:50 }}</div>
+                        <div class="small">conf: {{ item.confidence|floatformat:2 }}</div>
+                        <div class="mt-2 d-flex gap-1 flex-wrap">
+                            <a class="btn btn-xs btn-outline-primary" href="{% url 'admin_config:seo_control_suggestion_edit' item.id %}?section=onsite">Edit</a>
+                            <form method="post" action="{% url 'admin_config:seo_control_suggestion_action' item.id 'approve' %}">{% csrf_token %}<input type="hidden" name="return_section" value="onsite"><button class="btn btn-xs btn-success">Approve</button></form>
+                            <form method="post" action="{% url 'admin_config:seo_control_suggestion_action' item.id 'reject' %}">{% csrf_token %}<input type="hidden" name="return_section" value="onsite"><button class="btn btn-xs btn-outline-danger">Reject</button></form>
+                        </div>
+                    </article>
+                {% empty %}
+                    <p class="small text-muted">No correction cards.</p>
+                {% endfor %}
+            </section>
+            <section class="lane">
+                <h6>Approved</h6>
+                {% for item in onsite_lane_rows.approved %}
+                    <article class="lane-card compact">
+                        <div class="lane-card-title">#{{ item.id }} {{ item.type }}</div>
+                        <div class="small text-muted">{{ item.target_title|truncatechars:50 }}</div>
+                    </article>
+                {% empty %}
+                    <p class="small text-muted">No approved cards.</p>
+                {% endfor %}
+            </section>
+            <section class="lane">
+                <h6>Rejected</h6>
+                {% for item in onsite_lane_rows.rejected %}
+                    <article class="lane-card compact">
+                        <div class="lane-card-title">#{{ item.id }} {{ item.type }}</div>
+                        <div class="small text-muted">{{ item.target_title|truncatechars:50 }}</div>
+                    </article>
+                {% empty %}
+                    <p class="small text-muted">No rejected cards.</p>
+                {% endfor %}
+            </section>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">Redirect Bulk Actions</div>
+    <div class="card-body p-0">
+        <form method="post" action="{% url 'admin_config:seo_control_suggestion_bulk' %}">
+            {% csrf_token %}
+            <input type="hidden" name="return_section" value="onsite">
+            <div class="d-flex p-2 gap-2 align-items-center border-bottom">
+                <select name="bulk_action" class="form-select form-select-sm" style="max-width: 180px;">
+                    <option value="">Bulk Action</option>
+                    <option value="approve">Approve</option>
+                    <option value="reject">Reject</option>
+                </select>
+                <button class="btn btn-sm btn-primary" type="submit">Apply</button>
+            </div>
+            <table class="table table-sm mb-0">
+                <thead>
+                    <tr><th></th><th>ID</th><th>Status</th><th>Type</th><th>Target</th><th>Confidence</th><th>Actions</th></tr>
+                </thead>
+                <tbody>
+                    {% for item in onsite_suggestion_rows %}
+                        <tr>
+                            <td><input type="checkbox" name="selected_suggestions" value="{{ item.id }}"></td>
+                            <td>#{{ item.id }}</td>
+                            <td>{{ item.status }}</td>
+                            <td>{{ item.type }}</td>
+                            <td>{{ item.target_title|truncatechars:56 }}</td>
+                            <td>{{ item.confidence|floatformat:3 }}</td>
+                            <td class="d-flex gap-1">
+                                <a class="btn btn-xs btn-outline-primary" href="{% url 'admin_config:seo_control_suggestion_edit' item.id %}?section=onsite">Edit</a>
+                                <form method="post" action="{% url 'admin_config:seo_control_suggestion_action' item.id 'approve' %}">{% csrf_token %}<input type="hidden" name="return_section" value="onsite"><button class="btn btn-xs btn-success">Approve</button></form>
+                                <form method="post" action="{% url 'admin_config:seo_control_suggestion_action' item.id 'reject' %}">{% csrf_token %}<input type="hidden" name="return_section" value="onsite"><button class="btn btn-xs btn-outline-danger">Reject</button></form>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr><td colspan="7" class="text-muted">No on-site redirect suggestions found.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </form>
+    </div>
+    {% if onsite_suggestion_page_obj.paginator.num_pages > 1 %}
+        <div class="card-footer d-flex justify-content-between align-items-center">
+            <span class="small text-muted">Page {{ onsite_suggestion_page_obj.number }} of {{ onsite_suggestion_page_obj.paginator.num_pages }}</span>
+            <div class="btn-group btn-group-sm" role="group" aria-label="On-site suggestions pagination">
+                {% if onsite_suggestion_page_obj.has_previous %}
+                    <a class="btn btn-outline-secondary" href="?{% if onsite_suggestion_page_query %}{{ onsite_suggestion_page_query }}&{% endif %}onsite_suggestion_page=1">First</a>
+                    <a class="btn btn-outline-secondary" href="?{% if onsite_suggestion_page_query %}{{ onsite_suggestion_page_query }}&{% endif %}onsite_suggestion_page={{ onsite_suggestion_page_obj.previous_page_number }}">Previous</a>
+                {% endif %}
+                {% if onsite_suggestion_page_obj.has_next %}
+                    <a class="btn btn-outline-secondary" href="?{% if onsite_suggestion_page_query %}{{ onsite_suggestion_page_query }}&{% endif %}onsite_suggestion_page={{ onsite_suggestion_page_obj.next_page_number }}">Next</a>
+                    <a class="btn btn-outline-secondary" href="?{% if onsite_suggestion_page_query %}{{ onsite_suggestion_page_query }}&{% endif %}onsite_suggestion_page={{ onsite_suggestion_page_obj.paginator.num_pages }}">Last</a>
+                {% endif %}
+            </div>
+        </div>
+    {% endif %}
+</div>

@@ -36,7 +36,7 @@
 
     function customButtons() {
         const $ = window.jQuery;
-        const ui = $.summernote.ui;
+
         const quoteIcon =
             '<svg class="sn-note-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
             '<path fill="currentColor" d="M6.4 3.5C3.9 4.1 2.7 5.8 2.7 8.4v3.9h4.1V8.1H4.8c.1-1.4.8-2.2 2.3-2.6l-.7-2zm6.7 0c-2.5.6-3.7 2.3-3.7 4.9v3.9h4.1V8.1h-2c.1-1.4.8-2.2 2.3-2.6l-.7-2z"/>' +
@@ -64,6 +64,8 @@
 
         return {
             quote: function (context) {
+                var ui = $.summernote && $.summernote.ui;
+                if (!ui) { return $('<button class="note-btn">Quote</button>')[0]; }
                 return ui
                     .button({
                         className: "note-btn-quote",
@@ -76,6 +78,8 @@
                     .render();
             },
             print: function (context) {
+                var ui = $.summernote && $.summernote.ui;
+                if (!ui) { return $('<button class="note-btn">Print</button>')[0]; }
                 return ui
                     .button({
                         className: "note-btn-print",

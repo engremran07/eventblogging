@@ -33,19 +33,6 @@
                 {% for var_name, var_value in site_appearance.css_variables.items %}
                     {{ var_name }}: {{ var_value }};
                 {% endfor %}
-                --accent: var(--brand);
-                --accent-hover: var(--brand-dark);
-                --accent-muted: color-mix(in srgb, var(--brand) 14%, transparent);
-                --accent-border: color-mix(in srgb, var(--brand) 34%, transparent);
-                --bg: var(--bg-main);
-                --surface-1: var(--panel-strong);
-                --surface-2: color-mix(in srgb, var(--panel) 80%, var(--bg-main) 20%);
-                --surface-3: color-mix(in srgb, var(--panel) 62%, var(--bg-main) 38%);
-                --border: var(--line);
-                --border-focus: color-mix(in srgb, var(--brand) 44%, var(--line) 56%);
-                --text-primary: var(--ink);
-                --text-secondary: var(--ink-soft);
-                --text-muted: color-mix(in srgb, var(--ink-soft) 62%, transparent);
             }
         </style>
     {% endif %}

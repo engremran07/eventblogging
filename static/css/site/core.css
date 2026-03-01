@@ -4,36 +4,35 @@
 ======================================================================== */
 
 :root {
-    /* Map legacy variables to design-system.css variables */
-    --bg-main: var(--color-bg);
-    --bg-wash: var(--color-bg-secondary);
-    --bg-sand: var(--color-warning-50);
-    --brand: var(--color-primary-600);
-    --brand-dark: var(--color-primary-900);
-    --brand-contrast: var(--color-gray-50);
-    --ink: var(--color-text-primary);
-    --ink-soft: var(--color-text-secondary);
-    --line: var(--color-border);
-    --panel: color-mix(in srgb, var(--color-bg) 92%, transparent);
-    --panel-strong: var(--color-bg-secondary);
+    /* ──────────────────────────────────────────────────────────────────────
+       Site aliases — auto-derived from canonical tokens (1 hop max).
+       Presets override canonical tokens (--bg, --accent, --text-primary …)
+       in the inline <style id="site-appearance-vars"> block; these aliases
+       resolve automatically because var(--bg) always picks up the latest
+       value on :root regardless of source-order.
+       ────────────────────────────────────────────────────────────────────── */
+    --bg-main: var(--bg);
+    --bg-wash: var(--surface-2);
+    --bg-sand: color-mix(in srgb, var(--warning) 9%, var(--bg));
+    --brand: var(--accent);
+    --brand-dark: var(--accent-hover);
+    --brand-contrast: var(--text-inverse);
+    --ink: var(--text-primary);
+    --ink-soft: var(--text-secondary);
+    --line: var(--border);
+    --panel: color-mix(in srgb, var(--surface-1) 92%, transparent);
+    --panel-strong: var(--surface-1);
     --radius: var(--radius-lg);
     --code-bg: var(--color-gray-950);
     --code-text: var(--color-gray-100);
-    --blockquote-bg: var(--color-primary-50);
-    --metric-dark-start: var(--color-primary-900);
-    --metric-dark-end: var(--color-primary-700);
-    --search-hover-bg: var(--color-bg-secondary);
-    --search-hover-line: var(--color-primary-200);
-    --top-strip-bg: color-mix(in srgb, var(--color-bg) 86%, transparent);
-    --nav-bg: color-mix(in srgb, var(--color-bg) 94%, transparent);
-    --footer-bg: color-mix(in srgb, var(--color-bg) 94%, transparent);
-
-    /* NOTE: Do NOT re-define base tokens (--bg, --accent, --surface-*, --text-*, --border*)
-       here. They are owned by foundation.css and themed via [data-bs-theme] selectors.
-       Re-defining them from legacy aliases creates circular references:
-         --bg → --bg-main → --color-bg → --bg → CYCLE → guaranteed-invalid per CSS spec.
-       Site components should use --bg-main, --ink, --brand etc. directly.
-       If presets need to customize base tokens, set them in the <style id="site-appearance-vars"> block. */
+    --blockquote-bg: color-mix(in srgb, var(--accent) 10%, var(--bg));
+    --metric-dark-start: color-mix(in srgb, var(--accent-hover) 66%, var(--surface-1));
+    --metric-dark-end: var(--accent-hover);
+    --search-hover-bg: var(--surface-2);
+    --search-hover-line: color-mix(in srgb, var(--accent) 24%, var(--bg));
+    --top-strip-bg: color-mix(in srgb, var(--bg) 86%, transparent);
+    --nav-bg: color-mix(in srgb, var(--bg) 94%, transparent);
+    --footer-bg: color-mix(in srgb, var(--bg) 94%, transparent);
 }
 
 html[data-bs-theme="light"] {

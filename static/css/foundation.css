@@ -188,19 +188,8 @@
   --text-inverse: #ffffff;
 }
 
-[data-bs-theme="dark"] {
-  --bg: #0f1117;
-  --surface-1: #161b27;
-  --surface-2: #1e2436;
-  --surface-3: #252d42;
-  --border: #2a3249;
-  --border-focus: #3d4f7a;
-  
-  --text-primary: #e2e8f0;
-  --text-secondary: #8b96b0;
-  --text-muted: #4a5568;
-  --text-inverse: #0f1117;
-}
+/* [data-bs-theme="dark"] is intentionally omitted — :root above already
+   defines dark defaults, so no re-declaration is needed. */
 
 /* ============================================================================
    UNIVERSAL RULES - Applied before component-specific styles

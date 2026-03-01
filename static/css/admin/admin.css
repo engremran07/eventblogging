@@ -936,7 +936,7 @@ details > summary:hover {
 
 .dashboard-eyebrow {
     margin: 0;
-    color: var(--color-text-secondary);
+    color: var(--text-secondary);
     text-transform: uppercase;
     letter-spacing: 0.08em;
     font-size: var(--text-xs);
@@ -951,7 +951,7 @@ details > summary:hover {
 
 .dashboard-subtitle {
     margin: 0;
-    color: var(--color-text-secondary);
+    color: var(--text-secondary);
     max-width: 60ch;
 }
 
@@ -969,8 +969,8 @@ details > summary:hover {
 }
 
 .dashboard-kpi-card {
-    background: var(--color-bg-secondary);
-    border: 1px solid var(--color-border);
+    background: var(--surface-1);
+    border: 1px solid var(--border);
     border-radius: var(--radius-lg);
     padding: var(--space-4);
     display: flex;
@@ -980,7 +980,7 @@ details > summary:hover {
 }
 
 .dashboard-kpi-card small {
-    color: var(--color-text-secondary);
+    color: var(--text-secondary);
     font-weight: var(--fw-medium);
 }
 
@@ -990,7 +990,7 @@ details > summary:hover {
 }
 
 .dashboard-kpi-card span {
-    color: var(--color-text-secondary);
+    color: var(--text-secondary);
     font-size: var(--text-xs);
 }
 
@@ -1022,17 +1022,17 @@ details > summary:hover {
 }
 
 .dashboard-mini-metric {
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--border);
     border-radius: var(--radius-md);
     padding: var(--space-3);
-    background: var(--color-bg-secondary);
+    background: var(--surface-1);
     display: flex;
     flex-direction: column;
     gap: 2px;
 }
 
 .dashboard-mini-metric small {
-    color: var(--color-text-secondary);
+    color: var(--text-secondary);
     font-size: var(--text-xs);
 }
 
@@ -1042,12 +1042,12 @@ details > summary:hover {
 }
 
 .dashboard-mini-metric span {
-    color: var(--color-text-secondary);
+    color: var(--text-secondary);
     font-size: var(--text-xs);
 }
 
 .dashboard-table th {
-    color: var(--color-text-secondary);
+    color: var(--text-secondary);
     font-weight: var(--fw-semibold);
     text-transform: uppercase;
     letter-spacing: 0.04em;
@@ -1071,7 +1071,7 @@ details > summary:hover {
     justify-content: space-between;
     gap: var(--space-3);
     padding-bottom: var(--space-2);
-    border-bottom: 1px solid var(--color-border);
+    border-bottom: 1px solid var(--border);
 }
 
 .dashboard-stats-list li:last-child {
@@ -1080,7 +1080,7 @@ details > summary:hover {
 }
 
 .dashboard-stats-list span {
-    color: var(--color-text-secondary);
+    color: var(--text-secondary);
 }
 
 .dashboard-stats-list strong {
@@ -1105,7 +1105,7 @@ details > summary:hover {
 }
 
 .dashboard-signal {
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--border);
     border-radius: var(--radius-md);
     padding: var(--space-3);
     display: flex;
@@ -1121,7 +1121,7 @@ details > summary:hover {
 
 .dashboard-signal p {
     margin: var(--space-1) 0 0;
-    color: var(--color-text-secondary);
+    color: var(--text-secondary);
     font-size: var(--text-sm);
 }
 
@@ -1159,12 +1159,12 @@ details > summary:hover {
     width: 26px;
     height: 26px;
     border-radius: var(--radius-full);
-    border: 1px solid var(--color-border);
-    background: var(--color-bg-secondary);
+    border: 1px solid var(--border);
+    background: var(--surface-1);
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--color-text-secondary);
+    color: var(--text-secondary);
     font-size: 0.72rem;
 }
 

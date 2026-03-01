@@ -290,38 +290,10 @@ Alpine.store('ui', {
   _modal: null,
 
   // Theme Methods
-  async toggleTheme() {
-    const nextTheme = this.theme === "dark" ? "light" : "dark";
-    const toggleUrl = document.body?.dataset?.adminThemeToggleUrl || "";
-
-    if (toggleUrl) {
-      try {
-        const response = await fetch(toggleUrl, {
-          method: "POST",
-          credentials: "same-origin",
-          headers: {
-            "X-CSRFToken": getCookie("csrftoken"),
-            "X-Requested-With": "XMLHttpRequest",
-          },
-        });
-        if (response.ok) {
-          const payload = await response.json();
-          this.theme = payload.mode || nextTheme;
-        } else {
-          this.theme = nextTheme;
-        }
-      } catch (_error) {
-        this.theme = nextTheme;
-      }
-    } else {
-      this.theme = nextTheme;
-    }
-
-    document.documentElement.setAttribute("data-bs-theme", this.theme);
-    if (document.body) {
-      document.body.setAttribute("data-bs-theme", this.theme);
-    }
-  },
+  // NOTE: Theme toggling is owned by ThemeCore (window.ThemeCore.applyTheme).
+  // Page-specific toggle handlers live in admin/admin.js and site/site.js.
+  // $store.ui.theme is READ-ONLY from Alpine templates; ThemeCore.applyTheme
+  // syncs it automatically after every toggle.
 
   toggleSidebar() {
     this.sidebarOpen = !this.sidebarOpen;
@@ -570,12 +542,8 @@ Alpine.store('admin', {
   },
 }); // end Alpine.store('admin')
 
-// Initialize theme immediately after stores are registered (still inside alpine:init)
-  const theme = Alpine.store('ui').theme;
-  document.documentElement.setAttribute('data-bs-theme', theme);
-  if (document.body) {
-    document.body.setAttribute('data-bs-theme', theme);
-  }
+// Theme state is managed by ThemeCore (runs before Alpine). No need to
+// re-set data-bs-theme here — ThemeCore already applied it synchronously.
 
 }); // end document.addEventListener('alpine:init')
 

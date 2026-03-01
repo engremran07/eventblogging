@@ -78,6 +78,31 @@ urlpatterns = [
         blog_admin_views.admin_categories_reparent,
         name="admin_categories_reparent",
     ),
+    path(
+        "admin/categories/create/",
+        blog_admin_views.admin_category_create,
+        name="admin_category_create",
+    ),
+    path(
+        "admin/categories/<int:pk>/edit-form/",
+        blog_admin_views.admin_category_edit_form,
+        name="admin_category_edit_form",
+    ),
+    path(
+        "admin/categories/<int:pk>/update/",
+        blog_admin_views.admin_category_update,
+        name="admin_category_update",
+    ),
+    path(
+        "admin/categories/<int:pk>/delete/",
+        blog_admin_views.admin_category_delete,
+        name="admin_category_delete",
+    ),
+    path(
+        "admin/categories/merge/",
+        blog_admin_views.admin_categories_merge,
+        name="admin_categories_merge",
+    ),
     path("admin/topics/", blog_admin_views.admin_topics_list, name="admin_topics_list"),
     path(
         "admin/topics/bulk-action/",

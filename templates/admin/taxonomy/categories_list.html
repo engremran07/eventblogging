@@ -7,25 +7,23 @@
 
 {% block content %}
     <div class="workspace-shell" data-admin-workspace="categories">
+        {# ── Hero ─────────────────────────────────────────────────────── #}
         <section class="card workspace-hero">
             <div>
                 <p class="workspace-eyebrow">Taxonomy Operations</p>
-                <h1 class="workspace-title">Categories Workspace</h1>
+                <h1 class="workspace-title">Categories</h1>
                 <p class="workspace-subtitle">
-                    Manage hierarchical categories with structure-aware filtering.
-                </p>
-                <p class="workspace-muted mt-2 mb-0">
-                    Drag a category row onto another row to make it a child, or drop it in the top-level zone to detach it.
+                    Manage hierarchical categories. Drag rows to reparent, or use the quick-add form.
                 </p>
             </div>
             <div class="workspace-hero-actions">
-                <a href="{{ add_url }}" class="btn btn-primary btn-sm">
-                    <i class="fas fa-plus"></i> New Category
+                <a href="{% url 'admin_categories_list' %}" class="btn btn-secondary btn-sm">
+                    <i class="fas fa-sync-alt"></i> Refresh
                 </a>
-                <a href="{% url 'admin:index' %}" class="btn btn-secondary btn-sm">Dashboard</a>
             </div>
         </section>
 
+        {# ── KPIs ─────────────────────────────────────────────────────── #}
         <section class="workspace-kpis">
             <article class="workspace-kpi">
                 <small>Total</small>
@@ -33,87 +31,180 @@
                 <span>All categories</span>
             </article>
             <article class="workspace-kpi">
-                <small>Root Nodes</small>
+                <small>Root</small>
                 <strong>{{ root_items }}</strong>
-                <span>Top-level categories</span>
+                <span>Top-level</span>
             </article>
             <article class="workspace-kpi">
-                <small>Protected</small>
-                <strong>{{ protected_items }}</strong>
-                <span>Protected branches</span>
+                <small>In Use</small>
+                <strong>{{ used_items }}</strong>
+                <span>Assigned to posts</span>
             </article>
             <article class="workspace-kpi">
-                <small>Deepest Level</small>
+                <small>Depth</small>
                 <strong>{{ deepest_level }}</strong>
-                <span>Tree depth</span>
+                <span>Max {{ category_max_depth }}</span>
             </article>
         </section>
 
-        <section class="card workspace-filter-card">
-            <form
-                method="get"
-                action="{{ request.path }}"
-                class="workspace-filter-grid"
-                data-workspace-filter
-                data-filter-url="{{ request.path }}"
-                data-filter-target="#categories-table-container"
-                hx-get="{{ request.path }}"
-                hx-target="#categories-table-container"
-                hx-swap="innerHTML"
-                hx-push-url="true"
-            >
-                <div class="workspace-field workspace-field--protected">
-                    <label for="categories-protected">Protected</label>
-                    <select id="categories-protected" name="protected">
-                        <option value="" {% if not protected_filter %}selected{% endif %}>All</option>
-                        <option value="yes" {% if protected_filter == "yes" %}selected{% endif %}>Yes</option>
-                        <option value="no" {% if protected_filter == "no" %}selected{% endif %}>No</option>
-                    </select>
-                </div>
+        {# ── WordPress-style side-by-side layout ─────────────────────── #}
+        <div class="wp-category-layout">
 
-                <div class="workspace-field workspace-field--level">
-                    <label for="categories-level">Level</label>
-                    <select id="categories-level" name="level">
-                        <option value="" {% if not level_filter %}selected{% endif %}>Any</option>
-                        {% for level in level_choices %}
-                            <option value="{{ level }}" {% if level_filter == level|stringformat:"s" %}selected{% endif %}>{{ level }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-
-                <div class="workspace-field workspace-field--sort">
-                    <label for="categories-sort">Sort</label>
-                    <select id="categories-sort" name="sort">
-                        <option value="path" {% if sort_by == "path" %}selected{% endif %}>Tree path</option>
-                        <option value="-count" {% if sort_by == "-count" %}selected{% endif %}>Most used</option>
-                        <option value="-level" {% if sort_by == "-level" %}selected{% endif %}>Deepest first</option>
-                        <option value="name" {% if sort_by == "name" %}selected{% endif %}>Name A-Z</option>
-                    </select>
-                </div>
-
-                <div class="workspace-field workspace-field--search">
-                    <label for="categories-search">Search</label>
-                    <input
-                        id="categories-search"
-                        type="search"
-                        name="search"
-                        value="{{ search_query }}"
-                        placeholder="Search name, path, label"
-                        data-filter-live
+            {# ── LEFT: Add New Category form ────────────────────────── #}
+            <aside class="wp-category-add-panel">
+                <div class="card">
+                    <div class="card-header-simple">
+                        <h2 class="wp-panel-title">Add New Category</h2>
+                    </div>
+                    <form
+                        method="post"
+                        action="{{ create_url }}"
+                        class="wp-category-form"
+                        hx-post="{{ create_url }}"
+                        hx-target="#categories-table-container"
+                        hx-swap="innerHTML"
+                        hx-push-url="false"
                     >
+                        {% csrf_token %}
+                        <input type="hidden" name="next_url" value="{{ request.get_full_path }}">
+
+                        <div class="wp-form-field">
+                            <label for="cat-name">Name</label>
+                            <input
+                                type="text"
+                                id="cat-name"
+                                name="name"
+                                class="form-control form-control-sm"
+                                placeholder="Category name"
+                                required
+                                maxlength="255"
+                            >
+                            <small class="wp-field-hint">The name is how it appears on your site.</small>
+                        </div>
+
+                        <div class="wp-form-field">
+                            <label for="cat-parent">Parent Category</label>
+                            <select id="cat-parent" name="parent" class="form-select form-select-sm">
+                                {% for value, display in parent_choices %}
+                                    <option value="{{ value }}">{{ display }}</option>
+                                {% endfor %}
+                            </select>
+                            <small class="wp-field-hint">Categories can have a hierarchy. Max depth: {{ category_max_depth }}.</small>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary btn-sm wp-add-btn">
+                            <i class="fas fa-plus"></i> Add New Category
+                        </button>
+                    </form>
                 </div>
 
-                <div class="workspace-filter-actions">
-                    <button type="submit" class="btn btn-secondary btn-sm">Apply</button>
-                    <a href="{{ request.path }}" class="btn btn-ghost btn-sm">Reset</a>
+                {# ── Merge Panel ──────────────────────────────────── #}
+                <div class="card mt-3">
+                    <div class="card-header-simple">
+                        <h2 class="wp-panel-title">Merge Categories</h2>
+                    </div>
+                    <form
+                        id="merge-form"
+                        method="post"
+                        action="{{ merge_url }}"
+                        class="wp-category-form"
+                        hx-post="{{ merge_url }}"
+                        hx-target="#categories-table-container"
+                        hx-swap="innerHTML"
+                        hx-push-url="false"
+                        hx-confirm="Merge selected categories? This cannot be undone."
+                    >
+                        {% csrf_token %}
+                        <input type="hidden" name="next_url" value="{{ request.get_full_path }}">
+                        <p class="wp-field-hint mb-2">
+                            Select categories in the table, then choose a merge target below.
+                        </p>
+                        <div class="wp-form-field">
+                            <label for="merge-target">Merge Into</label>
+                            <select id="merge-target" name="merge_target" class="form-select form-select-sm">
+                                <option value="">— Select target —</option>
+                                {% for pk_val, label in all_categories %}
+                                    <option value="{{ pk_val }}">{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div id="merge-hidden-inputs"></div>
+                        <button type="submit" class="btn btn-warning btn-sm wp-merge-btn" disabled
+                                id="merge-submit-btn">
+                            <i class="fas fa-code-branch"></i> Merge Selected
+                        </button>
+                    </form>
                 </div>
-            </form>
-        </section>
+            </aside>
 
-        <div id="categories-table-container">
-            {% include "admin/taxonomy/categories_table.html" %}
+            {# ── RIGHT: Category Table ──────────────────────────────── #}
+            <div class="wp-category-table-panel">
+                {# ── Filters ─────────────────────────────────────── #}
+                <section class="card workspace-filter-card">
+                    <form
+                        method="get"
+                        action="{{ request.path }}"
+                        class="workspace-filter-grid"
+                        data-workspace-filter
+                        data-filter-url="{{ request.path }}"
+                        data-filter-target="#categories-table-container"
+                        hx-get="{{ request.path }}"
+                        hx-target="#categories-table-container"
+                        hx-swap="innerHTML"
+                        hx-push-url="true"
+                    >
+                        <div class="workspace-field workspace-field--protected">
+                            <label for="categories-protected">Protected</label>
+                            <select id="categories-protected" name="protected">
+                                <option value="" {% if not protected_filter %}selected{% endif %}>All</option>
+                                <option value="yes" {% if protected_filter == "yes" %}selected{% endif %}>Yes</option>
+                                <option value="no" {% if protected_filter == "no" %}selected{% endif %}>No</option>
+                            </select>
+                        </div>
+
+                        <div class="workspace-field workspace-field--level">
+                            <label for="categories-level">Level</label>
+                            <select id="categories-level" name="level">
+                                <option value="" {% if not level_filter %}selected{% endif %}>Any</option>
+                                {% for level in level_choices %}
+                                    <option value="{{ level }}" {% if level_filter == level|stringformat:"s" %}selected{% endif %}>{{ level }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="workspace-field workspace-field--sort">
+                            <label for="categories-sort">Sort</label>
+                            <select id="categories-sort" name="sort">
+                                <option value="path" {% if sort_by == "path" %}selected{% endif %}>Tree path</option>
+                                <option value="-count" {% if sort_by == "-count" %}selected{% endif %}>Most used</option>
+                                <option value="-level" {% if sort_by == "-level" %}selected{% endif %}>Deepest first</option>
+                                <option value="name" {% if sort_by == "name" %}selected{% endif %}>Name A-Z</option>
+                            </select>
+                        </div>
+
+                        <div class="workspace-field workspace-field--search">
+                            <label for="categories-search">Search</label>
+                            <input
+                                id="categories-search"
+                                type="search"
+                                name="search"
+                                value="{{ search_query }}"
+                                placeholder="Search categories…"
+                                data-filter-live
+                            >
+                        </div>
+
+                        <div class="workspace-filter-actions">
+                            <button type="submit" class="btn btn-secondary btn-sm">Apply</button>
+                            <a href="{{ request.path }}" class="btn btn-ghost btn-sm">Reset</a>
+                        </div>
+                    </form>
+                </section>
+
+                <div id="categories-table-container">
+                    {% include "admin/taxonomy/categories_table.html" %}
+                </div>
+            </div>
         </div>
     </div>
 {% endblock %}
-
-{# admin/admin.js already loaded in base_site.html — no extrajs needed #}

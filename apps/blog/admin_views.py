@@ -1038,26 +1038,37 @@ def admin_categories_list(request: HttpRequest) -> HttpResponse:
     )
     page_obj = Paginator(rows, TAXONOMY_PAGE_SIZE).get_page(request.GET.get("page", 1))
     deepest_level = tree_model.objects.aggregate(max_level=Max("level")).get("max_level") or 0
+
+    # Annotate items with tree indentation for WordPress-style display
+    items = list(page_obj.object_list)
+    for item in items:
+        item.indent_display = "\u2014 " * max(0, item.level - 1)  # type: ignore[attr-defined]
+        item.delete_url = reverse("admin_category_delete", kwargs={"pk": item.pk})  # type: ignore[attr-defined]
+        item.edit_form_url = reverse("admin_category_edit_form", kwargs={"pk": item.pk})  # type: ignore[attr-defined]
+
     context = {
         "page_obj": page_obj,
-        "items": page_obj.object_list,
+        "items": items,
         "protected_filter": protected_filter,
         "level_filter": level_filter,
         "search_query": search_query,
         "sort_by": sort_by,
         "bulk_action_url": reverse("admin_categories_bulk_action"),
+        "merge_url": reverse("admin_categories_merge"),
+        "create_url": reverse("admin_category_create"),
         "selection_name": "selected_categories",
         "is_paginated": page_obj.has_other_pages(),
         "page_query": _query_without_page(request),
-        "add_url": reverse("admin:blog_tagulous_post_categories_add"),
-        "change_url_name": "admin:blog_tagulous_post_categories_change",
         "total_items": tree_model.objects.count(),
         "protected_items": tree_model.objects.filter(protected=True).count(),
         "root_items": tree_model.objects.filter(parent__isnull=True).count(),
+        "used_items": tree_model.objects.filter(count__gt=0).count(),
         "deepest_level": deepest_level,
         "level_choices": range(1, max(deepest_level, 1) + 1),
         "reparent_url": reverse("admin_categories_reparent"),
         "category_max_depth": get_category_max_depth(),
+        "parent_choices": _parent_choices(tree_model),
+        "all_categories": list(tree_model.objects.order_by("name").values_list("pk", "label")),
     }
     if request.headers.get("HX-Request"):
         return render(request, "admin/taxonomy/categories_table.html", context)
@@ -1218,6 +1229,220 @@ def admin_categories_bulk_action(request: HttpRequest) -> HttpResponse:
         fallback_url_name="admin_categories_list",
         label="categories",
     )
+
+
+# ─── WordPress-style inline category CRUD ────────────────────────────────────
+
+
+def _get_category_tree_model() -> type[BaseTagTreeModel]:
+    """Return the Tagulous-generated category tree model."""
+    return Post.categories.tag_model  # type: ignore[return-value]
+
+
+def _parent_choices(tree_model: type[BaseTagTreeModel], *, exclude_pk: int | None = None) -> list[tuple[str, str]]:
+    """Build parent dropdown choices for category forms."""
+    qs = tree_model.objects.order_by("name")
+    if exclude_pk is not None:
+        # Exclude self and descendants to prevent cycles
+        try:
+            cat = tree_model.objects.get(pk=exclude_pk)
+            exclude_ids = {exclude_pk, *cat.get_descendants().values_list("pk", flat=True)}
+            qs = qs.exclude(pk__in=exclude_ids)
+        except tree_model.DoesNotExist:
+            pass
+    choices: list[tuple[str, str]] = [("", "— None (top level) —")]
+    max_depth = get_category_max_depth()
+    for cat in qs:
+        if cat.level < max_depth:
+            indent = "\u2014 " * (cat.level - 1)  # em-dash indentation
+            choices.append((str(cat.pk), f"{indent}{cat.label}"))
+    return choices
+
+
+@staff_member_required
+@require_http_methods(["POST"])
+def admin_category_create(request: HttpRequest) -> HttpResponse:
+    """Inline HTMX handler: create a new category."""
+    tree_model = _get_category_tree_model()
+    name = (request.POST.get("name") or "").strip()
+    parent_id = (request.POST.get("parent") or "").strip()
+
+    if not name:
+        messages.error(request, "Category name is required.")
+        return _redirect_next(request, "admin_categories_list")
+
+    # Build full path name
+    parent = None
+    if parent_id:
+        try:
+            parent = tree_model.objects.get(pk=int(parent_id))
+        except (TypeError, ValueError, tree_model.DoesNotExist):
+            messages.error(request, "Invalid parent category.")
+            return _redirect_next(request, "admin_categories_list")
+
+    full_name = f"{parent.name}/{name}" if parent else name
+
+    # Check depth
+    max_depth = get_category_max_depth()
+    target_level = (parent.level + 1) if parent else 1
+    if target_level > max_depth:
+        messages.error(request, f"Maximum category depth is {max_depth}.")
+        return _redirect_next(request, "admin_categories_list")
+
+    # Check duplicates
+    if tree_model.objects.filter(name__iexact=full_name).exists():
+        messages.error(request, f"Category '{full_name}' already exists.")
+        return _redirect_next(request, "admin_categories_list")
+
+    try:
+        tree_model.objects.create(name=full_name)
+        messages.success(request, f"Category '{name}' created successfully.")
+    except IntegrityError:
+        logger.warning("Category creation integrity error for '%s'.", full_name, exc_info=True)
+        messages.error(request, f"Could not create category '{name}'. It may already exist.")
+
+    return _redirect_next(request, "admin_categories_list")
+
+
+@staff_member_required
+@require_http_methods(["GET"])
+def admin_category_edit_form(request: HttpRequest, pk: int) -> HttpResponse:
+    """Return the inline edit row partial for a single category."""
+    tree_model = _get_category_tree_model()
+    category = get_object_or_404(tree_model, pk=pk)
+    context = {
+        "item": category,
+        "parent_choices": _parent_choices(tree_model, exclude_pk=pk),
+        "update_url": reverse("admin_category_update", kwargs={"pk": pk}),
+    }
+    return render(request, "admin/taxonomy/partials/_category_edit_row.html", context)
+
+
+@staff_member_required
+@require_http_methods(["POST"])
+def admin_category_update(request: HttpRequest, pk: int) -> HttpResponse:
+    """Inline HTMX handler: update a category name/parent."""
+    tree_model = _get_category_tree_model()
+    category = get_object_or_404(tree_model, pk=pk)
+
+    new_label = (request.POST.get("name") or "").strip()
+    parent_id = (request.POST.get("parent") or "").strip()
+    is_protected = request.POST.get("protected") == "on"
+
+    if not new_label:
+        messages.error(request, "Category name is required.")
+        return _redirect_next(request, "admin_categories_list")
+
+    # Determine new parent
+    new_parent = None
+    if parent_id:
+        try:
+            new_parent = tree_model.objects.get(pk=int(parent_id))
+        except (TypeError, ValueError, tree_model.DoesNotExist):
+            messages.error(request, "Invalid parent category.")
+            return _redirect_next(request, "admin_categories_list")
+
+    # Check for circular reference
+    if new_parent and new_parent.pk == category.pk:
+        messages.error(request, "A category cannot be its own parent.")
+        return _redirect_next(request, "admin_categories_list")
+    if new_parent and new_parent.path.startswith(f"{category.path}/"):
+        messages.error(request, "A category cannot be moved under its own descendant.")
+        return _redirect_next(request, "admin_categories_list")
+
+    # Build full name
+    new_full_name = f"{new_parent.name}/{new_label}" if new_parent else new_label
+
+    # Check depth
+    max_depth = get_category_max_depth()
+    target_level = (new_parent.level + 1) if new_parent else 1
+    descendant_offsets = [d.level - category.level for d in category.get_descendants()]
+    deepest_offset = max(descendant_offsets, default=0)
+    if target_level + deepest_offset > max_depth:
+        messages.error(request, f"Move would exceed max depth ({max_depth}).")
+        return _redirect_next(request, "admin_categories_list")
+
+    # Check duplicates (exclude self)
+    if tree_model.objects.exclude(pk=pk).filter(name__iexact=new_full_name).exists():
+        messages.error(request, f"Category '{new_full_name}' already exists.")
+        return _redirect_next(request, "admin_categories_list")
+
+    try:
+        category.name = new_full_name
+        category.protected = is_protected
+        category.save()
+        messages.success(request, f"Category '{new_label}' updated.")
+    except IntegrityError:
+        logger.warning("Category update integrity error for pk=%s.", pk, exc_info=True)
+        messages.error(request, "Could not update category due to a conflict.")
+
+    return _redirect_next(request, "admin_categories_list")
+
+
+@staff_member_required
+@require_http_methods(["POST"])
+def admin_category_delete(request: HttpRequest, pk: int) -> HttpResponse:
+    """Delete a single category (with optional cascade)."""
+    tree_model = _get_category_tree_model()
+    category = get_object_or_404(tree_model, pk=pk)
+
+    if category.protected:
+        messages.error(request, f"Category '{category.label}' is protected and cannot be deleted.")
+        return _redirect_next(request, "admin_categories_list")
+
+    label = category.label
+    child_count = category.children.count()
+    try:
+        category.delete()
+        msg = f"Category '{label}' deleted."
+        if child_count:
+            msg += f" ({child_count} child categories were also removed.)"
+        messages.success(request, msg)
+    except Exception:
+        logger.warning("Category delete failed for pk=%s.", pk, exc_info=True)
+        messages.error(request, f"Could not delete category '{label}'.")
+
+    return _redirect_next(request, "admin_categories_list")
+
+
+@staff_member_required
+@require_http_methods(["POST"])
+def admin_categories_merge(request: HttpRequest) -> HttpResponse:
+    """Merge selected categories into a target category."""
+    tree_model = _get_category_tree_model()
+    target_id = (request.POST.get("merge_target") or "").strip()
+    selected_ids = _clean_post_ids(request.POST.getlist("selected_categories"))
+
+    if not target_id:
+        messages.error(request, "Select a target category to merge into.")
+        return _redirect_next(request, "admin_categories_list")
+
+    try:
+        target = tree_model.objects.get(pk=int(target_id))
+    except (TypeError, ValueError, tree_model.DoesNotExist):
+        messages.error(request, "Invalid merge target.")
+        return _redirect_next(request, "admin_categories_list")
+
+    # Remove target from selected if present
+    merge_ids = [i for i in selected_ids if i != target.pk]
+    if not merge_ids:
+        messages.warning(request, "No categories to merge (target cannot merge with itself).")
+        return _redirect_next(request, "admin_categories_list")
+
+    sources = tree_model.objects.filter(pk__in=merge_ids)
+    if not sources.exists():
+        messages.warning(request, "No matching categories found.")
+        return _redirect_next(request, "admin_categories_list")
+
+    merged_count = sources.count()
+    try:
+        target.merge_tags(sources)
+        messages.success(request, f"Merged {merged_count} categories into '{target.label}'.")
+    except Exception:
+        logger.warning("Category merge failed into pk=%s.", target.pk, exc_info=True)
+        messages.error(request, "Category merge failed.")
+
+    return _redirect_next(request, "admin_categories_list")
 
 
 @staff_member_required

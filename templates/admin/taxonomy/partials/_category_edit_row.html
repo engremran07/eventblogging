@@ -1,0 +1,69 @@
+<tr id="cat-row-{{ item.id }}" class="wp-cat-editing-row">
+    <form
+        method="post"
+        action="{{ update_url }}"
+        hx-post="{{ update_url }}"
+        hx-target="#categories-table-container"
+        hx-swap="innerHTML"
+        hx-push-url="false"
+    >
+        {% csrf_token %}
+        <input type="hidden" name="next_url" value="{{ request.get_full_path }}">
+
+        <td class="col-move">
+            <i class="fas fa-pen text-primary"></i>
+        </td>
+        <td colspan="5">
+            <div class="wp-quick-edit-form">
+                <div class="wp-qe-row">
+                    <div class="wp-qe-field">
+                        <label for="qe-name-{{ item.id }}">Name</label>
+                        <input
+                            type="text"
+                            id="qe-name-{{ item.id }}"
+                            name="name"
+                            value="{{ item.label }}"
+                            class="form-control form-control-sm"
+                            required
+                            maxlength="255"
+                            autofocus
+                        >
+                    </div>
+                    <div class="wp-qe-field">
+                        <label for="qe-parent-{{ item.id }}">Parent</label>
+                        <select id="qe-parent-{{ item.id }}" name="parent" class="form-select form-select-sm">
+                            {% for value, display in parent_choices %}
+                                <option value="{{ value }}"
+                                    {% if item.parent_id and value == item.parent_id|stringformat:"s" %}selected{% endif %}
+                                >{{ display }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="wp-qe-row wp-qe-row--meta">
+                    <label class="wp-qe-checkbox">
+                        <input type="checkbox" name="protected" class="form-check-input"
+                               {% if item.protected %}checked{% endif %}>
+                        <span>Protected</span>
+                    </label>
+                    <span class="workspace-muted">Slug: <code>{{ item.slug }}</code></span>
+                    <span class="workspace-muted">Path: <code>{{ item.path }}</code></span>
+                </div>
+            </div>
+        </td>
+        <td colspan="2" class="wp-qe-actions">
+            <button type="submit" class="btn btn-primary btn-sm">
+                <i class="fas fa-check"></i> Update
+            </button>
+            <button
+                type="button"
+                class="btn btn-ghost btn-sm"
+                hx-get="{% url 'admin_categories_list' %}"
+                hx-target="#categories-table-container"
+                hx-swap="innerHTML"
+            >
+                Cancel
+            </button>
+        </td>
+    </form>
+</tr>

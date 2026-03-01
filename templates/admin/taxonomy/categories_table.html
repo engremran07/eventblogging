@@ -7,7 +7,7 @@
 >
     <div class="workspace-category-drop-root" data-category-drop-root>
         <i class="fas fa-level-up-alt"></i>
-        Drop category here to move it to top-level
+        Drop here to move to top-level
     </div>
 
     {% if items %}
@@ -29,12 +29,12 @@
             <input type="hidden" name="sort" value="{{ sort_by }}">
             <input type="hidden" name="search" value="{{ search_query }}">
             {% if page_obj.number %}<input type="hidden" name="page" value="{{ page_obj.number }}">{% endif %}
-            <span class="workspace-muted">Bulk categories action</span>
+            <span class="workspace-muted">Bulk:</span>
             <div class="workspace-bulk-actions">
                 <select name="bulk_action" class="form-select form-select-sm bulk-action-select">
-                    <option value="protect">Mark as protected</option>
-                    <option value="unprotect">Remove protection</option>
-                    <option value="delete">Delete selected</option>
+                    <option value="protect">Protect</option>
+                    <option value="unprotect">Unprotect</option>
+                    <option value="delete">Delete</option>
                 </select>
                 <button type="submit" class="btn btn-secondary btn-sm">Apply</button>
             </div>
@@ -42,23 +42,26 @@
     {% endif %}
 
     <div class="workspace-table-scroll">
-        <table class="workspace-table">
+        <table class="workspace-table wp-category-table">
             <thead>
                 <tr>
-                    <th class="col-move">Move</th>
-                    <th class="col-select">Sel</th>
+                    <th class="col-move" title="Drag to reorder"><i class="fas fa-arrows-alt"></i></th>
+                    <th class="col-select">
+                        <input type="checkbox" class="form-check-input" id="select-all-cats"
+                               title="Select all" aria-label="Select all categories">
+                    </th>
                     <th>Name</th>
-                    <th>Path</th>
-                    <th>Parent</th>
-                    <th>Level</th>
-                    <th>Usage</th>
-                    <th>Protected</th>
+                    <th>Slug</th>
+                    <th class="text-center">Posts</th>
+                    <th class="text-center">Level</th>
+                    <th class="text-center">Protected</th>
                     <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
                 {% for item in items %}
                     <tr
+                        id="cat-row-{{ item.id }}"
                         draggable="true"
                         data-category-row
                         data-category-id="{{ item.id }}"
@@ -68,43 +71,87 @@
                         data-category-level="{{ item.level }}"
                         data-category-parent-id="{{ item.parent_id|default:'' }}"
                     >
-                        <td>
+                        <td class="col-move">
                             <button type="button" class="workspace-drag-handle btn btn-ghost btn-sm" title="Drag to reparent">
-                                <i class="fas fa-grip-vertical" aria-hidden="true"></i>
+                                <i class="fas fa-grip-vertical"></i>
                             </button>
                         </td>
-                        <td>
+                        <td class="col-select">
                             <input
                                 type="checkbox"
-                                class="form-check-input"
+                                class="form-check-input wp-cat-checkbox"
                                 name="{{ selection_name }}"
                                 value="{{ item.id }}"
                                 form="admin-categories-bulk-form"
-                                aria-label="Select {{ item.name }}"
+                                aria-label="Select {{ item.label }}"
                             >
                         </td>
-                        <td class="workspace-link">{{ item.name }}</td>
-                        <td class="workspace-muted">{{ item.path }}</td>
-                        <td class="workspace-muted">{{ item.parent.name|default:"-" }}</td>
-                        <td class="workspace-muted">{{ item.level }}</td>
-                        <td class="workspace-muted">{{ item.count }}</td>
-                        <td>
-                            {% if item.protected %}
-                                <span class="badge badge-success workspace-status">Yes</span>
+                        <td class="wp-cat-name-cell">
+                            <span class="wp-cat-indent">{{ item.indent_display }}</span>
+                            <strong class="wp-cat-label">{{ item.label }}</strong>
+                            <div class="wp-cat-row-actions">
+                                <button
+                                    type="button"
+                                    class="wp-action-link wp-action-edit"
+                                    hx-get="{{ item.edit_form_url }}"
+                                    hx-target="#cat-row-{{ item.id }}"
+                                    hx-swap="outerHTML"
+                                    title="Quick Edit"
+                                >Edit</button>
+                                <span class="wp-action-sep">|</span>
+                                <form method="post" action="{{ item.delete_url }}" class="wp-inline-delete-form"
+                                      hx-post="{{ item.delete_url }}"
+                                      hx-target="#categories-table-container"
+                                      hx-swap="innerHTML"
+                                      hx-confirm="Delete '{{ item.label }}'{% if item.children.count %} and its {{ item.children.count }} children{% endif %}?">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="next_url" value="{{ request.get_full_path }}">
+                                    <button type="submit" class="wp-action-link wp-action-delete">Delete</button>
+                                </form>
+                                {% if item.count %}
+                                <span class="wp-action-sep">|</span>
+                                <a href="{% url 'admin_posts_list' %}?search={{ item.name|urlencode }}"
+                                   class="wp-action-link">View Posts</a>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td class="workspace-muted wp-cat-slug">{{ item.slug }}</td>
+                        <td class="text-center">
+                            {% if item.count %}
+                                <span class="badge badge-info wp-post-count">{{ item.count }}</span>
                             {% else %}
-                                <span class="badge badge-muted workspace-status">No</span>
+                                <span class="workspace-muted">0</span>
                             {% endif %}
                         </td>
-                        <td>
-                            <a href="{% url change_url_name item.id %}" class="btn btn-secondary btn-sm">Edit</a>
+                        <td class="text-center workspace-muted">{{ item.level }}</td>
+                        <td class="text-center">
+                            {% if item.protected %}
+                                <span class="badge badge-success workspace-status" title="Protected">
+                                    <i class="fas fa-lock"></i>
+                                </span>
+                            {% else %}
+                                <span class="workspace-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="wp-cat-actions-cell">
+                            <button
+                                type="button"
+                                class="btn btn-ghost btn-sm"
+                                hx-get="{{ item.edit_form_url }}"
+                                hx-target="#cat-row-{{ item.id }}"
+                                hx-swap="outerHTML"
+                                title="Quick Edit"
+                            >
+                                <i class="fas fa-pen"></i>
+                            </button>
                         </td>
                     </tr>
                 {% empty %}
                     <tr>
-                        <td colspan="9">
+                        <td colspan="8">
                             <div class="workspace-empty">
                                 <i class="fas fa-folder-tree"></i>
-                                <p>No categories found for this filter.</p>
+                                <p>No categories found. Create one using the form on the left.</p>
                             </div>
                         </td>
                     </tr>
@@ -118,14 +165,14 @@
             {% if page_obj.has_previous %}
                 {% if page_query %}
                     <a href="?{{ page_query }}&page=1" hx-get="?{{ page_query }}&page=1" hx-target="#categories-table-container" hx-swap="innerHTML" hx-push-url="true" class="btn btn-secondary btn-sm">First</a>
-                    <a href="?{{ page_query }}&page={{ page_obj.previous_page_number }}" hx-get="?{{ page_query }}&page={{ page_obj.previous_page_number }}" hx-target="#categories-table-container" hx-swap="innerHTML" hx-push-url="true" class="btn btn-secondary btn-sm">Previous</a>
+                    <a href="?{{ page_query }}&page={{ page_obj.previous_page_number }}" hx-get="?{{ page_query }}&page={{ page_obj.previous_page_number }}" hx-target="#categories-table-container" hx-swap="innerHTML" hx-push-url="true" class="btn btn-secondary btn-sm">Prev</a>
                 {% else %}
                     <a href="?page=1" hx-get="?page=1" hx-target="#categories-table-container" hx-swap="innerHTML" hx-push-url="true" class="btn btn-secondary btn-sm">First</a>
-                    <a href="?page={{ page_obj.previous_page_number }}" hx-get="?page={{ page_obj.previous_page_number }}" hx-target="#categories-table-container" hx-swap="innerHTML" hx-push-url="true" class="btn btn-secondary btn-sm">Previous</a>
+                    <a href="?page={{ page_obj.previous_page_number }}" hx-get="?page={{ page_obj.previous_page_number }}" hx-target="#categories-table-container" hx-swap="innerHTML" hx-push-url="true" class="btn btn-secondary btn-sm">Prev</a>
                 {% endif %}
             {% endif %}
 
-            <span class="workspace-page-status">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+            <span class="workspace-page-status">Page {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
 
             {% if page_obj.has_next %}
                 {% if page_query %}
@@ -139,3 +186,40 @@
         </nav>
     {% endif %}
 </section>
+
+<script>
+(function() {
+    // Select-all checkbox
+    var selectAll = document.getElementById('select-all-cats');
+    if (selectAll) {
+        selectAll.addEventListener('change', function() {
+            document.querySelectorAll('.wp-cat-checkbox').forEach(function(cb) {
+                cb.checked = selectAll.checked;
+            });
+            syncMergeForm();
+        });
+    }
+
+    // Sync selections to merge form hidden inputs + enable/disable merge button
+    function syncMergeForm() {
+        var container = document.getElementById('merge-hidden-inputs');
+        var btn = document.getElementById('merge-submit-btn');
+        if (!container) return;
+        container.innerHTML = '';
+        var checked = document.querySelectorAll('.wp-cat-checkbox:checked');
+        checked.forEach(function(cb) {
+            var input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'selected_categories';
+            input.value = cb.value;
+            container.appendChild(input);
+        });
+        if (btn) btn.disabled = checked.length < 2;
+    }
+
+    document.querySelectorAll('.wp-cat-checkbox').forEach(function(cb) {
+        cb.addEventListener('change', syncMergeForm);
+    });
+    syncMergeForm();
+})();
+</script>

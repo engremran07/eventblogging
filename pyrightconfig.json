@@ -1,6 +1,7 @@
 {
   "typeCheckingMode": "strict",
   "useLibraryCodeForTypes": true,
+  "typingsPath": "typings",
   "venvPath": ".",
   "venv": ".venv",
   "pythonVersion": "3.11",

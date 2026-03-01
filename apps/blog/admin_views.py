@@ -12,6 +12,7 @@ from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
+from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
 from django.db import IntegrityError
@@ -1720,6 +1721,11 @@ def admin_settings_theme_toggle(request: HttpRequest) -> JsonResponse:
         )
 
     appearance.save(update_fields=["mode", "updated_at"])
+
+    # Invalidate the context-processor cache so the next page load
+    # renders the correct mode in server-side HTML.
+    cache.delete("blog_site_appearance_ctx_v1")
+
     return JsonResponse(
         {
             "mode": appearance.mode,

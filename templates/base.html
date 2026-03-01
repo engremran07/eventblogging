@@ -128,6 +128,7 @@
     x-data="appShell()"
     class="app-body mode-{{ site_appearance.mode|default:'light' }} preset-{{ site_appearance.preset|default:'aurora' }}"
     data-theme-state-url="{% url 'blog:api_appearance_state' %}"
+    {% if request.user.is_staff %}data-admin-theme-toggle-url="{% url 'blog:admin_settings_theme_toggle' %}"{% endif %}
 >
 {% if site_integrations.analytics_provider == "gtm" and site_integrations.gtm_container_id %}
 <noscript>

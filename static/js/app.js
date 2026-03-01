@@ -33,10 +33,21 @@
     }
 
     function getThemeMode() {
+        // Prefer localStorage (set by applyTheme on every toggle) so the
+        // browser-local choice survives page refreshes even when the
+        // server-rendered HTML attribute is stale (context-processor cache).
+        try {
+            var stored = localStorage.getItem("global_theme_mode");
+            if (stored === "dark" || stored === "light") { return stored; }
+        } catch (_) { /* localStorage unavailable — fall through */ }
         return document.documentElement.getAttribute("data-bs-theme") || "light";
     }
 
     function getThemePreset() {
+        try {
+            var stored = localStorage.getItem("global_theme_preset");
+            if (stored) { return stored; }
+        } catch (_) { /* localStorage unavailable — fall through */ }
         return document.documentElement.getAttribute("data-app-preset") || "aurora";
     }
 

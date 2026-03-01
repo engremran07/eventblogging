@@ -416,7 +416,7 @@ def _build_appearance_ctx() -> dict:
             "preset_label": appearance.get_preset_display(),
             "updated_at": appearance.updated_at.isoformat() if appearance.updated_at else "",
             "css_variables": css_variables,
-            "theme_color": css_variables.get("--bg-main"),
+            "theme_color": css_variables.get("--bg", css_variables.get("--bg-main")),
         },
         "site_identity": {
             "site_name": identity.site_name,

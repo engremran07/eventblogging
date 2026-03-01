@@ -476,7 +476,10 @@
   grid-column: 2;
   background-color: var(--bg);
   padding: var(--space-8);
-  overflow-y: auto;
+  /* overflow-y intentionally absent — body scrolls so Summernote
+     dropdowns/popovers (position:absolute) are never clipped by a
+     scroll-container ancestor. Topbar position:sticky still works
+     because admin-shell uses min-height (not fixed height). */
 }
 
 .content-wrapper {

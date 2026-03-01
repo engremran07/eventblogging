@@ -6,6 +6,7 @@ This app provides additional tag-related views and utilities.
 
 from django.http import JsonResponse
 from django.views.generic import View
+
 from blog.models import Post
 
 

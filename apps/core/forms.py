@@ -6,7 +6,6 @@ from django.contrib.auth.forms import UserCreationForm
 
 from .models import UserProfile
 
-
 User = get_user_model()
 
 

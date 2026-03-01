@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import re
 
-from django.contrib.auth.decorators import login_required
 from django.contrib.admin.views.decorators import staff_member_required
+from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
@@ -208,11 +208,8 @@ def search_semantic(request):
     )
 
     max_views = max([post.views_count for post in posts], default=1)
-    rows = []
-    for post in posts:
-        rows.append(_score_post(query_vector, query_tokens, post, max_views))
-    for page in pages:
-        rows.append(_score_page(query_vector, query_tokens, page))
+    rows = [_score_post(query_vector, query_tokens, post, max_views) for post in posts]
+    rows.extend(_score_page(query_vector, query_tokens, page) for page in pages)
     rows.sort(key=lambda row: row["scores"]["total"], reverse=True)
 
     return JsonResponse(

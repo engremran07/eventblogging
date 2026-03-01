@@ -1,7 +1,8 @@
 ﻿from django import forms
+from django.utils import timezone
 
 from comments.models import Comment, NewsletterSubscriber
-from django.utils import timezone
+
 from .models import Post
 from .taxonomy_rules import category_depth_help_text, validate_category_depth
 

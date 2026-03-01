@@ -2,4 +2,4 @@
 Compatibility wrapper for config.settings.
 All settings have been migrated to config/settings/ module.
 """
-from .settings.development import *  # noqa: F401, F403
+from .settings.development import *  # noqa: F403

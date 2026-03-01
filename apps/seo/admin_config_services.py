@@ -48,25 +48,24 @@ def _build_scan_items(job: SeoScanJob):
     post_qs, page_qs = _target_queryset_for_job_type(job.job_type)
     post_ct = ContentType.objects.get_for_model(Post)
     page_ct = ContentType.objects.get_for_model(Page)
-    items = []
-    for post in post_qs.only("id", "slug"):
-        items.append(
-            SeoScanJobItem(
-                job=job,
-                content_type=post_ct,
-                object_id=post.id,
-                url=post.get_absolute_url(),
-            )
+    items = [
+        SeoScanJobItem(
+            job=job,
+            content_type=post_ct,
+            object_id=post.id,
+            url=post.get_absolute_url(),
         )
-    for page in page_qs.only("id", "slug"):
-        items.append(
-            SeoScanJobItem(
-                job=job,
-                content_type=page_ct,
-                object_id=page.id,
-                url=page.get_absolute_url(),
-            )
+        for post in post_qs.only("id", "slug")
+    ]
+    items.extend(
+        SeoScanJobItem(
+            job=job,
+            content_type=page_ct,
+            object_id=page.id,
+            url=page.get_absolute_url(),
         )
+        for page in page_qs.only("id", "slug")
+    )
     return items
 
 

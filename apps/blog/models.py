@@ -1,17 +1,19 @@
 ﻿from __future__ import annotations
 
 import math
+from typing import ClassVar
 
 import bleach
 import markdown
 from django.contrib.auth import get_user_model
-from django.contrib.postgres.search import SearchVectorField, SearchVector
+from django.contrib.postgres.search import SearchVector, SearchVectorField
 from django.db import models
 from django.db.models import Count, Q
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.text import slugify
 from tagulous.models import SingleTagField, TagField
+
 try:
     from bleach.css_sanitizer import CSSSanitizer
 except Exception:  # pragma: no cover - optional dependency guard
@@ -134,14 +136,14 @@ def render_markdown_to_safe_html(markdown_text: str) -> str:
 
 
 class PostQuerySet(models.QuerySet["Post"]):
-    def published(self) -> "PostQuerySet":
+    def published(self) -> PostQuerySet:
         return self.filter(
             status=Post.Status.PUBLISHED,
             published_at__isnull=False,
             published_at__lte=timezone.now(),
         )
 
-    def visible_to(self, user: User | None) -> "PostQuerySet":
+    def visible_to(self, user: User | None) -> PostQuerySet:
         public_posts = Q(
             status=Post.Status.PUBLISHED,
             published_at__isnull=False,
@@ -151,10 +153,10 @@ class PostQuerySet(models.QuerySet["Post"]):
             return self.filter(public_posts | Q(author=user))
         return self.filter(public_posts)
 
-    def editor_picks(self) -> "PostQuerySet":
+    def editor_picks(self) -> PostQuerySet:
         return self.published().filter(is_editors_pick=True)
 
-    def search(self, text: str) -> "PostQuerySet":
+    def search(self, text: str) -> PostQuerySet:
         clean_text = text.strip()
         if not clean_text:
             return self
@@ -182,7 +184,7 @@ class PostQuerySet(models.QuerySet["Post"]):
                 | Q(categories__name__icontains=clean_text)
             )
 
-    def with_reaction_counts(self) -> "PostQuerySet":
+    def with_reaction_counts(self) -> PostQuerySet:
         return self.annotate(
             like_total=Count("likes", distinct=True),
             bookmark_total=Count("bookmarks", distinct=True),
@@ -308,7 +310,7 @@ class Post(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    objects = PostQuerySet.as_manager()
+    objects: ClassVar[PostQuerySet] = PostQuerySet.as_manager()  # type: ignore[assignment]
 
     class Meta:
         ordering = ("-published_at", "-created_at")

@@ -10,8 +10,8 @@ from django.db.models import QuerySet
 from django.shortcuts import get_object_or_404
 
 from blog.models import Post
-from .models import Comment, NewsletterSubscriber, PostBookmark, PostLike, PostView
 
+from .models import Comment, NewsletterSubscriber, PostBookmark, PostLike, PostView
 
 # ============================================================================
 # COMMENT SELECTORS

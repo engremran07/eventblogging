@@ -1,11 +1,12 @@
 ﻿from django.contrib import admin, messages
 from django.utils import timezone
+
 from core.constants import ADMIN_PAGINATION_SIZE
+from seo.services import audit_content_batch
 
 from .forms import PageForm
 from .models import Page, PageRevision
 from .policies import POLICY_SLUGS
-from seo.services import audit_content_batch
 
 
 class PageRevisionInline(admin.TabularInline):

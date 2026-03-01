@@ -6,6 +6,7 @@ from django.urls import reverse
 from django.views.decorators.http import require_GET
 
 from core.models import FeatureControlSettings
+
 from .sitemaps import section_sitemaps, unified_sitemaps
 
 

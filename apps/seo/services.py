@@ -376,18 +376,17 @@ def _apply_metadata_payload(target, payload: dict, lock: SeoMetadataLock | None)
 
 
 def _persist_interlink_suggestions(adapter: ContentAdapter, suggestions):
-    rows = []
-    for suggestion in suggestions:
-        rows.append(
-            SeoSuggestion(
-                content_type=adapter.content_type,
-                object_id=adapter.pk,
-                suggestion_type=SeoSuggestion.SuggestionType.INTERLINK,
-                payload_json=suggestion,
-                confidence=float(suggestion.get("score", 0.0)),
-                status=SeoSuggestion.Status.PENDING,
-            )
+    rows = [
+        SeoSuggestion(
+            content_type=adapter.content_type,
+            object_id=adapter.pk,
+            suggestion_type=SeoSuggestion.SuggestionType.INTERLINK,
+            payload_json=suggestion,
+            confidence=float(suggestion.get("score", 0.0)),
+            status=SeoSuggestion.Status.PENDING,
         )
+        for suggestion in suggestions
+    ]
     if rows:
         SeoSuggestion.objects.bulk_create(rows)
     for suggestion in suggestions:

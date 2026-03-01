@@ -4,6 +4,7 @@ All singleton settings models consolidated here.
 """
 
 from __future__ import annotations
+
 import uuid
 
 from django.conf import settings

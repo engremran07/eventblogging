@@ -1,8 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.contrib.sessions.middleware import SessionMiddleware
-from django.test import Client
-from django.test import RequestFactory
-from django.test import TestCase
+from django.test import Client, RequestFactory, TestCase
 from django.urls import reverse
 
 from core.models import FeatureControlSettings, UserProfile

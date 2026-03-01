@@ -11,6 +11,7 @@ from django.db.models import Sum
 from django.urls import reverse
 from django.utils import timezone
 
+from comments.models import Comment, NewsletterSubscriber
 from core.models import (
     FeatureControlSettings,
     IntegrationSettings,
@@ -19,7 +20,7 @@ from core.models import (
     SiteIdentitySettings,
     UserProfile,
 )
-from comments.models import Comment, NewsletterSubscriber
+
 from .models import (
     ContentRefreshSettings,
     Post,

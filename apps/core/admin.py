@@ -2,6 +2,7 @@ from django.contrib import admin
 from solo.admin import SingletonModelAdmin
 
 from core.constants import ADMIN_PAGINATION_SIZE
+
 from .models import (
     FeatureControlSettings,
     IntegrationSettings,

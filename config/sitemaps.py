@@ -94,15 +94,13 @@ def _policy_sitemap_items():
         .values_list("slug", "updated_at")
     )
 
-    items = []
-    for policy in POLICY_PAGES:
-        items.append(
-            {
-                "slug": policy["slug"],
-                "updated_at": overrides.get(policy["slug"], policy["updated_at"]),
-            }
-        )
-    return items
+    return [
+        {
+            "slug": policy["slug"],
+            "updated_at": overrides.get(policy["slug"], policy["updated_at"]),
+        }
+        for policy in POLICY_PAGES
+    ]
 
 
 class BlogPostSitemap(Sitemap):
@@ -170,52 +168,50 @@ class UnifiedSitemap(Sitemap):
         if not _sitemap_enabled():
             return []
 
-        items = []
         latest_lastmod = _latest_content_lastmod()
+        items = [
+            {
+                "location": reverse(route_name),
+                "lastmod": latest_lastmod,
+                "changefreq": changefreq,
+                "priority": priority,
+            }
+            for route_name, changefreq, priority in _static_routes()
+        ]
 
-        for route_name, changefreq, priority in _static_routes():
-            items.append(
-                {
-                    "location": reverse(route_name),
-                    "lastmod": latest_lastmod,
-                    "changefreq": changefreq,
-                    "priority": priority,
-                }
-            )
+        items.extend(
+            {
+                "location": post.get_absolute_url(),
+                "lastmod": post.updated_at,
+                "changefreq": "daily",
+                "priority": 0.8,
+            }
+            for post in Post.objects.published().order_by("-updated_at")
+        )
 
-        for post in Post.objects.published().order_by("-updated_at"):
-            items.append(
-                {
-                    "location": post.get_absolute_url(),
-                    "lastmod": post.updated_at,
-                    "changefreq": "daily",
-                    "priority": 0.8,
-                }
-            )
-
-        for page in Page.objects.published().order_by("-updated_at"):
-            items.append(
-                {
-                    "location": page.get_absolute_url(),
-                    "lastmod": page.updated_at,
-                    "changefreq": "weekly",
-                    "priority": 0.7,
-                }
-            )
+        items.extend(
+            {
+                "location": page.get_absolute_url(),
+                "lastmod": page.updated_at,
+                "changefreq": "weekly",
+                "priority": 0.7,
+            }
+            for page in Page.objects.published().order_by("-updated_at")
+        )
 
         if _policy_pages_enabled():
-            for policy_item in _policy_sitemap_items():
-                items.append(
-                    {
-                        "location": reverse(
-                            "pages:policy_detail",
-                            kwargs={"slug": policy_item["slug"]},
-                        ),
-                        "lastmod": _as_aware_datetime(policy_item["updated_at"]),
-                        "changefreq": "monthly",
-                        "priority": 0.5,
-                    }
-                )
+            items.extend(
+                {
+                    "location": reverse(
+                        "pages:policy_detail",
+                        kwargs={"slug": policy_item["slug"]},
+                    ),
+                    "lastmod": _as_aware_datetime(policy_item["updated_at"]),
+                    "changefreq": "monthly",
+                    "priority": 0.5,
+                }
+                for policy_item in _policy_sitemap_items()
+            )
 
         now = timezone.now()
         items.sort(

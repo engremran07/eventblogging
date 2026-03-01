@@ -4,11 +4,12 @@ Includes rate limiting, caching, and common helpers.
 """
 
 import logging
+from collections.abc import Callable
 from functools import wraps
-from typing import Any, Callable
+from typing import Any
 
 from django.core.cache import cache
-from django.http import JsonResponse, HttpRequest, HttpResponse
+from django.http import HttpRequest, HttpResponse, JsonResponse
 
 logger = logging.getLogger(__name__)
 

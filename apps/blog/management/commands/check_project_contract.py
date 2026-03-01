@@ -98,9 +98,11 @@ class Command(BaseCommand):
         violations = []
         for path in self._iter_files(base_dir, self.TEXT_EXTENSIONS):
             content = path.read_text(encoding="utf-8", errors="ignore")
-            for token in self.LEGACY_REFERENCES:
-                if token in content:
-                    violations.append(f"Legacy reference '{token}' in {path}")
+            violations.extend(
+                f"Legacy reference '{token}' in {path}"
+                for token in self.LEGACY_REFERENCES
+                if token in content
+            )
         return violations
 
     def _check_duplicate_static_payloads(self, static_root: Path):

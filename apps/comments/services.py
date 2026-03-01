@@ -6,15 +6,17 @@ Services use selectors for queries, perform business operations, emit events.
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
-from django.core.exceptions import ValidationError
 
-from core.integrations import emit_platform_webhook
 from comments.moderation import evaluate_comment_risk
-from .models import Comment, PostLike, PostBookmark, NewsletterSubscriber
+from core.integrations import emit_platform_webhook
+
 from . import selectors
+from .models import Comment, NewsletterSubscriber, PostBookmark, PostLike
 
 if TYPE_CHECKING:
     from blog.models import Post

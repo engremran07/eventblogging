@@ -6,7 +6,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db.models import F, Q
-from django.http import Http404, HttpResponseBadRequest, JsonResponse
+from django.http import Http404, HttpRequest, HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -14,7 +14,6 @@ from django.views.decorators.http import require_GET, require_POST
 from django_htmx.http import HttpResponseClientRedirect
 from tagulous.views import autocomplete
 
-from .forms import CommentForm, MarkdownPreviewForm, NewsletterForm, PostForm
 from comments.models import (
     Comment,
     NewsletterSubscriber,
@@ -24,9 +23,12 @@ from comments.models import (
 )
 from comments.moderation import evaluate_comment_risk
 from core.integrations import emit_platform_webhook
-from core.session import SessionService
 from core.models import FeatureControlSettings, SiteAppearanceSettings
-from core.utils import rate_limit, cache_feature_control_settings
+from core.session import SessionService
+from core.utils import cache_feature_control_settings, rate_limit
+from seo.services import audit_content_batch, seo_context_for_instance, seo_context_for_route
+
+from .forms import CommentForm, MarkdownPreviewForm, NewsletterForm, PostForm
 from .models import (
     Post,
     render_markdown_to_safe_html,
@@ -34,15 +36,14 @@ from .models import (
 from .services import (
     apply_auto_taxonomy_to_post,
     apply_post_filters,
-    get_dashboard_post_queryset,
     get_dashboard_metrics,
+    get_dashboard_post_queryset,
     get_listing_context,
     get_related_posts_algorithmic,
     get_search_suggestion_context,
     serialize_post_for_api,
 )
 from .ui_feedback import attach_ui_feedback
-from seo.services import audit_content_batch, seo_context_for_instance, seo_context_for_route
 
 logger = logging.getLogger(__name__)
 DASHBOARD_POSTS_PER_PAGE = 12
@@ -80,7 +81,7 @@ def _get_visible_post_or_404(slug, user):
     return post
 
 
-def _track_view(request, post):
+def _track_view(request: HttpRequest, post: Post) -> None:
     if SessionService.is_marked(request, "post_view", post.pk):
         return
 
@@ -123,11 +124,11 @@ def _reaction_counts(post):
     }
 
 
-def _is_card_reaction_request(request):
+def _is_card_reaction_request(request: HttpRequest) -> bool:
     return (request.POST.get("reaction_context") or "").strip().lower() == "card"
 
 
-def _render_reaction_fragment(request, post, *, global_reactions_enabled):
+def _render_reaction_fragment(request: HttpRequest, post: Post, *, global_reactions_enabled: bool) -> HttpResponse:
     context = {
         "post": post,
         "global_reactions_enabled": global_reactions_enabled,
@@ -164,7 +165,7 @@ def _get_comments_queryset_for_user(post, user):
     return comments.filter(is_approved=True)
 
 
-def _render_listing(request, forced_filters=None):
+def _render_listing(request: HttpRequest, forced_filters=None) -> HttpResponse:
     context = get_listing_context(request, forced_filters=forced_filters)
     context.update(get_search_suggestion_context(request.user, context.get("active_query", "")))
     controls = FeatureControlSettings.get_solo()
@@ -188,27 +189,27 @@ def _render_listing(request, forced_filters=None):
     return render(request, template_name, context)
 
 
-def home(request):
+def home(request: HttpRequest) -> HttpResponse:
     return _render_listing(request)
 
 
 @require_GET
-def posts_by_tag(request, tag_name):
+def posts_by_tag(request: HttpRequest, tag_name: str) -> HttpResponse:
     return _render_listing(request, forced_filters={"tag": tag_name})
 
 
 @require_GET
-def posts_by_topic(request, topic_name):
+def posts_by_topic(request: HttpRequest, topic_name: str) -> HttpResponse:
     return _render_listing(request, forced_filters={"topic": topic_name})
 
 
 @require_GET
-def posts_by_category(request, category_name):
+def posts_by_category(request: HttpRequest, category_name: str) -> HttpResponse:
     return _render_listing(request, forced_filters={"category": category_name})
 
 
 @login_required
-def dashboard(request):
+def dashboard(request: HttpRequest) -> HttpResponse:
     sort_by = (request.GET.get("sort") or "-updated_at").strip()
     if sort_by not in DASHBOARD_SORT_CHOICES:
         sort_by = "-updated_at"
@@ -239,7 +240,7 @@ def dashboard(request):
 
 @login_required
 @require_POST
-def post_bulk_action(request):
+def post_bulk_action(request: HttpRequest) -> HttpResponse:
     action = (request.POST.get("bulk_action") or "").strip()
     selected_ids = request.POST.getlist("selected_posts")
 
@@ -372,7 +373,7 @@ def post_bulk_action(request):
     return redirect("blog:dashboard")
 
 
-def post_detail(request, slug):
+def post_detail(request: HttpRequest, slug: str) -> HttpResponse:
     post = _get_visible_post_or_404(slug, request.user)
     _track_view(request, post)
     controls = FeatureControlSettings.get_solo()
@@ -400,14 +401,14 @@ def post_detail(request, slug):
 
 
 @require_GET
-def search_suggestions(request):
+def search_suggestions(request: HttpRequest) -> HttpResponse:
     query = request.GET.get("q", "")
     context = get_search_suggestion_context(request.user, query)
     return render(request, "blog/partials/search_suggestions.html", context)
 
 
 @require_GET
-def post_quick_preview(request, slug):
+def post_quick_preview(request: HttpRequest, slug: str) -> HttpResponse:
     controls = FeatureControlSettings.get_solo()
     if not controls.enable_quick_preview:
         raise Http404("Quick preview is disabled.")
@@ -419,7 +420,7 @@ def post_quick_preview(request, slug):
 
 
 @login_required
-def post_create(request):
+def post_create(request: HttpRequest) -> HttpResponse:
     if request.method == "POST":
         form = PostForm(request.POST, request.FILES)
         if form.is_valid():
@@ -474,7 +475,7 @@ def post_create(request):
 
 
 @login_required
-def post_update(request, slug):
+def post_update(request: HttpRequest, slug: str) -> HttpResponse:
     post = get_object_or_404(get_dashboard_post_queryset(request.user), slug=slug)
 
     if request.method == "POST":
@@ -535,7 +536,7 @@ def post_update(request, slug):
 
 
 @login_required
-def post_delete(request, slug):
+def post_delete(request: HttpRequest, slug: str) -> HttpResponse:
     post = get_object_or_404(get_dashboard_post_queryset(request.user), slug=slug)
 
     if request.method == "POST":
@@ -555,7 +556,7 @@ def post_delete(request, slug):
 
 
 @login_required
-def post_revisions(request, slug):
+def post_revisions(request: HttpRequest, slug: str) -> HttpResponse:
     post = get_object_or_404(Post, slug=slug)
     if not (request.user == post.author or request.user.is_staff):
         raise Http404("Post not available")
@@ -573,7 +574,7 @@ def post_revisions(request, slug):
 
 @login_required
 @require_POST
-def markdown_preview(request):
+def markdown_preview(request: HttpRequest) -> HttpResponse:
     controls = FeatureControlSettings.get_solo()
     if not controls.enable_quick_preview:
         return HttpResponseBadRequest("Markdown preview is disabled.")
@@ -593,7 +594,7 @@ def markdown_preview(request):
 
 @login_required
 @require_POST
-def comment_create(request, slug):
+def comment_create(request: HttpRequest, slug: str) -> HttpResponse:
     post = _get_visible_post_or_404(slug, request.user)
     can_manage = _can_manage_comments(post, request.user)
     controls = FeatureControlSettings.get_solo()
@@ -726,7 +727,7 @@ def comment_create(request, slug):
 
 @login_required
 @require_POST
-def comment_update(request, comment_id):
+def comment_update(request: HttpRequest, comment_id: int) -> HttpResponse:
     comment = get_object_or_404(Comment.objects.select_related("post"), id=comment_id)
     if not _can_edit_comment(comment, request.user):
         raise Http404("Comment not available")
@@ -773,7 +774,7 @@ def comment_update(request, comment_id):
 
 @login_required
 @require_POST
-def comment_delete(request, comment_id):
+def comment_delete(request: HttpRequest, comment_id: int) -> HttpResponse:
     comment = get_object_or_404(Comment.objects.select_related("post"), id=comment_id)
     if not _can_edit_comment(comment, request.user):
         raise Http404("Comment not available")
@@ -812,7 +813,7 @@ def comment_delete(request, comment_id):
 
 @login_required
 @require_POST
-def comment_bulk_action(request, slug):
+def comment_bulk_action(request: HttpRequest, slug: str) -> HttpResponse:
     post = _get_visible_post_or_404(slug, request.user)
     if not _can_manage_comments(post, request.user):
         raise Http404("Comments not available")
@@ -871,7 +872,7 @@ def comment_bulk_action(request, slug):
 
 @login_required
 @require_POST
-def toggle_like(request, slug):
+def toggle_like(request: HttpRequest, slug: str) -> HttpResponse:
     post = _get_visible_post_or_404(slug, request.user)
     controls = FeatureControlSettings.get_solo()
     feedback_target = "global" if _is_card_reaction_request(request) else "reactions"
@@ -936,7 +937,7 @@ def toggle_like(request, slug):
 
 @login_required
 @require_POST
-def toggle_bookmark(request, slug):
+def toggle_bookmark(request: HttpRequest, slug: str) -> HttpResponse:
     post = _get_visible_post_or_404(slug, request.user)
     controls = FeatureControlSettings.get_solo()
     feedback_target = "global" if _is_card_reaction_request(request) else "reactions"
@@ -1000,7 +1001,7 @@ def toggle_bookmark(request, slug):
 
 
 @require_POST
-def newsletter_subscribe(request):
+def newsletter_subscribe(request: HttpRequest) -> HttpResponse:
     controls = FeatureControlSettings.get_solo()
     if not controls.enable_newsletter:
         response = HttpResponseBadRequest("Newsletter subscription is disabled.")
@@ -1099,7 +1100,7 @@ def newsletter_subscribe(request):
 
 @require_GET
 @rate_limit(max_calls=100, time_window_seconds=3600)
-def api_posts(request):
+def api_posts(request: HttpRequest) -> JsonResponse:
     controls = cache_feature_control_settings()
     if not controls.enable_public_api:
         return JsonResponse({"detail": "Public API is disabled."}, status=403)
@@ -1145,7 +1146,7 @@ def api_posts(request):
 
 @login_required
 @require_GET
-def api_dashboard_stats(request):
+def api_dashboard_stats(request: HttpRequest) -> JsonResponse:
     metrics = get_dashboard_metrics(request.user)
     metrics["dashboard_top_posts"] = [
         {
@@ -1173,7 +1174,7 @@ def api_dashboard_stats(request):
 
 
 @require_GET
-def api_appearance_state(request):
+def api_appearance_state(request: HttpRequest) -> JsonResponse:
     appearance = SiteAppearanceSettings.get_solo()
     return JsonResponse(
         {
@@ -1187,7 +1188,7 @@ def api_appearance_state(request):
 
 @login_required
 @require_GET
-def dashboard_stats_stream(request):
+def dashboard_stats_stream(request: HttpRequest) -> JsonResponse:
     """
     Polling JSON endpoint for dashboard statistics.
 
@@ -1241,15 +1242,15 @@ def dashboard_stats_stream(request):
 
 
 @require_GET
-def topic_autocomplete(request):
+def topic_autocomplete(request: HttpRequest) -> HttpResponse:
     return autocomplete(request, Post.primary_topic.tag_model)
 
 
 @require_GET
-def tag_autocomplete(request):
+def tag_autocomplete(request: HttpRequest) -> HttpResponse:
     return autocomplete(request, Post.tags.tag_model)
 
 
 @require_GET
-def category_autocomplete(request):
+def category_autocomplete(request: HttpRequest) -> HttpResponse:
     return autocomplete(request, Post.categories.tag_model)

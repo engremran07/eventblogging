@@ -189,31 +189,29 @@ def suggest_internal_links(post, *, max_suggestions: int = 8) -> list[dict]:
     pages = list(PageModel.objects.published().order_by("-published_at")[:20])
 
     # Build adapter-like objects for compatibility
-    target_adapters = []
-
-    for p in other_posts:
-        target_adapters.append(
-            SimpleNamespace(
-                route_type="post",
-                pk=p.pk,
-                title=p.title,
-                url=p.get_absolute_url(),
-                excerpt_or_summary=p.excerpt or "",
-                is_featured=p.is_featured,
-            )
+    target_adapters = [
+        SimpleNamespace(
+            route_type="post",
+            pk=p.pk,
+            title=p.title,
+            url=p.get_absolute_url(),
+            excerpt_or_summary=p.excerpt or "",
+            is_featured=p.is_featured,
         )
+        for p in other_posts
+    ]
 
-    for p in pages:
-        target_adapters.append(
-            SimpleNamespace(
-                route_type="page",
-                pk=p.pk,
-                title=p.title,
-                url=p.get_absolute_url(),
-                excerpt_or_summary=p.summary or "",
-                is_featured=False,
-            )
+    target_adapters.extend(
+        SimpleNamespace(
+            route_type="page",
+            pk=p.pk,
+            title=p.title,
+            url=p.get_absolute_url(),
+            excerpt_or_summary=p.summary or "",
+            is_featured=False,
         )
+        for p in pages
+    )
 
     # Build source adapter
     source_adapter = SimpleNamespace(

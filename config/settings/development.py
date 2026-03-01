@@ -2,7 +2,7 @@
 Django settings for config project - Development Configuration.
 """
 
-from .base import *  # noqa: F401, F403
+from .base import *  # noqa: F403
 
 DEBUG = True
 ALLOWED_HOSTS = ["127.0.0.1", "localhost", "*.local"]

@@ -4,10 +4,8 @@ Tags app database query selectors.
 
 from __future__ import annotations
 
-from django.db.models import QuerySet, Count
-
+from django.db.models import Count, QuerySet
 from tagulous.models import TagModel
-
 
 # ============================================================================
 # TAG SELECTORS

@@ -1,5 +1,11 @@
 {
   "typeCheckingMode": "strict",
+  "useLibraryCodeForTypes": true,
+  "venvPath": ".",
+  "venv": ".venv",
+  "pythonVersion": "3.11",
+  "include": ["apps", "config"],
+  "exclude": [".venv", "__pycache__", ".git", "*.egg-info", "**/migrations"],
   "reportGeneralTypeIssues": "warning",
   "reportOptionalOperand": "warning",
   "reportOptionalMemberAccess": "warning",
@@ -16,7 +22,7 @@
   "reportIncompatibleVariableOverride": "warning",
   "reportInconsistentConstructor": "warning",
   "reportUnusedVariable": "warning",
-  "reportPrivateUsage": "warning",
+  "reportPrivateUsage": "none",
   "reportUnusedClass": "warning",
   "reportUnusedFunction": "warning",
   "reportUnusedImport": "warning",
@@ -24,12 +30,12 @@
   "reportMissingTypeStubs": "none",
   "reportMissingImports": "warning",
   "reportUndefinedVariable": "error",
-  "reportPrivateImportUsage": "warning",
+  "reportPrivateImportUsage": "none",
   "reportUnknownMemberType": "warning",
   "reportUnknownParameterType": "warning",
   "reportUnknownVariableType": "warning",
-  "reportUnknownAttributeAccessIssue": false,
-  "include": ["blog", "seo", "accounts", "config", "apps"],
-  "exclude": [".venv", "__pycache__", ".git", "*.egg-info"],
-  "pythonVersion": "3.11"
+  "reportUnknownLambdaType": "warning",
+  "reportUnknownArgumentType": "warning",
+  "reportMissingParameterType": "warning",
+  "reportAttributeAccessIssue": "warning"
 }

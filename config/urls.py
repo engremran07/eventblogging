@@ -4,6 +4,7 @@ from django.contrib import admin
 from django.urls import include, path
 
 from blog import admin_views as blog_admin_views
+
 from . import views as config_views
 
 urlpatterns = [

@@ -1,9 +1,9 @@
-﻿from django.contrib.admin.helpers import ACTION_CHECKBOX_NAME
-import json
+﻿import json
 from datetime import timedelta
 from pathlib import Path
 from unittest.mock import patch
 
+from django.contrib.admin.helpers import ACTION_CHECKBOX_NAME
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.core.management import call_command
@@ -13,9 +13,6 @@ from django.urls import reverse
 from django.utils import timezone
 
 from comments.models import Comment, NewsletterSubscriber, PostLike, PostView
-from .models import Post
-from .ui_feedback import attach_ui_feedback
-from pages.models import Page
 from core.constants import ADMIN_PAGINATION_SIZE
 from core.models import (
     FeatureControlSettings,
@@ -24,6 +21,10 @@ from core.models import (
     SiteAppearanceSettings,
     SiteIdentitySettings,
 )
+from pages.models import Page
+
+from .models import Post
+from .ui_feedback import attach_ui_feedback
 
 
 class BlogTests(TestCase):

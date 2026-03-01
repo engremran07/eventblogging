@@ -13,12 +13,12 @@ from django.core.paginator import Paginator
 from django.db.models import Q, Sum
 from django.utils import timezone
 
+from comments.models import NewsletterSubscriber, PostBookmark, PostLike
 from seo.models import TaxonomySynonymGroup
 from seo.synonyms import augment_weighted_terms, expand_terms
 
 from .forms import PostFilterForm
 from .models import Post
-from comments.models import NewsletterSubscriber, PostBookmark, PostLike
 
 logger = logging.getLogger(__name__)
 
@@ -128,7 +128,7 @@ def build_embedding_vector(text: str, dimensions: int = EMBEDDING_DIMENSIONS):
 
 
 def cosine_similarity(vec_a, vec_b):
-    return sum(a * b for a, b in zip(vec_a, vec_b))
+    return sum(a * b for a, b in zip(vec_a, vec_b, strict=False))
 
 
 def _post_document(post):
@@ -159,7 +159,7 @@ def _post_vector_signature(post):
     if post.updated_at:
         updated = str(int(post.updated_at.timestamp()))
     digest = hashlib.blake2s(
-        f"{post.pk}:{updated}:{topic}:{tags}:{categories}".encode("utf-8"),
+        f"{post.pk}:{updated}:{topic}:{tags}:{categories}".encode(),
         digest_size=8,
     ).hexdigest()
     return digest
@@ -522,9 +522,7 @@ def _rank_terms_by_relevance(
     *,
     scope=TaxonomySynonymGroup.Scope.ALL,
 ):
-    scored = []
-    for term in terms:
-        scored.append((_score_candidate_term(term, token_weights, raw_text, scope=scope), term))
+    scored = [(_score_candidate_term(term, token_weights, raw_text, scope=scope), term) for term in terms]
     scored.sort(key=lambda row: (row[0], len(row[1])), reverse=True)
     return [term for _, term in scored]
 

@@ -14,9 +14,9 @@ from django.urls import reverse
 from django.views.decorators.http import require_GET, require_POST
 
 from blog.models import Post
-from pages.models import Page
 from core.constants import ADMIN_PAGINATION_SIZE
 from core.models import SeoSettings
+from pages.models import Page
 
 from .admin_config_forms import (
     SeoSuggestionEditForm,
@@ -25,9 +25,9 @@ from .admin_config_forms import (
     TaxonomySynonymTermAddForm,
 )
 from .admin_config_services import (
-    auto_approve_safe_suggestions,
     apply_suggestion_bulk,
     apply_suggestion_decision,
+    auto_approve_safe_suggestions,
     cancel_scan_job,
     create_scan_job,
     edit_suggestion_payload,

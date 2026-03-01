@@ -253,7 +253,7 @@ class Command(BaseCommand):
 
             view_count = rnd.randint(30, 420)
             for view_idx in range(view_count):
-                viewer = rnd.choice(readers + [None])
+                viewer = rnd.choice([*readers, None])
                 viewed_at = post.created_at + timedelta(days=rnd.randint(0, 30), hours=rnd.randint(0, 23))
                 if viewed_at > now:
                     viewed_at = now - timedelta(hours=rnd.randint(1, 24))

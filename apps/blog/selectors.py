@@ -1,15 +1,16 @@
 from __future__ import annotations
 
 from typing import cast
-from django.db.models import Q, Count, Avg, QuerySet
-from django.shortcuts import get_object_or_404
-from django.http import Http404
-from django.utils import timezone
+
 from django.contrib.auth.models import User
+from django.db.models import Avg, Count, Q, QuerySet
+from django.http import Http404
+from django.shortcuts import get_object_or_404
+from django.utils import timezone
 
-from comments.models import Comment, PostLike, PostBookmark, PostView
+from comments.models import Comment, PostBookmark, PostLike, PostView
+
 from .models import Post, PostQuerySet
-
 
 # ============================================================================
 # POST SELECTORS

@@ -6,7 +6,6 @@ from django.dispatch import receiver
 
 from .models import UserProfile
 
-
 User = get_user_model()
 
 

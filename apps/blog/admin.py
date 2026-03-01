@@ -4,6 +4,8 @@ from django.utils import timezone
 from tagulous import admin as tag_admin
 
 from core.constants import ADMIN_PAGINATION_SIZE
+from seo.services import audit_content_batch
+
 from .content_refresh import run_content_date_refresh
 from .forms import PostForm
 from .models import (
@@ -12,7 +14,6 @@ from .models import (
 )
 from .services import apply_auto_taxonomy_to_post
 from .taxonomy_rules import validate_category_depth
-from seo.services import audit_content_batch
 
 
 class PostAdmin(admin.ModelAdmin):

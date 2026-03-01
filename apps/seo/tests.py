@@ -10,8 +10,17 @@ from core.models import SeoSettings
 from pages.models import Page
 
 from .interlink import suggest_internal_links
-from .models import SeoAuditSnapshot, SeoEngineSettings, SeoIssue, SeoRedirectRule, SeoSuggestion
-from .models import SeoScanJob, SeoSuggestionRevision, TaxonomySynonymGroup, TaxonomySynonymTerm
+from .models import (
+    SeoAuditSnapshot,
+    SeoEngineSettings,
+    SeoIssue,
+    SeoRedirectRule,
+    SeoScanJob,
+    SeoSuggestion,
+    SeoSuggestionRevision,
+    TaxonomySynonymGroup,
+    TaxonomySynonymTerm,
+)
 from .services import audit_instance, run_autopilot_for_instance
 
 

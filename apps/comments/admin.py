@@ -3,6 +3,7 @@
 from django.contrib import admin
 
 from core.constants import ADMIN_PAGINATION_SIZE
+
 from .models import Comment, NewsletterSubscriber, PostBookmark, PostLike, PostRevision, PostView
 
 

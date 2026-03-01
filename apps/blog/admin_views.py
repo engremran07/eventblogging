@@ -14,24 +14,17 @@ from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
 from django.db import IntegrityError
 from django.db.models import Avg, Count, Max, Q
-from django.http import HttpResponse, JsonResponse
+from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from django.utils.http import url_has_allowed_host_and_scheme
-from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 from django_htmx.http import HttpResponseClientRedirect
 
 from comments.models import Comment
-from pages.models import Page
-from pages.policies import POLICY_SLUGS
 from core.constants import ADMIN_PAGINATION_SIZE
-
-from .models import Post
-from .services import apply_auto_taxonomy_to_post
-from .taxonomy_rules import get_category_max_depth, split_category_string, validate_category_depth
-from .context_processors import invalidate_admin_nav_badges_cache
 from core.models import (
     APPEARANCE_PRESET_CHOICES,
     FeatureControlSettings,
@@ -40,7 +33,14 @@ from core.models import (
     SiteAppearanceSettings,
     SiteIdentitySettings,
 )
+from pages.models import Page
+from pages.policies import POLICY_SLUGS
 from seo.services import audit_content_batch
+
+from .context_processors import invalidate_admin_nav_badges_cache
+from .models import Post
+from .services import apply_auto_taxonomy_to_post
+from .taxonomy_rules import get_category_max_depth, split_category_string, validate_category_depth
 
 ADMIN_WORKSPACE_PAGE_SIZE = ADMIN_PAGINATION_SIZE
 POSTS_PAGE_SIZE = ADMIN_WORKSPACE_PAGE_SIZE
@@ -73,7 +73,7 @@ VALID_USER_SORTS = {"-date_joined", "date_joined", "username", "-username", "-la
 VALID_GROUP_SORTS = {"name", "-name", "-user_count", "user_count", "-permission_count", "permission_count"}
 
 
-def _query_without_page(request) -> str:
+def _query_without_page(request: HttpRequest) -> str:
     query = request.GET.copy()
     query.pop("page", None)
     return query.urlencode()
@@ -91,7 +91,7 @@ def _clean_post_ids(raw_ids: list[str]) -> list[int]:
     return cleaned
 
 
-def _resolve_next_url(request, fallback_url_name: str) -> str:
+def _resolve_next_url(request: HttpRequest, fallback_url_name: str) -> str:
     candidate = (request.POST.get("next_url") or "").strip()
     if candidate and url_has_allowed_host_and_scheme(
         url=candidate,
@@ -103,7 +103,7 @@ def _resolve_next_url(request, fallback_url_name: str) -> str:
     return reverse(fallback_url_name)
 
 
-def _redirect_next(request, fallback_url_name: str):
+def _redirect_next(request: HttpRequest, fallback_url_name: str) -> HttpResponse:
     next_url = _resolve_next_url(request, fallback_url_name)
     if request.headers.get("HX-Request"):
         return HttpResponseClientRedirect(next_url)
@@ -113,12 +113,12 @@ def _redirect_next(request, fallback_url_name: str):
 def _get_post_categories():
     try:
         return Post.categories.tag_model.objects.order_by("name")
-    except Exception:  # noqa: BLE001 — Tagulous tag model may not exist at startup
+    except Exception:
         logger.warning("Could not load post categories for admin filter", exc_info=True)
         return []
 
 
-def _build_posts_queryset(request):
+def _build_posts_queryset(request: HttpRequest):
     posts = Post.objects.select_related("author").prefetch_related("categories", "tags")
     valid_statuses = {choice[0] for choice in Post.Status.choices}
 
@@ -191,7 +191,7 @@ def _bulk_action_message(action: str, count: int) -> str:
     return labels.get(action, f"{count} posts updated.")
 
 
-def _handle_posts_bulk_action(request, *, forced_action: str | None = None):
+def _handle_posts_bulk_action(request: HttpRequest, *, forced_action: str | None = None):
     action = (forced_action or request.POST.get("bulk_action", "")).strip().lower()
     selected_ids = _clean_post_ids(request.POST.getlist("selected_posts"))
 
@@ -226,7 +226,7 @@ def _handle_posts_bulk_action(request, *, forced_action: str | None = None):
     return redirect("blog:admin_posts_list")
 
 
-def _build_comments_queryset(request):
+def _build_comments_queryset(request: HttpRequest):
     comments = Comment.objects.select_related("post", "author")
     status_filter = request.GET.get("status", "").strip().lower()
     search_query = request.GET.get("search", "").strip()
@@ -308,7 +308,7 @@ def _parse_publish_at(raw_value: str):
 
 @staff_member_required
 @require_http_methods(["GET"])
-def admin_dashboard(request):
+def admin_dashboard(request: HttpRequest) -> HttpResponse:
     """
     Legacy dashboard endpoint for custom admin namespace.
     """
@@ -360,7 +360,7 @@ def admin_dashboard(request):
 
 @staff_member_required
 @require_http_methods(["GET"])
-def admin_posts_list(request):
+def admin_posts_list(request: HttpRequest) -> HttpResponse:
     """
     Posts management list page with filters and HTMX partial rendering.
     """
@@ -394,7 +394,7 @@ def admin_posts_list(request):
 
 @staff_member_required
 @require_http_methods(["GET", "POST"])
-def admin_post_editor(request, post_id=None):
+def admin_post_editor(request: HttpRequest, post_id: int | None = None) -> HttpResponse:
     """
     Post editor view.
     """
@@ -542,7 +542,7 @@ def admin_post_editor(request, post_id=None):
 
 @staff_member_required
 @require_http_methods(["POST"])
-def admin_posts_bulk_action(request):
+def admin_posts_bulk_action(request: HttpRequest) -> HttpResponse:
     """
     Bulk action endpoint for posts.
     """
@@ -551,7 +551,7 @@ def admin_posts_bulk_action(request):
 
 @staff_member_required
 @require_http_methods(["POST"])
-def admin_bulk_delete_posts(request):
+def admin_bulk_delete_posts(request: HttpRequest) -> HttpResponse:
     """
     Compatibility endpoint for legacy delete-only bulk action.
     """
@@ -560,7 +560,7 @@ def admin_bulk_delete_posts(request):
 
 @staff_member_required
 @require_http_methods(["GET"])
-def admin_comments_list(request):
+def admin_comments_list(request: HttpRequest) -> HttpResponse:
     """
     Comments moderation list with filtering and HTMX partial rendering.
     """
@@ -592,7 +592,7 @@ def admin_comments_list(request):
 
 @staff_member_required
 @require_http_methods(["POST"])
-def admin_comments_bulk_action(request):
+def admin_comments_bulk_action(request: HttpRequest) -> HttpResponse:
     action = (request.POST.get("bulk_action") or "").strip().lower()
     selected_ids = _clean_post_ids(request.POST.getlist("selected_comments"))
 
@@ -625,7 +625,7 @@ def admin_comments_bulk_action(request):
 
 @staff_member_required
 @require_http_methods(["PATCH", "POST"])
-def admin_comment_approve(request, comment_id):
+def admin_comment_approve(request: HttpRequest, comment_id: int) -> HttpResponse:
     """
     Approve a comment.
     """
@@ -654,7 +654,7 @@ def admin_comment_approve(request, comment_id):
 
 @staff_member_required
 @require_http_methods(["DELETE", "POST"])
-def admin_comment_delete(request, comment_id):
+def admin_comment_delete(request: HttpRequest, comment_id: int) -> HttpResponse:
     """
     Delete a comment.
     """
@@ -676,7 +676,7 @@ def _yes_no_to_bool(value: str):
     return None
 
 
-def _build_pages_workspace_queryset(request):
+def _build_pages_workspace_queryset(request: HttpRequest):
     pages = Page.objects.select_related("author")
     status_filter = request.GET.get("status", "").strip()
     template_filter = request.GET.get("template", "").strip()
@@ -718,7 +718,7 @@ def _build_pages_workspace_queryset(request):
     return pages, status_filter, template_filter, nav_filter, search_query, sort_by
 
 
-def _build_flat_taxonomy_queryset(request, *, model, valid_sorts):
+def _build_flat_taxonomy_queryset(request: HttpRequest, *, model, valid_sorts):
     rows = model.objects.all()
     protected_filter = request.GET.get("protected", "").strip()
     search_query = request.GET.get("search", "").strip()
@@ -740,7 +740,7 @@ def _build_flat_taxonomy_queryset(request, *, model, valid_sorts):
     return rows, protected_filter, search_query, sort_by
 
 
-def _build_category_taxonomy_queryset(request, *, model):
+def _build_category_taxonomy_queryset(request: HttpRequest, *, model):
     rows = model.objects.select_related("parent")
     protected_filter = request.GET.get("protected", "").strip()
     level_filter = request.GET.get("level", "").strip()
@@ -773,7 +773,7 @@ def _build_category_taxonomy_queryset(request, *, model):
     return rows, protected_filter, level_filter, search_query, sort_by
 
 
-def _build_users_workspace_queryset(request):
+def _build_users_workspace_queryset(request: HttpRequest):
     User = get_user_model()
     users = User.objects.select_related("profile").prefetch_related("groups")
     staff_filter = request.GET.get("staff", "").strip()
@@ -817,7 +817,7 @@ def _build_users_workspace_queryset(request):
     return users, staff_filter, active_filter, superuser_filter, search_query, sort_by
 
 
-def _build_groups_workspace_queryset(request):
+def _build_groups_workspace_queryset(request: HttpRequest):
     groups = Group.objects.annotate(
         user_count=Count("user", distinct=True),
         permission_count=Count("permissions", distinct=True),
@@ -846,7 +846,7 @@ def _build_groups_workspace_queryset(request):
 
 @staff_member_required
 @require_http_methods(["GET"])
-def admin_pages_list(request):
+def admin_pages_list(request: HttpRequest) -> HttpResponse:
     pages, status_filter, template_filter, nav_filter, search_query, sort_by = (
         _build_pages_workspace_queryset(request)
     )
@@ -876,7 +876,7 @@ def admin_pages_list(request):
 
 @staff_member_required
 @require_http_methods(["POST"])
-def admin_pages_bulk_action(request):
+def admin_pages_bulk_action(request: HttpRequest) -> HttpResponse:
     action = (request.POST.get("bulk_action") or "").strip().lower()
     selected_ids = _clean_post_ids(request.POST.getlist("selected_pages"))
 
@@ -956,7 +956,7 @@ def admin_pages_bulk_action(request):
 
 @staff_member_required
 @require_http_methods(["GET"])
-def admin_tags_list(request):
+def admin_tags_list(request: HttpRequest) -> HttpResponse:
     model = Post.tags.tag_model
     rows, protected_filter, search_query, sort_by = _build_flat_taxonomy_queryset(
         request, model=model, valid_sorts=VALID_FLAT_TAG_SORTS
@@ -991,7 +991,7 @@ def admin_tags_list(request):
 
 @staff_member_required
 @require_http_methods(["GET"])
-def admin_topics_list(request):
+def admin_topics_list(request: HttpRequest) -> HttpResponse:
     model = Post.primary_topic.tag_model
     rows, protected_filter, search_query, sort_by = _build_flat_taxonomy_queryset(
         request, model=model, valid_sorts=VALID_FLAT_TAG_SORTS
@@ -1026,7 +1026,7 @@ def admin_topics_list(request):
 
 @staff_member_required
 @require_http_methods(["GET"])
-def admin_categories_list(request):
+def admin_categories_list(request: HttpRequest) -> HttpResponse:
     model = Post.categories.tag_model
     rows, protected_filter, level_filter, search_query, sort_by = (
         _build_category_taxonomy_queryset(request, model=model)
@@ -1061,7 +1061,7 @@ def admin_categories_list(request):
 
 @staff_member_required
 @require_http_methods(["POST"])
-def admin_categories_reparent(request):
+def admin_categories_reparent(request: HttpRequest) -> JsonResponse:
     model = Post.categories.tag_model
 
     try:
@@ -1144,13 +1144,13 @@ def admin_categories_reparent(request):
 
 
 def _handle_taxonomy_bulk_action(
-    request,
+    request: HttpRequest,
     *,
     model,
     selection_key: str,
     fallback_url_name: str,
     label: str,
-):
+) -> HttpResponse:
     action = (request.POST.get("bulk_action") or "").strip().lower()
     selected_ids = _clean_post_ids(request.POST.getlist(selection_key))
 
@@ -1180,7 +1180,7 @@ def _handle_taxonomy_bulk_action(
 
 @staff_member_required
 @require_http_methods(["POST"])
-def admin_tags_bulk_action(request):
+def admin_tags_bulk_action(request: HttpRequest) -> HttpResponse:
     return _handle_taxonomy_bulk_action(
         request,
         model=Post.tags.tag_model,
@@ -1192,7 +1192,7 @@ def admin_tags_bulk_action(request):
 
 @staff_member_required
 @require_http_methods(["POST"])
-def admin_topics_bulk_action(request):
+def admin_topics_bulk_action(request: HttpRequest) -> HttpResponse:
     return _handle_taxonomy_bulk_action(
         request,
         model=Post.primary_topic.tag_model,
@@ -1204,7 +1204,7 @@ def admin_topics_bulk_action(request):
 
 @staff_member_required
 @require_http_methods(["POST"])
-def admin_categories_bulk_action(request):
+def admin_categories_bulk_action(request: HttpRequest) -> HttpResponse:
     return _handle_taxonomy_bulk_action(
         request,
         model=Post.categories.tag_model,
@@ -1216,7 +1216,7 @@ def admin_categories_bulk_action(request):
 
 @staff_member_required
 @require_http_methods(["GET"])
-def admin_users_list(request):
+def admin_users_list(request: HttpRequest) -> HttpResponse:
     users, staff_filter, active_filter, superuser_filter, search_query, sort_by = (
         _build_users_workspace_queryset(request)
     )
@@ -1256,7 +1256,7 @@ def admin_users_list(request):
 
 @staff_member_required
 @require_http_methods(["POST"])
-def admin_users_bulk_action(request):
+def admin_users_bulk_action(request: HttpRequest) -> HttpResponse:
     if not request.user.is_superuser:
         messages.error(request, "Superuser permission required for user bulk actions.")
         return _redirect_next(request, "admin_users_list")
@@ -1305,7 +1305,7 @@ def admin_users_bulk_action(request):
 
 @staff_member_required
 @require_http_methods(["GET"])
-def admin_groups_list(request):
+def admin_groups_list(request: HttpRequest) -> HttpResponse:
     groups, has_users_filter, search_query, sort_by = _build_groups_workspace_queryset(
         request
     )
@@ -1337,7 +1337,7 @@ def admin_groups_list(request):
 
 @staff_member_required
 @require_http_methods(["POST"])
-def admin_groups_bulk_action(request):
+def admin_groups_bulk_action(request: HttpRequest) -> HttpResponse:
     if not request.user.is_superuser:
         messages.error(request, "Superuser permission required for group bulk actions.")
         return _redirect_next(request, "admin_groups_list")
@@ -1365,7 +1365,7 @@ def admin_groups_bulk_action(request):
 
 @staff_member_required
 @require_http_methods(["GET", "POST"])
-def admin_settings(request):
+def admin_settings(request: HttpRequest) -> HttpResponse:
     """
     Unified site settings page.
     """
@@ -1698,7 +1698,7 @@ def admin_settings(request):
 
 @staff_member_required
 @require_http_methods(["POST"])
-def admin_settings_theme_toggle(request):
+def admin_settings_theme_toggle(request: HttpRequest) -> JsonResponse:
     appearance = SiteAppearanceSettings.get_solo()
     requested_mode = (request.POST.get("mode", "") or "").strip().lower()
 

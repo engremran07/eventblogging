@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render
 
 from .utils import cache_feature_control_settings
-
 
 SAFE_METHODS = {"GET", "HEAD", "OPTIONS", "TRACE"}
 AUTH_ALLOWED_PREFIXES = (
@@ -42,11 +41,7 @@ class PlatformGuardMiddleware:
 
     def _is_exempt(self, request: HttpRequest) -> bool:
         path = request.path or "/"
-        if path.startswith(ALWAYS_ALLOWED_PREFIXES):
-            return True
-        if path.startswith(AUTH_ALLOWED_PREFIXES):
-            return True
-        return False
+        return path.startswith(ALWAYS_ALLOWED_PREFIXES) or path.startswith(AUTH_ALLOWED_PREFIXES)
 
     def _is_staff(self, request: HttpRequest) -> bool:
         user = getattr(request, "user", None)
@@ -57,9 +52,7 @@ class PlatformGuardMiddleware:
             return False
         if self._is_exempt(request):
             return False
-        if self._is_staff(request):
-            return False
-        return True
+        return not self._is_staff(request)
 
     def _is_read_only_blocked(self, request: HttpRequest, controls: object) -> bool:
         if not getattr(controls, "read_only_mode", False):
@@ -68,9 +61,7 @@ class PlatformGuardMiddleware:
             return False
         if self._is_exempt(request):
             return False
-        if self._is_staff(request):
-            return False
-        return True
+        return not self._is_staff(request)
 
     def _maintenance_response(self, request: HttpRequest) -> HttpResponse:
         if request.headers.get("HX-Request") or request.headers.get("X-Requested-With") == "XMLHttpRequest":

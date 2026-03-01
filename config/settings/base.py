@@ -197,6 +197,17 @@ LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "blog:dashboard"
 LOGOUT_REDIRECT_URL = "blog:home"
 
+# Django messages → Bootstrap alert classes
+from django.contrib.messages import constants as message_constants  # noqa: E402
+
+MESSAGE_TAGS = {
+    message_constants.DEBUG: "secondary",
+    message_constants.INFO: "info",
+    message_constants.SUCCESS: "success",
+    message_constants.WARNING: "warning",
+    message_constants.ERROR: "danger",
+}
+
 SERIALIZATION_MODULES = {
     "xml": "tagulous.serializers.xml_serializer",
     "json": "tagulous.serializers.json",

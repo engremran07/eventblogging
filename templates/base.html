@@ -95,6 +95,29 @@
 
     <meta name="htmx-config" content='{"globalViewTransitions":true,"defaultSwapStyle":"innerHTML","defaultSettleDelay":100,"scrollBehavior":"smooth","includeIndicatorStyles":true}'>
     <script src="https://unpkg.com/htmx.org@2.0.8"></script>
+    <!-- Global JS error handler — catches all uncaught errors and shows them visually -->
+    <script>
+    (function(){
+      var MAX=5,shown=0;
+      function showErr(msg){
+        if(shown>=MAX)return;
+        shown++;
+        var d=document.createElement('div');
+        d.className='alert alert-danger alert-dismissible fade show';
+        d.setAttribute('role','alert');
+        d.style.cssText='position:fixed;top:'+(10+shown*60)+'px;right:10px;z-index:99999;max-width:600px;font-size:13px;word-break:break-word;';
+        d.innerHTML='<strong>JS Error:</strong> '+msg+'<button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
+        document.body?document.body.appendChild(d):document.addEventListener('DOMContentLoaded',function(){document.body.appendChild(d);});
+        setTimeout(function(){d.remove();shown--;},15000);
+      }
+      window.addEventListener('error',function(e){
+        showErr((e.message||'Unknown')+(e.filename?' in '+e.filename.split('/').pop()+':'+e.lineno:''));
+      });
+      window.addEventListener('unhandledrejection',function(e){
+        showErr('Unhandled Promise: '+(e.reason&&e.reason.message?e.reason.message:String(e.reason)));
+      });
+    })();
+    </script>
     <!-- Alpine: app.js (ThemeCore + stores + components) MUST load before Alpine CDN -->
     <script defer src="{% static 'js/app.js' %}"></script>
     <script defer src="{% static 'js/site/site.js' %}"></script>

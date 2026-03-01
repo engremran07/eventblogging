@@ -460,6 +460,16 @@ def post_create(request: HttpRequest) -> HttpResponse:
                     },
                 )
             return redirect(post)
+        else:
+            logger.warning(
+                "post_create form invalid for user=%s: %s",
+                request.user.username,
+                form.errors.as_json(),
+            )
+            messages.error(
+                request,
+                "Could not save post. Please fix the errors highlighted below.",
+            )
     else:
         form = PostForm()
 
@@ -520,6 +530,17 @@ def post_update(request: HttpRequest, slug: str) -> HttpResponse:
                     },
                 )
             return redirect(post)
+        else:
+            logger.warning(
+                "post_update form invalid for slug=%s user=%s: %s",
+                slug,
+                request.user.username,
+                form.errors.as_json(),
+            )
+            messages.error(
+                request,
+                "Could not update post. Please fix the errors highlighted below.",
+            )
     else:
         form = PostForm(instance=post)
 

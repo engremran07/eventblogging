@@ -380,6 +380,16 @@ def page_create(request):
                     },
                 )
             return redirect(page)
+        else:
+            logger.warning(
+                "page_create form invalid for user=%s: %s",
+                request.user.username,
+                form.errors.as_json(),
+            )
+            messages.error(
+                request,
+                "Could not save page. Please fix the errors highlighted below.",
+            )
     else:
         form = PageForm()
 
@@ -430,6 +440,17 @@ def page_update(request, slug):
                     },
                 )
             return redirect(page)
+        else:
+            logger.warning(
+                "page_update form invalid for slug=%s user=%s: %s",
+                slug,
+                request.user.username,
+                form.errors.as_json(),
+            )
+            messages.error(
+                request,
+                "Could not update page. Please fix the errors highlighted below.",
+            )
     else:
         form = PageForm(instance=page)
 

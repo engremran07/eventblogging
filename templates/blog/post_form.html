@@ -34,8 +34,27 @@
                 data-ui-feedback-target="post-form"
                 data-ui-action-kind="{% if mode == 'Create' %}create{% else %}update{% endif %}"
                 class="vstack gap-3"
+                id="post-create-form"
             >
                 {% csrf_token %}
+
+                {% if form.errors %}
+                <div class="alert alert-danger" role="alert">
+                    <h6 class="alert-heading mb-2"><i class="bi bi-exclamation-triangle me-1"></i>Please fix the following errors:</h6>
+                    {% if form.non_field_errors %}
+                        <ul class="mb-2">
+                        {% for error in form.non_field_errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                        </ul>
+                    {% endif %}
+                    {% for field in form %}
+                        {% if field.errors %}
+                            <div><strong>{{ field.label }}:</strong> {{ field.errors|join:', ' }}</div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+                {% endif %}
 
                 {% for field in form %}
                     {% if field.field.widget.input_type == "checkbox" %}
@@ -202,11 +221,13 @@
     document.querySelectorAll("[data-post-status-submit]").forEach((button) => {
         button.addEventListener("click", () => {
             if (!statusField) {
+                console.error("[PostForm] #id_status field not found! Form will submit without status.");
                 return;
             }
             const targetStatus = button.dataset.postStatusSubmit || "";
             if (targetStatus) {
                 statusField.value = targetStatus;
+                console.log("[PostForm] Status set to:", targetStatus);
             }
         });
     });
@@ -214,6 +235,45 @@
     syncMetaTitle();
     syncMetaDescription();
     syncCanonical();
+})();
+
+/* ── Form Submit Debug Monitor ── */
+(function() {
+    var form = document.getElementById("post-create-form");
+    if (!form) { console.warn("[PostForm] Form #post-create-form not found"); return; }
+
+    console.log("[PostForm] Form monitor attached. Action:", form.action || window.location.href);
+
+    form.addEventListener("submit", function(e) {
+        var status = document.getElementById("id_status");
+        var title = document.getElementById("id_title");
+        var body = document.getElementById("id_body_markdown");
+        console.log("[PostForm] Form submit fired!", {
+            defaultPrevented: e.defaultPrevented,
+            status: status ? status.value : "MISSING",
+            title: title ? title.value.substring(0, 50) : "MISSING",
+            bodyLength: body ? body.value.length : 0,
+            formAction: form.action,
+        });
+
+        /* Detect if something blocks the submit */
+        setTimeout(function() {
+            if (e.defaultPrevented) {
+                console.error("[PostForm] SUBMIT WAS BLOCKED by event.preventDefault()!");
+                var banner = document.createElement("div");
+                banner.className = "alert alert-danger mt-2";
+                banner.innerHTML = "<strong>Debug:</strong> Form submission was blocked by JavaScript. Check console (F12) for details.";
+                form.prepend(banner);
+            }
+        }, 0);
+    });
+
+    /* Monitor all submit buttons */
+    form.querySelectorAll('button[type="submit"]').forEach(function(btn) {
+        btn.addEventListener("click", function() {
+            console.log("[PostForm] Button clicked:", btn.textContent.trim(), "data-post-status-submit:", btn.dataset.postStatusSubmit || "none");
+        });
+    });
 })();
 </script>
 {% endblock %}

@@ -62,6 +62,11 @@ function renderInline(slot, level, message) {
   slot.append(icon, text);
 }
 
+// All store registrations are deferred until Alpine fires 'alpine:init'.
+// This lets Alpine CDN load LAST in the defer chain (correct per Alpine 3 docs)
+// while this script runs first — no 'Alpine is not defined' errors.
+document.addEventListener('alpine:init', () => {
+
 Alpine.store('ui', {
   // UI State - Theme and sidebar
   sidebarOpen: localStorage.getItem('sidebar_open') !== 'false',
@@ -354,14 +359,14 @@ Alpine.store('admin', {
   clearNotifications() {
     this.notifications = [];
   },
-});
+}); // end Alpine.store('admin')
 
-// Initialize theme on page load
-document.addEventListener('alpine:init', () => {
+// Initialize theme immediately after stores are registered (still inside alpine:init)
   const theme = Alpine.store('ui').theme;
   document.documentElement.setAttribute('data-bs-theme', theme);
   if (document.body) {
     document.body.setAttribute('data-bs-theme', theme);
   }
-});
+
+}); // end document.addEventListener('alpine:init')
 

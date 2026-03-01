@@ -4,68 +4,70 @@
  * Access via $store.ui and $store.user in any Alpine.js component
  */
 
-// Helper functions needed for UI store
-function normalizeLevel(level) {
-  const allowed = ["success", "info", "warning", "error"];
-  return allowed.includes(level) ? level : "info";
-}
-
-function getCookie(name) {
-  const cookieValue = document.cookie
-    .split("; ")
-    .find((row) => row.startsWith(name + "="));
-  return cookieValue ? decodeURIComponent(cookieValue.split("=")[1]) : "";
-}
-
-function findInlineSlot(target) {
-  if (!target) {
-    return document.querySelector('[data-ui-feedback-slot="global"]');
-  }
-  if (typeof target !== "string") {
-    return null;
-  }
-  const key = target.trim();
-  if (!key) {
-    return document.querySelector('[data-ui-feedback-slot="global"]');
-  }
-  if (key.startsWith("#") || key.startsWith(".") || key.startsWith("[")) {
-    return document.querySelector(key);
-  }
-  return document.querySelector(`[data-ui-feedback-slot="${key}"]`);
-}
-
-function renderInline(slot, level, message) {
-  if (!slot) {
-    return;
-  }
-  if (!slot.dataset.baseClass) {
-    slot.dataset.baseClass = slot.className || "";
-  }
-
-  const currentLevel = normalizeLevel(level);
-  slot.className =
-    slot.dataset.baseClass +
-    " ui-inline-feedback ui-inline-feedback-" +
-    currentLevel;
-  slot.classList.remove("d-none");
-
-  slot.replaceChildren();
-  const icon = document.createElement("span");
-  icon.className = "ui-inline-feedback-icon";
-  icon.setAttribute("aria-hidden", "true");
-  icon.textContent = currentLevel === "success" ? "+" : currentLevel === "error" ? "x" : "i";
-
-  const text = document.createElement("span");
-  text.className = "ui-inline-feedback-text";
-  text.textContent = message || "Action completed.";
-
-  slot.append(icon, text);
-}
-
 // All store registrations are deferred until Alpine fires 'alpine:init'.
 // This lets Alpine CDN load LAST in the defer chain (correct per Alpine 3 docs)
 // while this script runs first — no 'Alpine is not defined' errors.
+// Helper functions are scoped INSIDE the callback — zero window pollution.
 document.addEventListener('alpine:init', () => {
+
+  // ── Private helpers (scoped to this callback, not on window) ─────────────
+  function normalizeLevel(level) {
+    const allowed = ["success", "info", "warning", "error"];
+    return allowed.includes(level) ? level : "info";
+  }
+
+  function getCookie(name) {
+    const cookieValue = document.cookie
+      .split("; ")
+      .find((row) => row.startsWith(name + "="));
+    return cookieValue ? decodeURIComponent(cookieValue.split("=")[1]) : "";
+  }
+
+  function findInlineSlot(target) {
+    if (!target) {
+      return document.querySelector('[data-ui-feedback-slot="global"]');
+    }
+    if (typeof target !== "string") {
+      return null;
+    }
+    const key = target.trim();
+    if (!key) {
+      return document.querySelector('[data-ui-feedback-slot="global"]');
+    }
+    if (key.startsWith("#") || key.startsWith(".") || key.startsWith("[")) {
+      return document.querySelector(key);
+    }
+    return document.querySelector(`[data-ui-feedback-slot="${key}"]`);
+  }
+
+  function renderInline(slot, level, message) {
+    if (!slot) {
+      return;
+    }
+    if (!slot.dataset.baseClass) {
+      slot.dataset.baseClass = slot.className || "";
+    }
+
+    const currentLevel = normalizeLevel(level);
+    slot.className =
+      slot.dataset.baseClass +
+      " ui-inline-feedback ui-inline-feedback-" +
+      currentLevel;
+    slot.classList.remove("d-none");
+
+    slot.replaceChildren();
+    const icon = document.createElement("span");
+    icon.className = "ui-inline-feedback-icon";
+    icon.setAttribute("aria-hidden", "true");
+    icon.textContent = currentLevel === "success" ? "+" : currentLevel === "error" ? "x" : "i";
+
+    const text = document.createElement("span");
+    text.className = "ui-inline-feedback-text";
+    text.textContent = message || "Action completed.";
+
+    slot.append(icon, text);
+  }
+  // ─────────────────────────────────────────────────────────────────────────
 
 Alpine.store('ui', {
   // UI State - Theme and sidebar

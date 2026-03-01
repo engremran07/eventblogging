@@ -595,10 +595,6 @@
     },
     true
   );
-
-  window.appShell = function appShell() {
-    return {
-      mobileSearch: false,
-    };
-  };
+  // appShell() is the single Alpine root component defined in app.js.
+  // Do NOT redefine window.appShell here — that would silently overwrite it.
 })();

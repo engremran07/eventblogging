@@ -3,10 +3,7 @@
 
 {% block title %}Pages | Admin{% endblock %}
 
-{% block extrahead %}
-    {{ block.super }}
-    <link rel="stylesheet" href="{% static 'css/admin/workspace.css' %}">
-{% endblock %}
+{% block extrahead %}{{ block.super }}{% endblock %}
 
 {% block content %}
     <div class="workspace-shell" data-admin-workspace="pages" data-list-url="{% url 'admin_pages_list' %}">

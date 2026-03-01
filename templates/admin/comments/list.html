@@ -3,10 +3,7 @@
 
 {% block title %}Comments | Admin{% endblock %}
 
-{% block extrahead %}
-    {{ block.super }}
-    <link rel="stylesheet" href="{% static 'css/admin/workspace.css' %}">
-{% endblock %}
+{% block extrahead %}{{ block.super }}{% endblock %}
 
 {% block content %}
     <div class="workspace-shell" data-admin-workspace="comments" data-list-url="{% url 'blog:admin_comments_list' %}">

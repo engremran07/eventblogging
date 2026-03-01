@@ -27,6 +27,7 @@ function appShell() {
      * Called from x-data="appShell()" on <body>.
      * Provides the top-level Alpine scope for the public site.
      */
+    mobileSearch: false,   // toggled by the mobile search bar
     init() {
       // Restore reading progress if persisted
       this._restoreScrollProgress();

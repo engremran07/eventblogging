@@ -409,6 +409,15 @@ def _weighted_token_profile(post):
     _apply_text_weights(weighted, excerpt, 1.8)
     _apply_text_weights(weighted, headings, 2.0)
 
+    # SEO meta fields — only contribute when they carry distinct information
+    # (i.e. admin customised them instead of leaving auto-synced copies).
+    meta_title = (post.meta_title or "").strip()
+    meta_description = (post.meta_description or "").strip()
+    if meta_title and meta_title.lower() != title.lower():
+        _apply_text_weights(weighted, meta_title, 2.5)
+    if meta_description and meta_description.lower() != excerpt.lower():
+        _apply_text_weights(weighted, meta_description, 1.5)
+
     # Full-body analysis with normalized frequency to avoid noise from raw dumps.
     body_tokens = _tokenize_text(body)
     if body_tokens:
@@ -626,15 +635,23 @@ def apply_auto_taxonomy_to_post(post: Post) -> dict[str, Any]:
     )
     ranked_auto_tags = [tag for tag in ranked_tags if tag not in manual_tags]
 
+    # Inject every level of the category hierarchy as tag candidates.
+    # e.g. "ramadan/eid/eid prayer" → tags: "ramadan", "eid", "eid prayer"
+    merged_categories = manual_categories | set(ranked_categories)
+    final_categories = sorted(_expand_category_ancestors(merged_categories))
+    category_derived_tags: list[str] = []
+    for cat_path in final_categories:
+        for segment in cat_path.split("/"):
+            segment = segment.strip()
+            if segment and segment not in manual_tags and segment not in category_derived_tags:
+                category_derived_tags.append(segment)
+
     final_tags = []
-    for tag in ranked_manual_tags + ranked_auto_tags:
+    for tag in ranked_manual_tags + ranked_auto_tags + category_derived_tags:
         if tag not in final_tags:
             final_tags.append(tag)
         if len(final_tags) >= settings_payload["max_total_tags"]:
             break
-
-    merged_categories = manual_categories | set(ranked_categories)
-    final_categories = sorted(_expand_category_ancestors(merged_categories))
     final_topic = manual_topic or auto_topic
 
     post.tags.set_tag_string(",".join(final_tags))

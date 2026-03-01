@@ -40,7 +40,7 @@
                 </button>
                 
                 <!-- Dropdown menu -->
-                <div x-show="open" class="topbar-dropdown-menu" x-transition.opacity.duration.150ms>
+                <div x-show="open" x-cloak class="topbar-dropdown-menu" x-transition.opacity.duration.150ms>
                     <div class="topbar-dropdown-head">
                         <div class="topbar-dropdown-username">{{ current_user_profile.effective_name|default:request.user.get_full_name|default:request.user.username }}</div>
                         <a href="{% url 'admin_users_list' %}?search={{ request.user.username|urlencode }}" class="topbar-dropdown-profile-link">Profile</a>

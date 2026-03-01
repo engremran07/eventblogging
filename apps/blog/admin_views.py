@@ -1369,7 +1369,7 @@ def admin_category_update(request: HttpRequest, pk: int) -> HttpResponse:
 
     try:
         category.name = new_full_name
-        category.protected = is_protected
+        category.protected = is_protected  # type: ignore[attr-defined]  # Tagulous BaseTagTreeModel field
         category.save()
         messages.success(request, f"Category '{new_label}' updated.")
     except IntegrityError:
@@ -1386,12 +1386,12 @@ def admin_category_delete(request: HttpRequest, pk: int) -> HttpResponse:
     tree_model = _get_category_tree_model()
     category = get_object_or_404(tree_model, pk=pk)
 
-    if category.protected:
+    if category.protected:  # type: ignore[attr-defined]  # Tagulous BaseTagTreeModel field
         messages.error(request, f"Category '{category.label}' is protected and cannot be deleted.")
         return _redirect_next(request, "admin_categories_list")
 
     label = category.label
-    child_count = category.children.count()
+    child_count = category.children.count()  # type: ignore[attr-defined]  # Tagulous reverse FK
     try:
         category.delete()
         msg = f"Category '{label}' deleted."
@@ -1436,7 +1436,7 @@ def admin_categories_merge(request: HttpRequest) -> HttpResponse:
 
     merged_count = sources.count()
     try:
-        target.merge_tags(sources)
+        target.merge_tags(sources)  # type: ignore[attr-defined]  # Tagulous BaseTagModel method
         messages.success(request, f"Merged {merged_count} categories into '{target.label}'.")
     except Exception:
         logger.warning("Category merge failed into pk=%s.", target.pk, exc_info=True)

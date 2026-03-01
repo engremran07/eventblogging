@@ -12,6 +12,7 @@ Django ready() hook (see apps.py).  Import *only* this module from ready().
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 from django.db.models.signals import post_save
 from django.dispatch import receiver
@@ -23,7 +24,7 @@ logger = logging.getLogger(__name__)
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _previous_status(instance) -> str | None:
+def _previous_status(instance: Any) -> str | None:
     """
     Return the status value that was stored *before* the current save by
     querying the database.  Returns None when the row did not exist yet
@@ -49,7 +50,7 @@ def _previous_status(instance) -> str | None:
 # ---------------------------------------------------------------------------
 
 @receiver(post_save, sender="blog.Post")
-def emit_webhook_on_publish(sender, instance, created: bool, raw: bool, **kwargs) -> None:
+def emit_webhook_on_publish(sender: type[Any], instance: Any, created: bool, raw: bool, **kwargs: Any) -> None:
     """
     Fire a platform webhook when a Post transitions to PUBLISHED for the first
     time.  Runs on commit so the row is visible to any background worker.
@@ -64,7 +65,7 @@ def emit_webhook_on_publish(sender, instance, created: bool, raw: bool, **kwargs
 
     from .models import Post
 
-    if instance.status != Post.Status.PUBLISHED:
+    if instance.status != Post.Status.PUBLISHED.value:  # type: ignore[comparison-overlap]
         return
 
     # Guard: emit only when this save represents the PUBLISHED transition.
@@ -72,7 +73,7 @@ def emit_webhook_on_publish(sender, instance, created: bool, raw: bool, **kwargs
     # On UPDATE we compare against the DB state that existed before this save.
     if not created:
         previous = _previous_status(instance)
-        if previous == Post.Status.PUBLISHED:
+        if previous == Post.Status.PUBLISHED.value:  # type: ignore[comparison-overlap]
             # Already was published before this save — skip to avoid duplicate
             # webhooks on every subsequent update to a published post.
             return
@@ -109,7 +110,7 @@ def emit_webhook_on_publish(sender, instance, created: bool, raw: bool, **kwargs
 # ---------------------------------------------------------------------------
 
 @receiver(post_save, sender="comments.Comment")
-def trigger_comment_moderation(sender, instance, created: bool, raw: bool, **kwargs) -> None:
+def trigger_comment_moderation(sender: type[Any], instance: Any, created: bool, raw: bool, **kwargs: Any) -> None:
     """
     Re-run moderation scoring on freshly created comments when the
     ``moderate_comments`` feature flag is enabled.
@@ -143,12 +144,14 @@ def trigger_comment_moderation(sender, instance, created: bool, raw: bool, **kwa
     try:
         from comments.moderation import evaluate_comment_risk
 
-        score, reasons = evaluate_comment_risk(instance.body, instance.author, instance.post)
-        threshold = getattr(controls, "comment_spam_threshold", 50)
+        result = evaluate_comment_risk(instance.body)
+        score = int(result.get("score", 0))  # type: ignore[arg-type]
+        reasons = result.get("reasons", [])
+        threshold = int(getattr(controls, "comment_spam_threshold", 50))  # type: ignore[arg-type]
 
         # If score is high enough to warrant rejection, flip approval state
         if score >= threshold and instance.is_approved:
-            type(instance).objects.filter(pk=instance.pk).update(
+            type(instance).objects.filter(pk=instance.pk).update(  # type: ignore[union-attr]
                 is_approved=False,
                 moderation_score=score,
                 moderation_reasons=reasons,

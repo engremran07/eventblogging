@@ -4,8 +4,10 @@ import hashlib
 import json
 import logging
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import timedelta
+from typing import Any
 
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Avg, Count
@@ -580,11 +582,11 @@ def audit_content(content_type: str, object_id: int, *, trigger="manual"):
 
 def audit_content_batch(
     content_type: str,
-    object_ids,
+    object_ids: Iterable[Any],
     *,
     trigger: str = "save",
     run_autopilot: bool = True,
-):
+) -> dict[str, int]:
     """
     Audit a batch of content ids and optionally run autopilot per object.
     """

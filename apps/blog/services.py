@@ -6,6 +6,7 @@ import math
 import re
 from collections import Counter
 from datetime import datetime
+from typing import Any
 
 from django.contrib.postgres.search import SearchQuery, SearchRank, SearchVector
 from django.core.cache import cache
@@ -527,7 +528,7 @@ def _rank_terms_by_relevance(
     return [term for _, term in scored]
 
 
-def apply_auto_taxonomy_to_post(post):
+def apply_auto_taxonomy_to_post(post: Post) -> dict[str, Any]:
     settings_payload = _get_auto_tagging_settings()
     if not settings_payload["enabled"]:
         state_changed = bool(

@@ -5,6 +5,8 @@ Custom admin content workspace views.
 from __future__ import annotations
 
 import logging
+from collections.abc import Mapping
+from typing import Any, cast
 
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
@@ -110,9 +112,9 @@ def _redirect_next(request: HttpRequest, fallback_url_name: str) -> HttpResponse
     return redirect(next_url)
 
 
-def _get_post_categories():
+def _get_post_categories() -> list[Any]:
     try:
-        return Post.categories.tag_model.objects.order_by("name")
+        return Post.categories.tag_model.objects.order_by("name")  # type: ignore[union-attr]
     except Exception:
         logger.warning("Could not load post categories for admin filter", exc_info=True)
         return []
@@ -260,12 +262,12 @@ def _build_comments_queryset(request: HttpRequest):
     return comments, status_filter, search_query, post_filter, sort_by
 
 
-def _editor_context(post, *, posted_values: dict | None = None):
+def _editor_context(post: Post, *, posted_values: Mapping[str, Any] | None = None) -> dict[str, Any]:
     if posted_values is None:
         if post.pk:
-            primary_topic = post.primary_topic.name if post.primary_topic else ""
-            tags = ", ".join(tag.name for tag in post.tags.all())
-            categories = ", ".join(category.name for category in post.categories.all())
+            primary_topic = post.primary_topic.name if post.primary_topic else ""  # type: ignore[union-attr]
+            tags = ", ".join(tag.name for tag in post.tags.all())  # type: ignore[union-attr]
+            categories = ", ".join(category.name for category in post.categories.all())  # type: ignore[union-attr]
         else:
             primary_topic = ""
             tags = ""
@@ -489,7 +491,7 @@ def admin_post_editor(request: HttpRequest, post_id: int | None = None) -> HttpR
             post.published_at = None
 
         try:
-            post.save()
+            post.save()  # type: ignore[misc]
         except IntegrityError:
             message = "Unable to save post due to conflicting data. Check slug uniqueness."
             messages.error(request, message)
@@ -517,9 +519,9 @@ def admin_post_editor(request: HttpRequest, post_id: int | None = None) -> HttpR
                 status=400,
             )
         try:
-            post.tags.set_tag_string(request.POST.get("tags", "").strip())
-            post.categories.set_tag_string(categories_input)
-            post.save(update_fields=["primary_topic", "updated_at"])
+            post.tags.set_tag_string(request.POST.get("tags", "").strip())  # type: ignore[union-attr]
+            post.categories.set_tag_string(categories_input)  # type: ignore[union-attr]
+            post.save(update_fields=["primary_topic", "updated_at"])  # type: ignore[misc]
             apply_auto_taxonomy_to_post(post)
         except Exception:
             logger.exception("Post taxonomy sync failed for post_id=%s.", post.pk)
@@ -718,8 +720,8 @@ def _build_pages_workspace_queryset(request: HttpRequest):
     return pages, status_filter, template_filter, nav_filter, search_query, sort_by
 
 
-def _build_flat_taxonomy_queryset(request: HttpRequest, *, model, valid_sorts):
-    rows = model.objects.all()
+def _build_flat_taxonomy_queryset(request: HttpRequest, *, model: Any, valid_sorts: set[str]) -> tuple[Any, str, str, str]:
+    rows = model.objects.all()  # type: ignore[union-attr]
     protected_filter = request.GET.get("protected", "").strip()
     search_query = request.GET.get("search", "").strip()
     sort_by = request.GET.get("sort", "-count").strip() or "-count"
@@ -740,8 +742,8 @@ def _build_flat_taxonomy_queryset(request: HttpRequest, *, model, valid_sorts):
     return rows, protected_filter, search_query, sort_by
 
 
-def _build_category_taxonomy_queryset(request: HttpRequest, *, model):
-    rows = model.objects.select_related("parent")
+def _build_category_taxonomy_queryset(request: HttpRequest, *, model: type[Any]) -> tuple[Any, str, str, str, str]:
+    rows = model.objects.select_related("parent")  # type: ignore[union-attr]
     protected_filter = request.GET.get("protected", "").strip()
     level_filter = request.GET.get("level", "").strip()
     search_query = request.GET.get("search", "").strip()
@@ -957,7 +959,7 @@ def admin_pages_bulk_action(request: HttpRequest) -> HttpResponse:
 @staff_member_required
 @require_http_methods(["GET"])
 def admin_tags_list(request: HttpRequest) -> HttpResponse:
-    model = Post.tags.tag_model
+    model: Any = cast(Any, Post.tags.tag_model)  # type: ignore[union-attr]
     rows, protected_filter, search_query, sort_by = _build_flat_taxonomy_queryset(
         request, model=model, valid_sorts=VALID_FLAT_TAG_SORTS
     )
@@ -992,7 +994,7 @@ def admin_tags_list(request: HttpRequest) -> HttpResponse:
 @staff_member_required
 @require_http_methods(["GET"])
 def admin_topics_list(request: HttpRequest) -> HttpResponse:
-    model = Post.primary_topic.tag_model
+    model: Any = cast(Any, Post.primary_topic.tag_model)  # type: ignore[attr-defined]
     rows, protected_filter, search_query, sort_by = _build_flat_taxonomy_queryset(
         request, model=model, valid_sorts=VALID_FLAT_TAG_SORTS
     )
@@ -1027,7 +1029,7 @@ def admin_topics_list(request: HttpRequest) -> HttpResponse:
 @staff_member_required
 @require_http_methods(["GET"])
 def admin_categories_list(request: HttpRequest) -> HttpResponse:
-    model = Post.categories.tag_model
+    model: Any = cast(Any, Post.categories.tag_model)  # type: ignore[union-attr]
     rows, protected_filter, level_filter, search_query, sort_by = (
         _build_category_taxonomy_queryset(request, model=model)
     )
@@ -1062,7 +1064,7 @@ def admin_categories_list(request: HttpRequest) -> HttpResponse:
 @staff_member_required
 @require_http_methods(["POST"])
 def admin_categories_reparent(request: HttpRequest) -> JsonResponse:
-    model = Post.categories.tag_model
+    model: Any = cast(Any, Post.categories.tag_model)  # type: ignore[union-attr]
 
     try:
         category_id = int((request.POST.get("category_id") or "").strip())
@@ -1146,7 +1148,7 @@ def admin_categories_reparent(request: HttpRequest) -> JsonResponse:
 def _handle_taxonomy_bulk_action(
     request: HttpRequest,
     *,
-    model,
+    model: Any,
     selection_key: str,
     fallback_url_name: str,
     label: str,
@@ -1183,7 +1185,7 @@ def _handle_taxonomy_bulk_action(
 def admin_tags_bulk_action(request: HttpRequest) -> HttpResponse:
     return _handle_taxonomy_bulk_action(
         request,
-        model=Post.tags.tag_model,
+        model=cast(Any, Post.tags.tag_model),  # type: ignore[union-attr]
         selection_key="selected_tags",
         fallback_url_name="admin_tags_list",
         label="tags",
@@ -1195,7 +1197,7 @@ def admin_tags_bulk_action(request: HttpRequest) -> HttpResponse:
 def admin_topics_bulk_action(request: HttpRequest) -> HttpResponse:
     return _handle_taxonomy_bulk_action(
         request,
-        model=Post.primary_topic.tag_model,
+        model=cast(Any, Post.primary_topic.tag_model),  # type: ignore[attr-defined]
         selection_key="selected_topics",
         fallback_url_name="admin_topics_list",
         label="topics",
@@ -1207,7 +1209,7 @@ def admin_topics_bulk_action(request: HttpRequest) -> HttpResponse:
 def admin_categories_bulk_action(request: HttpRequest) -> HttpResponse:
     return _handle_taxonomy_bulk_action(
         request,
-        model=Post.categories.tag_model,
+        model=cast(Any, Post.categories.tag_model),  # type: ignore[union-attr]
         selection_key="selected_categories",
         fallback_url_name="admin_categories_list",
         label="categories",
@@ -1458,25 +1460,25 @@ def admin_settings(request: HttpRequest) -> HttpResponse:
 
         if parse_checkbox("clear_brand_logo_upload", False):
             identity.brand_logo_upload.delete(save=False)
-            identity.brand_logo_upload = None
+            identity.brand_logo_upload = None  # type: ignore[assignment]
         if parse_checkbox("clear_brand_logo_dark_upload", False):
             identity.brand_logo_dark_upload.delete(save=False)
-            identity.brand_logo_dark_upload = None
+            identity.brand_logo_dark_upload = None  # type: ignore[assignment]
         if parse_checkbox("clear_favicon_upload", False):
             identity.favicon_upload.delete(save=False)
-            identity.favicon_upload = None
+            identity.favicon_upload = None  # type: ignore[assignment]
         if parse_checkbox("clear_favicon_dark_upload", False):
             identity.favicon_dark_upload.delete(save=False)
-            identity.favicon_dark_upload = None
+            identity.favicon_dark_upload = None  # type: ignore[assignment]
 
         if "brand_logo_upload" in request.FILES:
-            identity.brand_logo_upload = request.FILES["brand_logo_upload"]
+            identity.brand_logo_upload = request.FILES["brand_logo_upload"]  # type: ignore[assignment]
         if "brand_logo_dark_upload" in request.FILES:
-            identity.brand_logo_dark_upload = request.FILES["brand_logo_dark_upload"]
+            identity.brand_logo_dark_upload = request.FILES["brand_logo_dark_upload"]  # type: ignore[assignment]
         if "favicon_upload" in request.FILES:
-            identity.favicon_upload = request.FILES["favicon_upload"]
+            identity.favicon_upload = request.FILES["favicon_upload"]  # type: ignore[assignment]
         if "favicon_dark_upload" in request.FILES:
-            identity.favicon_dark_upload = request.FILES["favicon_dark_upload"]
+            identity.favicon_dark_upload = request.FILES["favicon_dark_upload"]  # type: ignore[assignment]
 
         identity.default_author_display = request.POST.get(
             "default_author_display", identity.default_author_display
@@ -1710,7 +1712,7 @@ def admin_settings_theme_toggle(request: HttpRequest) -> JsonResponse:
     else:
         appearance.mode = (
             SiteAppearanceSettings.Mode.DARK
-            if appearance.mode == SiteAppearanceSettings.Mode.LIGHT
+            if appearance.mode == SiteAppearanceSettings.Mode.LIGHT.value  # type: ignore[comparison-overlap]
             else SiteAppearanceSettings.Mode.LIGHT
         )
 

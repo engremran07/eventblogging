@@ -372,6 +372,10 @@ def admin_posts_list(request: HttpRequest) -> HttpResponse:
 - Public micro-interactions in `site/core.css` — ✅: image zoom, progress glow, comment stagger, reaction spring
 - Topbar glassmorphism elevation (`layout.css`) — ✅
 - `bindTopbarScrollElevation()` in `admin/core.js` — ✅
+- JS theme dedup: `theme-core.js` consolidates dark mode from 3 files — ✅
+- Meta auto-sync: editor.html, post_form.html, page_form.html — ✅
+- Summernote root cause fix: `:not()` CSS exclusions + JS class stripping — ✅
+- `.btn-xs` specificity fix in `control.css` — ✅
 
 ---
 
@@ -441,6 +445,8 @@ def admin_posts_list(request: HttpRequest) -> HttpResponse:
 | 6 | Add `django-debug-toolbar` to development.py INSTALLED_APPS | Agent 6 | LOW | ✅ Done |
 | 7 | BaseModel inheritance migration for remaining models | Agent 1 | HIGH | Not started |
 | 8 | HeadlessUI components 4-13 (Disclosure, Listbox, Combobox, etc.) | Agent 3 | MEDIUM | Not started |
+| 9 | Summernote root cause CSS isolation (:not() + class stripping) | Agent 3 | HIGH | ✅ Done |
+| 10 | JS theme dedup (theme-core.js) + meta auto-sync | Agent 3 | MEDIUM | ✅ Done |
 
 ---
 

@@ -1422,6 +1422,22 @@ python manage.py startapp [name] apps/[name]
 - Summernote-aware word counting: prefer reading from `.note-editable` textContent (immediate) over the hidden markdown textarea (delayed by bridge sync). Use `MutationObserver` on `.summernote-bridge-host` for real-time updates as user types in rich editor.
 - `.note-modal { z-index: 2050 }` must be higher than `.note-modal-content { z-index: 2000 }` — the overlay wrapper needs to be above the admin sidebar (z-index: 100).
 - `.note-statusbar` needs explicit theme styling (`background: var(--surface-2)`, `border-top`) — Summernote default is white which breaks dark mode.
+**FROM JS DEDUP + BUGFIX SESSION (Sessions 6-7):**
+- `{# ... #}` Django comments containing `{% url %}` tags STILL trigger `NoReverseMatch` — use `{% comment %}...{% endcomment %}` blocks instead
+- Alpine 3 CDN load order: the Alpine CDN script must be LAST after all stores/components; store registration must happen inside `document.addEventListener('alpine:init', ...)` NOT at top level
+- `style="display:contents"` on Alpine x-data wrapper divs is fragile — if Alpine hasn't initialized, the element is visible with wrong display; better to use `x-cloak` and `[x-cloak] { display: none !important }` which reliably hides until Alpine init
+- JS theme logic (dark mode toggle, system preference, localStorage) was duplicated across `admin/core.js`, `site/core.js`, and `alpine-store.js` — consolidated into single `theme-core.js` loaded before Alpine
+- `overflow-y: auto` on `.admin-content` wrapper clips ALL absolutely-positioned children (Summernote dropdowns, popovers, tooltips) — NEVER set overflow on a container that holds third-party widgets with dropdown menus
+- Summernote `$host.on('summernote.change', ...)` should NOT be re-registered on HTMX `afterSwap` — leads to duplicate listeners; use `$host.off('summernote.change').on(...)` or guard with data attribute
+- Template `{# visible comments #}` with `{{` or `{%` inside are NOT actually commented out — Django's comment syntax `{# #}` is single-line only; multi-line requires `{% comment %}`
+**FROM SUMMERNOTE ROOT CAUSE FIX SESSION (Session 8 — Current):**
+- **ROOT CAUSE IDENTIFIED**: Summernote BS5 creates DOM with Bootstrap classes: `.note-editor.note-frame.card`, `.note-toolbar.card-header`, `.note-btn.btn.btn-outline-secondary.btn-sm`, `.note-editable.card-block`
+- Global `.card { padding: var(--space-6) }` bleeds 24px padding into Summernote's outer frame; `.card-header { font-size; font-weight; margin-bottom }` bloats the toolbar; `.btn { padding: 12px 16px; font-size: 16px }` bloats every toolbar button
+- Fix: three-layer isolation: (1) CSS `:not()` exclusions on global rules — `.card:not(.note-editor)`, `.btn:not(.note-btn)`, etc.; (2) JS `classList.remove('card')` / `classList.remove('card-header')` / `classList.remove('card-block')` at runtime; (3) Retained `!important` CSS + inline JS `style.setProperty()` as belt-and-suspenders
+- When adding `:not(.x)` to a global selector, specificity bumps from 0,1,0 to 0,2,0 — audit ALL overrides of that selector across the project for cascade breakage
+- `.btn-xs` using Bootstrap CSS custom properties (`--bs-btn-padding-y`) is overridden by `.btn:not(.note-btn) { padding: ... }` at higher specificity — must convert to explicit `padding` and bump selector to `.btn.btn-xs` (0,2,0) to tie
+- To discover the exact DOM structure a third-party widget creates, fetch and read its FULL source JS from CDN — documentation rarely shows the actual renderer templates with Bootstrap class reuse
+- `enforceToolbarStyles()` must be called at 4+ points after Summernote init: immediately, 100ms, 500ms, and via `onInit` callback — Summernote's own CSS applies asynchronously across multiple animation frames
 
 
 ---
@@ -1458,6 +1474,9 @@ python manage.py startapp [name] apps/[name]
 | **[TYPE SESSION]** pyrightconfig `include` lists both `blog` and `apps` | Pylance analyses `apps/blog` twice causing duplicate diagnostics | Only include `["apps", "config"]` |
 | **[TYPE SESSION]** ruff `target-version` mismatch with actual Python | UP rules flag valid 3.11 syntax as "old" or vice versa | Match `target-version` to your actual Python version |
 | **[TYPE SESSION]** `logger = getLogger(...)` placed before imports | Causes E402 "module level import not at top of file" | Place `logger =` AFTER all imports |
+| **[SUMMERNOTE ROOT CAUSE]** Global `.card`/`.btn` rules bleed into Summernote | Summernote BS5 reuses `.card`, `.card-header`, `.btn`, `.btn-sm` Bootstrap classes on its DOM — global overrides for these classes corrupt the editor | Use `:not(.note-editor)` / `:not(.note-btn)` / `:not(.note-toolbar)` on global rules + JS `classList.remove()` |
+| **[SUMMERNOTE ROOT CAUSE]** CSS `!important` isolation alone insufficient | Even with `!important` overrides, global padding/font-size from shared Bootstrap classes still applies first paint causing FOUC before JS corrects it | Prevent bleeding at source with `:not()` selectors; keep `!important` + JS as backup only |
+| **[SPECIFICITY]** Adding `:not()` bumps specificity from 0,1,0 to 0,2,0 | Downstream selectors at 0,1,0 or 0,1,1 that override the base rule silently lose | Audit ALL overrides after adding `:not()` to a widely-used selector |
 | *(Human corrections appended here)* | |
 
 ---
@@ -1465,20 +1484,54 @@ python manage.py startapp [name] apps/[name]
 ## 🎯 ACTIVE CONTEXT — UPDATE EVERY SESSION
 
 ```
-Last Updated:     Mar 2, 2026 (Session 4 — Phase 0-4 UI Enhancement)
-Session Type:     SYSTEMATIC UI ENHANCEMENT — animations, headless, inline styles, micro-interactions, public frontend, HeadlessUI partials
-Working On:       All frontend layers (static/css/, templates/, static/js/)
-Current App:      Entire frontend
-Status:           ✅ COMPLETE — 0 ruff violations, all 4 phases done
+Last Updated:     Mar 2, 2026 (Session 8 — Summernote Root Cause Fix)
+Session Type:     BUGFIX — Summernote CSS root cause + JS dedup + meta auto-sync (Sessions 5-8 cumulative)
+Working On:       static/css/components.css, static/js/summernote-bridge.js, static/css/admin/control.css
+Current App:      Frontend CSS/JS (cross-cutting)
+Status:           ✅ COMPLETE — root cause identified and three-layer fix applied
 Blocked By:       Nothing critical
 Next Steps:
   1. BaseModel migration for remaining models (Agent 1 — HIGH)
   2. HeadlessUI partials 4-13: Disclosure, Listbox, Combobox, Menu, Popover, RadioGroup, Switch, Tabs, Transition, CommandPalette (Agent 3)
   3. Test suite expansion (Agent 6)
 Open Questions:   None blocking
-Last Commit:      TBD — "feat: UI Phase 0-4 — animations.css, headless.css, app.js, zero inline styles, micro-interactions, HeadlessUI partials"
+Last Commit:      "fix: root-cause Summernote CSS isolation via :not() exclusions + class stripping"
 
-FILES CHANGED THIS SESSION (Session 4):
+SESSION 8 CHANGES (Current — Summernote Root Cause Fix):
+  DISCOVERY:
+    - Fetched full Summernote BS5 source from CDN (~700KB) — found exact renderer templates
+    - Summernote intentionally applies .card, .card-header, .btn, .btn-sm, .card-block Bootstrap classes
+    - Our global CSS for these classes (padding, font-size, font-weight, margin) bled into Summernote DOM
+  MODIFIED:
+    - static/css/components.css: .card → .card:not(.note-editor), .card-header → .card-header:not(.note-toolbar),
+      .btn → .btn:not(.note-btn), .btn-sm → .btn-sm:not(.note-btn), .btn i/svg → .btn:not(.note-btn) i/svg
+    - static/js/summernote-bridge.js: enforceToolbarStyles() now also does classList.remove("card"),
+      classList.remove("card-header"), classList.remove("card-block")
+    - static/css/admin/control.css: .btn-xs converted from CSS custom properties to explicit padding
+      (was dead due to .btn:not(.note-btn) specificity bump)
+
+SESSION 5-7 CHANGES (Previously undocumented):
+  Commits: 1fcf121, 92f65ef, 4115c35, ca5f581, 1490fd9, 1926e17, b343efc, 8609756, 80fd164
+  CREATED:
+    - static/js/theme-core.js: Consolidated dark mode logic from 3 files into single source
+    - templates/pages/page_form.html: Public page form with meta auto-sync
+  MODIFIED:
+    - static/js/admin/core.js: Slimmed ~200 lines — theme logic extracted to theme-core.js
+    - static/js/site/core.js: Slimmed ~200 lines — theme logic extracted to theme-core.js
+    - static/js/alpine-store.js: Cleaned up duplicate theme state
+    - static/js/summernote-bridge.js: Added enforceToolbarStyles() with inline !important + onInit callback
+    - static/css/components.css: Added Summernote isolation rules (~80 lines !important CSS)
+    - static/css/layout.css: Removed overflow-y:auto from .admin-content (Summernote dropdown clipping fix)
+    - templates/admin/base_site.html: Fixed Alpine CDN load order (last after stores), added theme-core.js
+    - templates/admin/posts/editor.html: Meta auto-sync (title/desc/canonical), Summernote word counting
+    - templates/blog/post_form.html: Meta auto-sync fields
+    - templates/partials/_toast_stack.html: x-cloak fix (replaced display:contents)
+    - templates/admin/comments/list.html, groups/list.html, pages/list.html, posts/list.html,
+      taxonomy/categories_list.html, flat_list.html, users/list.html: Fixed {# #} → {% comment %} blocks
+    - templates/admin/settings.html, seo/admin/base.html: Removed stale inline styles
+    - config/urls.py: Registered debug_toolbar URLs under __debug__/ when DEBUG=True
+
+FILES CHANGED IN SESSION 4:
   CREATED:
     - static/js/app.js: Alpine.data registry (16 components + dispatchToast, countUp, scroll-animate, HTMX hooks)
     - static/css/animations.css: 28 keyframes + utility classes + reduced-motion
@@ -1543,14 +1596,17 @@ COMPLETED ACROSS ALL SESSIONS:
 ✅ Admin micro-interactions: topbar glassmorphism, .is-removing row animation, Ctrl+S, hover states (Phase 2)
 ✅ Public micro-interactions: image zoom, progress glow, comment stagger, reaction spring (Phase 3)
 ✅ HeadlessUI HTML partials: _modal.html, _toast_stack.html, _drawer.html wired into base.html (Phase 4 MVP)
+✅ JS theme dedup: theme-core.js consolidates dark mode from admin/core.js + site/core.js + alpine-store.js
+✅ Meta auto-sync: editor.html, post_form.html, page_form.html — title/desc/canonical auto-generate from slug
+✅ {# #} Django comment fix → {% comment %} blocks (prevented NoReverseMatch)
+✅ Alpine CDN load order fixed — CDN last, stores in alpine:init listener
+✅ overflow-y:auto removed from .admin-content — fixed Summernote dropdown clipping
+✅ Summernote root cause fix: :not() exclusions on .card/.btn/.card-header + JS class stripping
+✅ .btn-xs specificity fix: explicit padding at .btn.btn-xs (0,2,0) to compete with :not() bump
 
 REMAINING ISSUES (Known/Accepted):
-� Admin dashboard.html: 20 inline styles — ELIMINATED ✅
-🟢 Admin posts/editor.html: 32 inline styles — ELIMINATED ✅
-🟡 HeadlessUI components: 3/13 partials MVP'd (_modal, _toast_stack, _drawer) — CSS full, JS full, HTML ✅ (Agent 3 — MEDIUM)
+🟡 HeadlessUI components: 3/13 partials MVP'd (_modal, _toast_stack, _drawer) — remaining 10 not started (Agent 3 — MEDIUM)
 🟠 BaseModel not inherited by all models — pending migration planning (Agent 1 — HIGH)
-🟢 whitenoise missing from MIDDLEWARE in production.py — FIXED ✅
-🟢 django-debug-toolbar not in development.py INSTALLED_APPS — FIXED ✅
 3 remaining style= are all legitimate (2 dynamic server %widths + 1 GTM noscript)
 ```
 
@@ -1577,4 +1633,4 @@ REMAINING ISSUES (Known/Accepted):
 ---
 
 *Living document. Claude grows it every session. Team grows it. Never becomes stale.*
-*Audit: ✅ | HeadlessUI: 3/13 MVP | Last session: Mar 2 2026 — Phase 0-4 UI enhancement | Model: Sonnet / Opus / Haiku*
+*Audit: ✅ | HeadlessUI: 3/13 MVP | Last session: Mar 2 2026 — Session 8 Summernote root cause fix | Model: Sonnet / Opus / Haiku*

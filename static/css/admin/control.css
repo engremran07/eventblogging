@@ -322,10 +322,11 @@
     font-size: 0.86rem;
 }
 
-.btn-xs {
-    --bs-btn-padding-y: 0.14rem;
-    --bs-btn-padding-x: 0.45rem;
-    --bs-btn-font-size: 0.72rem;
+/* Explicit padding needed: .btn:not(.note-btn) in components.css at 0,2,0
+   overrides Bootstrap CSS-variable-based sizing at 0,1,0. */
+.btn.btn-xs {
+    padding: 0.14rem 0.45rem;
+    font-size: 0.72rem;
 }
 
 @media (max-width: 1300px) {

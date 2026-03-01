@@ -13,7 +13,9 @@
    BUTTONS
    ============================================================================= */
 
-.btn, a.btn, input[type="button"], input[type="submit"] {
+/* Exclude Summernote's .note-btn.btn — Summernote creates compact toolbar
+   buttons with .btn that our larger padding/font-size would bloat. */
+.btn:not(.note-btn), a.btn:not(.note-btn), input[type="button"], input[type="submit"] {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -105,7 +107,7 @@
 }
 
 /* BUTTON SIZES */
-.btn-sm {
+.btn-sm:not(.note-btn) {
   padding: var(--space-2) var(--space-3);
   font-size: var(--text-sm);
 }
@@ -116,7 +118,7 @@
 }
 
 /* Button icons */
-.btn i, .btn svg {
+.btn:not(.note-btn) i, .btn:not(.note-btn) svg {
   width: 1em;
   height: 1em;
 }
@@ -190,92 +192,94 @@ select:focus {
   outline: none;
 }
 
-/* Summernote bridge keeps markdown as source while exposing rich editor UI. */
+/* =============================================================================
+   SUMMERNOTE EDITOR — Third-party widget CSS isolation
+   =============================================================================
+   Summernote BS5 creates DOM with Bootstrap classes:
+     .note-editor.note-frame.card   — the outer frame
+     .note-toolbar.card-header      — the toolbar
+     .note-btn.btn.btn-outline-secondary.btn-sm     — each button
+     .note-editable.card-block      — the contenteditable area
+
+   Our global .card/.card-header/.btn rules are now excluded via :not()
+   selectors above. The JS bridge also strips these classes at runtime.
+   The rules below provide belt-and-suspenders isolation with !important.
+   ============================================================================= */
+
 .summernote-source-hidden {
   display: none;
 }
 
 .summernote-bridge-host {
-  /* Allow toolbar dropdown menus to render outside the host's box */
-  overflow: visible;
+  overflow: visible !important;
 }
 
+/* ── Editor frame ────────────────────────────────────────────────────────── */
+
 .summernote-bridge-host .note-editor.note-frame {
+  padding: 0 !important;
+  overflow: visible !important;
   border: var(--border-width) solid var(--border);
   border-radius: var(--radius-md);
   background: var(--surface-1);
-  /* Undo global .card { padding } — Summernote's .note-frame.card inherits it */
-  padding: 0;
-  /* Dropdowns from the toolbar must not be clipped at the frame level */
-  overflow: visible;
 }
+
+/* ── Toolbar ─────────────────────────────────────────────────────────────── */
 
 .summernote-bridge-host .note-toolbar {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  gap: 0.35rem !important;
+  padding: 0.5rem !important;
+  margin: 0 !important;
+  margin-bottom: 0 !important;
+  font-weight: normal !important;
+  font-size: inherit !important;
+  overflow: visible !important;
   background: var(--surface-2);
   border-bottom: var(--border-width) solid var(--border);
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.35rem;
-  /* Undo global .card-header overrides — Summernote uses .card-header on .note-toolbar */
-  font-weight: normal;
-  font-size: inherit;
-  margin-bottom: 0;
-  padding: 0.5rem 0.5rem;
   color: inherit;
 }
+
+/* ── Button groups ───────────────────────────────────────────────────────── */
 
 .summernote-bridge-host .note-toolbar .note-btn-group {
-  display: inline-flex;
-  align-items: center;
-  margin: 0;
+  display: inline-flex !important;
+  align-items: center !important;
+  margin: 0 !important;
+  flex-shrink: 0;
 }
 
-/* ── Bootstrap .card / .card-header isolation ────────────────────────────────
-   Summernote BS5 applies .card to .note-frame and .card-header to .note-toolbar.
-   Our global .card / .card-header overrides add unwanted padding, font, and margin.
-   Summernote CSS loads AFTER ours (via extrahead block), so these rules at
-   specificity >= 0,3,0 ensure our resets beat both our globals and Summernote's
-   own same-specificity cascade.
-   ──────────────────────────────────────────────────────────────────────────── */
-
-.summernote-bridge-host .note-editor.note-frame.card {
-  padding: 0;
-  transition: border-color var(--transition-duration);
-}
-
-.summernote-bridge-host .note-editor.note-frame.card:hover {
-  border-color: var(--border);
-}
-
-.summernote-bridge-host .note-editor .note-toolbar.card-header {
-  font-weight: normal;
-  font-size: inherit;
-  margin-bottom: 0;
-  padding: 0.5rem 0.5rem;
-  color: inherit;
-  background: var(--surface-2);
-  border-bottom: var(--border-width) solid var(--border);
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.35rem;
-}
+/* ── Toolbar buttons (.note-btn.btn.btn-light.btn-sm) ───────────────────── */
+/* Our global .btn sets padding: 0.75rem 1rem, font-size: 1rem.
+   Our .btn-sm sets padding: 0.5rem 0.75rem.
+   Summernote .note-btn-group .note-btn sets padding/font-size at 0,2,0 AFTER ours.
+   We need !important to guarantee compact sizing. */
 
 .summernote-bridge-host .note-btn {
+  padding: 0.35rem 0.55rem !important;
+  font-size: 0.875rem !important;
+  min-height: 2rem !important;
+  font-weight: 500 !important;
+  gap: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  white-space: nowrap !important;
+  line-height: 1 !important;
+  border-radius: 0.25rem !important;
   border-color: var(--border);
   color: var(--text-secondary);
   background: var(--surface-1);
-  padding: 0.35rem 0.55rem;
-  min-height: 2rem;
-  font-size: 0.9rem;
-  font-weight: var(--fw-medium);
-  gap: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  white-space: nowrap;
-  line-height: 1;
+  /* Undo .btn-primary shimmer overlay */
+  overflow: visible !important;
+  position: relative;
+}
+
+/* Undo .btn-primary::before shimmer on Summernote buttons */
+.summernote-bridge-host .note-btn::before {
+  display: none !important;
 }
 
 .summernote-bridge-host .sn-note-icon {
@@ -289,6 +293,12 @@ select:focus {
   color: var(--text-primary);
   background: var(--surface-2);
   border-color: var(--border-focus);
+}
+
+/* ── Editing area ────────────────────────────────────────────────────────── */
+
+.summernote-bridge-host .note-editing-area {
+  overflow: hidden;
 }
 
 .summernote-bridge-host .note-editing-area .note-editable {
@@ -313,6 +323,8 @@ select:focus {
   border-radius: var(--radius-sm);
 }
 
+/* ── Dropdowns, popovers, modals ─────────────────────────────────────────── */
+
 .note-modal-content,
 .note-dropdown-menu,
 .note-popover {
@@ -322,7 +334,6 @@ select:focus {
   z-index: 2000;
 }
 
-/* Summernote modal overlay (link/image/video dialogs with dialogsInBody:true) */
 .note-modal {
   z-index: 2050;
 }
@@ -331,7 +342,8 @@ select:focus {
   z-index: 2049;
 }
 
-/* Summernote status bar (resize grip at bottom) */
+/* ── Status bar ──────────────────────────────────────────────────────────── */
+
 .summernote-bridge-host .note-statusbar {
   background: var(--surface-2);
   border-top: var(--border-width) solid var(--border);
@@ -349,6 +361,8 @@ select:focus {
   margin: 1px auto;
 }
 
+/* ── Dropdown menus ──────────────────────────────────────────────────────── */
+
 .summernote-bridge-host .note-dropdown-menu {
   z-index: 2000;
   max-height: 300px;
@@ -359,6 +373,8 @@ select:focus {
   z-index: 2000;
 }
 
+/* ── CodeMirror (code view) ──────────────────────────────────────────────── */
+
 .summernote-bridge-host .CodeMirror {
   min-height: 400px;
   height: auto;
@@ -368,7 +384,13 @@ select:focus {
   color: var(--text-primary);
 }
 
-/* Fullscreen mode improvements */
+.summernote-bridge-host .CodeMirror-gutters {
+  background: var(--surface-2);
+  border-right: var(--border-width) solid var(--border);
+}
+
+/* ── Fullscreen mode ─────────────────────────────────────────────────────── */
+
 .note-fullscreen .summernote-bridge-host {
   position: fixed;
   top: 0;
@@ -385,10 +407,7 @@ select:focus {
   min-height: calc(100vh - 200px);
 }
 
-.summernote-bridge-host .CodeMirror-gutters {
-  background: var(--surface-2);
-  border-right: var(--border-width) solid var(--border);
-}
+/* ── Plugin alerts ───────────────────────────────────────────────────────── */
 
 .summernote-bridge-host .summernote-cleanerAlert {
   border-color: var(--success);
@@ -463,7 +482,10 @@ input[type="radio"] {
    CARDS - Containers with border and padding
    ============================================================================= */
 
-.card {
+/* Exclude Summernote's .note-editor.card and .note-toolbar.card-header —
+   Summernote BS5 reuses Bootstrap .card/.card-header on its DOM elements.
+   Without :not(), our padding/font-size overrides bleed into the editor. */
+.card:not(.note-editor) {
   background-color: var(--surface-1);
   border: var(--border-width) solid var(--border);
   border-radius: var(--radius-lg);
@@ -471,11 +493,11 @@ input[type="radio"] {
   transition: border-color var(--transition-duration);
 }
 
-.card:hover {
+.card:not(.note-editor):hover {
   border-color: var(--border-focus);
 }
 
-.card-header {
+.card-header:not(.note-toolbar) {
   font-weight: var(--fw-semibold);
   font-size: var(--text-lg);
   margin-bottom: var(--space-4);

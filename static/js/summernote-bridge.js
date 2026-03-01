@@ -141,6 +141,96 @@
         return (value || "").replace(/\n{3,}/g, "\n\n").trim();
     }
 
+    /**
+     * Force-apply critical layout styles on the Summernote toolbar, buttons,
+     * and frame AFTER Summernote has built its DOM.
+     *
+     * Why JS in addition to CSS?
+     * -  summernote-bs5.min.css loads AFTER our stylesheets (same <head>)
+     *    so same-specificity rules from Summernote win the cascade.
+     * -  Our CSS uses !important, but Summernote's JS may set inline styles
+     *    during initialisation that interfere with layout.
+     * -  style.setProperty(prop, val, 'important') creates inline !important
+     *    declarations — the highest priority origin in the CSS cascade.
+     *    Nothing can override these except another inline !important set later.
+     *
+     * This function is idempotent and safe to call multiple times.
+     */
+    function enforceToolbarStyles(host, height) {
+        const editor = host.querySelector(".note-editor.note-frame");
+        if (!editor) {
+            return;
+        }
+
+        // ── Frame: undo .card padding, allow dropdowns to escape ──
+        editor.style.setProperty("padding", "0", "important");
+        editor.style.setProperty("overflow", "visible", "important");
+
+        // Also strip the .card class that causes our global CSS bleeding
+        // (belt-and-suspenders alongside the CSS :not() exclusion)
+        editor.classList.remove("card");
+        const toolbar = editor.querySelector(".note-toolbar");
+        if (toolbar) {
+            toolbar.classList.remove("card-header");
+        }
+
+        // ── Toolbar: the critical layout fix ──
+        if (toolbar) {
+            toolbar.style.setProperty("display", "flex", "important");
+            toolbar.style.setProperty("flex-wrap", "wrap", "important");
+            toolbar.style.setProperty("align-items", "center", "important");
+            toolbar.style.setProperty("gap", "0.35rem", "important");
+            toolbar.style.setProperty("padding", "0.5rem", "important");
+            toolbar.style.setProperty("margin", "0", "important");
+            toolbar.style.setProperty("margin-bottom", "0", "important");
+            toolbar.style.setProperty("overflow", "visible", "important");
+            toolbar.style.setProperty("font-weight", "normal", "important");
+            toolbar.style.setProperty("font-size", "inherit", "important");
+            toolbar.style.setProperty("max-height", "none", "important");
+            toolbar.style.setProperty("height", "auto", "important");
+            toolbar.style.setProperty("visibility", "visible", "important");
+            // Force a reflow so the browser paints the corrected layout
+            // before the user sees the toolbar in a half-rendered state.
+            void toolbar.offsetHeight;
+        }
+
+        // ── Button groups: ensure they display inline-flex ──
+        const groups = editor.querySelectorAll(".note-btn-group");
+        groups.forEach(function (group) {
+            group.style.setProperty("display", "inline-flex", "important");
+            group.style.setProperty("align-items", "center", "important");
+            group.style.setProperty("margin", "0", "important");
+            group.style.setProperty("visibility", "visible", "important");
+        });
+
+        // ── Buttons: undo global .btn bloating ──
+        const buttons = editor.querySelectorAll(".note-btn");
+        buttons.forEach(function (btn) {
+            btn.style.setProperty("padding", "0.35rem 0.55rem", "important");
+            btn.style.setProperty("font-size", "0.875rem", "important");
+            btn.style.setProperty("font-weight", "500", "important");
+            btn.style.setProperty("min-height", "2rem", "important");
+            btn.style.setProperty("line-height", "1", "important");
+            btn.style.setProperty("white-space", "nowrap", "important");
+        });
+
+        // ── Editing area height: ensure Summernote's inline height sticks ──
+        const editingArea = editor.querySelector(".note-editing-area");
+        if (editingArea) {
+            editingArea.style.setProperty("overflow", "hidden", "");
+        }
+        const editable = editor.querySelector(".note-editable");
+        if (editable) {
+            editable.style.setProperty("min-height", height + "px", "");
+            editable.style.setProperty("overflow-y", "auto", "");
+        }
+
+        // ── Also strip Bootstrap's .card-block on editable ──
+        if (editable) {
+            editable.classList.remove("card-block");
+        }
+    }
+
     function initSingleEditor(textarea) {
         if (!textarea || textarea.dataset[INIT_MARKER] === "1") {
             return;
@@ -172,8 +262,9 @@
         }
 
         const editorHeight = Number.parseInt(textarea.dataset.summernoteHeight || "420", 10);
+        const effectiveHeight = Number.isFinite(editorHeight) ? editorHeight : 420;
         $host.summernote({
-            height: Number.isFinite(editorHeight) ? editorHeight : 420,
+            height: effectiveHeight,
             tabsize: 2,
             dialogsInBody: true,
             codemirror: window.CodeMirror
@@ -222,7 +313,26 @@
                     ["insert", ["link", "picture"]],
                 ],
             },
+            callbacks: {
+                onInit: function () {
+                    // Summernote's official "I'm fully ready" signal.
+                    // Enforce toolbar styles once more after all plugins and
+                    // toolbar buttons have been fully rendered.
+                    enforceToolbarStyles(host, effectiveHeight);
+                },
+            },
         });
+
+        // ── Force-fix toolbar layout AFTER Summernote creates its DOM ──
+        // Run immediately, then again after a short delay to catch any
+        // deferred Summernote rendering (plugin buttons, async toolbar paint).
+        enforceToolbarStyles(host, effectiveHeight);
+        window.setTimeout(function () {
+            enforceToolbarStyles(host, effectiveHeight);
+        }, 100);
+        window.setTimeout(function () {
+            enforceToolbarStyles(host, effectiveHeight);
+        }, 500);
 
         const initialHtml = markdownToHtml(textarea.value);
         $host.summernote("code", initialHtml);

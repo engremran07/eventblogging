@@ -195,10 +195,17 @@ select:focus {
   display: none;
 }
 
+.summernote-bridge-host {
+  /* Allow toolbar dropdown menus to render outside the host's box */
+  overflow: visible;
+}
+
 .summernote-bridge-host .note-editor.note-frame {
   border: var(--border-width) solid var(--border);
   border-radius: var(--radius-md);
   background: var(--surface-1);
+  /* Dropdowns from the toolbar must not be clipped at the frame level */
+  overflow: visible;
 }
 
 .summernote-bridge-host .note-toolbar {
@@ -243,10 +250,6 @@ select:focus {
   color: var(--text-primary);
   background: var(--surface-2);
   border-color: var(--border-focus);
-}
-
-.summernote-bridge-host .note-editing-area {
-  overflow: visible;
 }
 
 .summernote-bridge-host .note-editing-area .note-editable {

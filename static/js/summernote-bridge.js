@@ -132,9 +132,9 @@
     }
 
     function dispatchForHtmx(textarea) {
+        // A single bubbling "input" event is enough for all HTMX triggers
+        // and live-indicator listeners on the textarea.
         textarea.dispatchEvent(new Event("input", { bubbles: true }));
-        textarea.dispatchEvent(new Event("change", { bubbles: true }));
-        textarea.dispatchEvent(new Event("keyup", { bubbles: true }));
     }
 
     function normalizeMarkdown(value) {
@@ -240,9 +240,8 @@
             dispatchForHtmx(textarea);
         };
 
+        // summernote.change already fires after paste and keyup — no need to double-bind.
         $host.on("summernote.change", syncBackToMarkdown);
-        $host.on("summernote.paste", syncBackToMarkdown);
-        $host.on("summernote.keyup", syncBackToMarkdown);
         syncBackToMarkdown();
 
         const form = textarea.closest("form");

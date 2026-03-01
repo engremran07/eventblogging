@@ -1,4 +1,4 @@
-{#
+{% comment %}
   HeadlessUI Toast Stack partial — mounts once in base.html.
 
   Fire toasts from Python (via HX-Trigger header):
@@ -19,7 +19,7 @@
 
   Django messages are auto-converted to toasts by the htmx:afterRequest listener
   in app.js (reads HX-Trigger: {"hl-toast": {...}} from response headers).
-#}
+{% endcomment %}
 <div
     x-data="toastManager()"
     @hl-toast.window="add($event.detail)"

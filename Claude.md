@@ -1448,6 +1448,12 @@ python manage.py startapp [name] apps/[name]
 - When consolidating admin static files referenced in child `{% block extrajs %}` / `{% block extrahead %}`, move them to the admin base template and REMOVE the child block overrides — otherwise the styles/scripts load twice
 - `django-csp==4.0` in requirements does NOT enforce CSP unless `CSP_*` settings AND `CspMiddleware` are configured — mere pip install is a no-op
 - HTTP requests per page reduced from 13 CSS+JS to 6 = 54% fewer requests — significant for perceived load time on first visit (before browser cache)
+**FROM POST CREATION FIX SESSION (Mar 2, 2026 Session 10):**
+- `data-ui-confirm` on form elements causes `site.js` submit handler to call `event.preventDefault()` THEN attempt Bootstrap Modal via Alpine store — if ANY link in the Alpine→Bootstrap→Modal chain breaks, form is permanently dead (preventDefault already fired, showConfirm returns false)
+- NEVER use `data-ui-confirm` on creation/edit forms (where user explicitly fills content) — reserve it for destructive/bulk operations (delete, bulk archive) where accidental clicks are costly
+- Double jQuery: Tagulous `{{ form.media }}` loads jQuery as blocking script in `<head>`, then `summernote_assets.html` loaded CDN jQuery as deferred — deferred jQuery REPLACED window.jQuery but Tagulous's IIFE-captured `$` kept working (isolated closure). Fix: conditional `if(!window.jQuery) document.write(...)` so CDN only loads when Tagulous absent
+- `document.write('<script src="..."><\/script>')` during HTML parsing is reliable for conditional synchronous script loading — dynamically created `defer` scripts DON'T follow document-order defer semantics
+- Tagulous Select2 adaptor wraps in `(function($){...})(jQuery)` — captures jQuery at IIFE execution time, so even if window.jQuery is later overwritten, the captured `$` still works for Select2 init
 
 
 ---
@@ -1490,6 +1496,8 @@ python manage.py startapp [name] apps/[name]
 | **[STATIC CONSOLIDATION]** Duplicate CSS/JS across child `{% block extrahead/extrajs %}` | Child blocks override parent — if base already loads the file, child block causes double-load | Move shared assets to base template, remove child block overrides |
 | **[STATIC CONSOLIDATION]** `DJANGO_DEBUG=False` in dev `.env` | Blocks staticfiles serving + enforces production CSRF → 403 + blank pages | Always verify `.env` has `DJANGO_DEBUG=True` for local development |
 | **[HTMX CONFIG]** `<meta name="htmx-config">` placed AFTER htmx `<script>` | htmx reads meta during init — late placement means config is silently ignored | Place htmx-config meta tag BEFORE the htmx script tag |
+| **[POST CREATION]** `data-ui-confirm` on create/edit forms | site.js submit handler calls preventDefault() then tries Bootstrap Modal — if chain fails, form permanently blocked | NEVER use data-ui-confirm on content creation forms; reserve for destructive/bulk actions only |
+| **[DOUBLE JQUERY]** CDN jQuery loaded unconditionally alongside Tagulous jQuery | Two jQuery instances: plugins registered on wrong instance, event handler confusion, memory waste | Use `if(!window.jQuery) document.write(...)` to conditionally load CDN jQuery only when no jQuery present |
 | *(Human corrections appended here)* | |
 
 ---
@@ -1497,69 +1505,41 @@ python manage.py startapp [name] apps/[name]
 ## 🎯 ACTIVE CONTEXT — UPDATE EVERY SESSION
 
 ```
-Last Updated:     Mar 1, 2026 (Session 9 — Static Consolidation + CSRF Fix)
-Session Type:     REFACTOR — CSS/JS consolidation, CSRF fix, HTMX enhancement, template cleanup
-Working On:       static/css/*, static/js/*, templates/base.html, templates/admin/base_site.html
-Current App:      Frontend static pipeline (cross-cutting)
-Status:           ✅ COMPLETE — 19 static files → 9, all templates updated, CSRF fixed, HTMX enhanced
+Last Updated:     Mar 2, 2026 (Session 10 — Post Creation Fix)
+Session Type:     BUGFIX — Post creation form submission blocked by JS confirmation dialog
+Working On:       templates/blog/post_form.html, templates/pages/page_form.html, templates/partials/summernote_assets.html
+Current App:      Blog (public frontend)
+Status:           ✅ COMPLETE — Post create/draft/publish all working end-to-end
 Blocked By:       Nothing critical
 Next Steps:
   1. BaseModel migration for remaining models (Agent 1 — HIGH)
-  2. HeadlessUI partials 4-13: Disclosure, Listbox, Combobox, Menu, Popover, RadioGroup, Switch, Tabs, Transition, CommandPalette (Agent 3)
+  2. HeadlessUI partials 4-13 (Agent 3)
   3. Test suite expansion (Agent 6)
 Open Questions:   None blocking
-Last Commit:      "refactor: consolidate static files (CSS 11→5, JS 8→4) + fix CSRF + enhance HTMX"
+Last Commit:      "fix: remove data-ui-confirm blocking post/page creation + fix double jQuery"
 
-SESSION 9 CHANGES (Current — Static Consolidation + CSRF Fix):
-  ROOT CAUSE FIXES:
-    - .env: DJANGO_DEBUG=False → True (was running production mode in dev, blocking static serving)
-    - .env: DJANGO_CSRF_TRUSTED_ORIGINS= (empty) → http://127.0.0.1:8000,http://localhost:8000
-    - These two .env changes fixed: CSRF 403 on admin login, "nothing visible" (no static serving), Summernote not loading
-    - CSP: Confirmed django-csp==4.0 in production.txt but ZERO CSP_* settings configured — NOT causing issues
-    - Summernote: Bridge has 40-retry mechanism (150ms × 40 = 6s), all toolbar features present — works fine once page loads
+SESSION 10 CHANGES (Current — Post Creation Fix):
+  ROOT CAUSE: `data-ui-confirm` attribute on <form> in post_form.html and page_form.html caused
+  site.js submit handler to call event.preventDefault() then attempt to show Bootstrap Modal via
+  Alpine store. If Alpine/Bootstrap/Modal DOM chain had any issue, showConfirm() returned
+  Promise.resolve(false) → form NEVER resubmitted. Buttons appeared dead.
 
-  CSS CONSOLIDATION (11 files → 5 files):
-    CREATED:
-      - static/css/foundation.css (23,372B) = tokens.css + design-system.css + base.css
-      - static/css/admin/admin.css (36,307B) = workspace.css + dashboard.css + control.css
-    REPLACED (merged into existing):
-      - static/css/components.css (63,470B) = old components.css + headless.css
-      - static/css/layout.css (33,095B) = old layout.css + animations.css
-    UNCHANGED:
-      - static/css/site/core.css (23,164B)
-    DELETED:
-      - tokens.css, design-system.css, base.css, headless.css, animations.css
-      - admin/workspace.css, admin/dashboard.css, admin/control.css
+  FIXES APPLIED:
+    1. templates/blog/post_form.html:
+       - Removed `data-ui-confirm="Create this post now?"` from <form> element
+       - Removed ambiguous "{{ mode }} Post" third submit button
+       - Added icons to Save Draft (bi-file-earmark) and Publish Now (bi-send) buttons
+    2. templates/pages/page_form.html:
+       - Removed `data-ui-confirm="Create this page now?"` from <form> element
+    3. templates/partials/summernote_assets.html:
+       - Replaced unconditional CDN jQuery load with conditional: only loads if Tagulous hasn't
+         already provided jQuery via {{ form.media }}
+       - Uses document.write() fallback for admin editor pages that don't have {{ form.media }}
 
-  JS CONSOLIDATION (8 files → 4 files):
-    REPLACED (merged into existing):
-      - static/js/app.js (40,754B) = theme-core.js + alpine-store.js + old app.js
-    CREATED:
-      - static/js/site/site.js (23,409B) = alpine-htmx-utils.js + site/core.js
-      - static/js/admin/admin.js (33,678B) = admin/core.js + admin/workspace.js + admin/control.js
-    UNCHANGED:
-      - static/js/summernote-bridge.js (15,660B)
-    DELETED:
-      - theme-core.js, alpine-store.js
-      - site/alpine-htmx-utils.js, site/core.js
-      - admin/core.js, admin/workspace.js, admin/control.js
-
-  TEMPLATE UPDATES:
-    - templates/base.html: 8 CSS links → 4 (foundation, components, layout, site/core); 5 JS scripts → 2 (app, site/site)
-    - templates/admin/base_site.html: 8 CSS links → 4 (foundation, components, layout, admin/admin); 3 JS scripts → 2 (app, admin/admin)
-    - 6 admin child templates: removed redundant {% block extrajs %} workspace.js includes (now in base)
-    - templates/admin/index.html: removed redundant dashboard.css extrahead (now in admin/admin.css)
-    - templates/seo/admin/base.html: removed redundant control.css + control.js extrahead (now in base)
-    - templates/blog/dashboard.html: workspace.css → admin/admin.css reference
-
-  HTMX ENHANCEMENT:
-    - Added <meta name="htmx-config"> in both base templates (BEFORE htmx script load):
-      globalViewTransitions, defaultSwapStyle=innerHTML, defaultSettleDelay=100ms, scrollBehavior=smooth, includeIndicatorStyles=true
-
-  STATIC FILE TOTALS:
-    CSS: 5 files, 179,408 bytes (was 11 files, ~172,000 bytes — slight increase from merge headers)
-    JS:  4 files, 113,501 bytes (was 8 files, ~109,000 bytes — slight increase from merge headers)
-    HTTP requests per page: 6 CSS+JS (was 13) — 54% fewer requests
+  VERIFICATION:
+    - Backend: Model save ✅, Form validation ✅, HTTP GET 200 ✅, HTTP POST 302 ✅
+    - Template: data-ui-confirm removed ✅, Save Draft present ✅, Publish Now present ✅
+    - jQuery: conditional loading prevents double jQuery on Tagulous pages ✅
 
 PHASE SUMMARY:
   ✅ Phase 0 — Foundation: animations.css, headless.css, app.js created; base.html wired
@@ -1615,6 +1595,9 @@ COMPLETED ACROSS ALL SESSIONS:
 ✅ JS consolidated: 8 files → 4 (app, site/site, admin/admin, summernote-bridge)
 ✅ Template refs updated: base.html, base_site.html + 10 child templates cleaned
 ✅ HTMX enhanced: <meta name="htmx-config"> with globalViewTransitions, scrollBehavior, settleDelay
+✅ Post/Page creation fix: removed data-ui-confirm blocking form submission
+✅ Double jQuery fix: conditional CDN jQuery load (only if Tagulous jQuery absent)
+✅ Post form UX: removed ambiguous third button, added icons to Save Draft / Publish Now
 
 REMAINING ISSUES (Known/Accepted):
 🟡 HeadlessUI components: 3/13 partials MVP'd (_modal, _toast_stack, _drawer) — remaining 10 not started (Agent 3 — MEDIUM)
@@ -1645,4 +1628,4 @@ REMAINING ISSUES (Known/Accepted):
 ---
 
 *Living document. Claude grows it every session. Team grows it. Never becomes stale.*
-*Audit: ✅ | HeadlessUI: 3/13 MVP | Last session: Mar 1 2026 — Session 9 Static Consolidation + CSRF Fix | Model: Sonnet / Opus / Haiku*
+*Audit: ✅ | HeadlessUI: 3/13 MVP | Last session: Mar 2 2026 — Session 10 Post Creation Fix | Model: Sonnet / Opus / Haiku*

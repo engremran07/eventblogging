@@ -1,7 +1,8 @@
 {% load static %}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/summernote@0.9.1/dist/summernote-bs5.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.20/lib/codemirror.min.css">
-<script defer src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+{# jQuery: only load CDN version if Tagulous hasn't already provided it via {{ form.media }} #}
+<script>if(!window.jQuery)document.write('<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"><\/script>')</script>
 <script defer src="https://cdn.jsdelivr.net/npm/summernote@0.9.1/dist/summernote-bs5.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/codemirror@5.65.20/lib/codemirror.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/codemirror@5.65.20/mode/xml/xml.min.js"></script>

@@ -31,7 +31,6 @@
             <form
                 method="post"
                 enctype="multipart/form-data"
-                data-ui-confirm="{% if mode == 'Create' %}Create this post now?{% else %}Save updates to this post?{% endif %}"
                 data-ui-feedback-target="post-form"
                 data-ui-action-kind="{% if mode == 'Create' %}create{% else %}update{% endif %}"
                 class="vstack gap-3"
@@ -57,9 +56,12 @@
                 {% endfor %}
 
                 <div class="d-flex gap-2 flex-wrap">
-                    <button class="btn btn-secondary" type="submit" data-post-status-submit="draft">Save Draft</button>
-                    <button class="btn btn-primary" type="submit" data-post-status-submit="published">Publish</button>
-                    <button class="btn btn-outline-primary" type="submit">{{ mode }} Post</button>
+                    <button class="btn btn-secondary" type="submit" data-post-status-submit="draft">
+                        <i class="bi bi-file-earmark me-1"></i>Save Draft
+                    </button>
+                    <button class="btn btn-primary" type="submit" data-post-status-submit="published">
+                        <i class="bi bi-send me-1"></i>Publish Now
+                    </button>
                     {% if post %}
                         <a class="btn btn-outline-secondary" href="{{ post.get_absolute_url }}">Cancel</a>
                     {% else %}

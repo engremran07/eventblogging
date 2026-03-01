@@ -1,9 +1,8 @@
-{#
+{% comment %}
   HeadlessUI Drawer / SlideOver partial — mounts once in base.html.
 
   Usage:
-      <!-- Trigger -->
-      <button hx-get="{% url 'items:hx_detail' item.pk %}"
+      <button hx-get="/your-app/hx/detail/{{ item.pk }}/"
               hx-target="#drawer-body"
               hx-swap="innerHTML"
               @click="$dispatch('show-drawer', { title: item.name, side: 'right' })">
@@ -12,7 +11,7 @@
 
   Sides: 'right' (default) | 'left'
   The drawer body (#drawer-body) is filled by HTMX or JS.
-#}
+{% endcomment %}
 <div
     x-data="drawerManager()"
     @show-drawer.window="show($event.detail)"

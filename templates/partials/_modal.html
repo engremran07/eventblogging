@@ -1,30 +1,25 @@
-{#
+{% comment %}
   HeadlessUI Modal partial — mounts once in base.html, opened via Alpine events.
 
   Usage (fire from any template / HTMX view):
-      <!-- Open with a static body slot -->
-      <button @click="$dispatch('show-modal', { title: 'Confirm', size: 'sm',
-                                                bodyTemplate: '#my-body-tpl' })">
+
+  Option A — inline body via <template> tag:
+      <button @click="$dispatch('show-modal', { title: 'Confirm', size: 'sm' })">
           Open
       </button>
-      <template id="my-body-tpl">
-          <p>Are you sure?</p>
-          <div class="d-flex gap-2 justify-content-end mt-3">
-              <button class="btn btn-secondary" @click="$dispatch('close-modal')">Cancel</button>
-              <button class="btn btn-danger" hx-delete="…">Delete</button>
-          </div>
-      </template>
 
-      <!-- Open with an HTMX-loaded body -->
-      <button hx-get="{% url 'items:hx_create_form' %}"
+  Option B — HTMX-loaded body (most common):
+      <button hx-get="/your-app/hx/create-form/"
               hx-target="#modal-body"
               hx-swap="innerHTML"
               @click="$dispatch('show-modal', { title: 'New Item' })">
           Create
       </button>
 
+  From Python views: trigger_client_event(response, 'show-modal', {'title': 'Done', 'size': 'sm'})
+
   Sizes: 'sm' | 'md' (default) | 'lg' | 'xl'
-#}
+{% endcomment %}
 <div
     x-data="modalManager()"
     @show-modal.window="show($event.detail)"

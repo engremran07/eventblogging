@@ -1,10 +1,10 @@
-<div class="stat-widget {% if css_class %}{{ css_class }}{% endif %}" style="padding: var(--p-lg); border-radius: var(--radius-lg); border: 1px solid var(--color-border); background-color: var(--color-bg-secondary);">
-  <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+<div class="stat-widget {% if css_class %}{{ css_class }}{% endif %}">
+  <div class="stat-widget-row">
     <div>
-      <p style="margin: 0; color: var(--color-text-secondary); font-size: var(--text-sm);">{{ label }}</p>
-      <h2 style="margin: var(--space-2) 0 0 0; font-size: var(--text-3xl);">{{ value }}</h2>
-      {% if trend %}<small style="color: var(--color-success-600);">{{ trend }}</small>{% endif %}
+      <p class="stat-widget-label">{{ label }}</p>
+      <h2 class="stat-widget-value">{{ value }}</h2>
+      {% if trend %}<small class="stat-widget-trend">{{ trend }}</small>{% endif %}
     </div>
-    {% if icon %}<i class="{{ icon }}" style="font-size: var(--text-3xl); color: var(--color-primary-600); opacity: 0.5;"></i>{% endif %}
+    {% if icon %}<i class="{{ icon }} stat-widget-icon"></i>{% endif %}
   </div>
 </div>

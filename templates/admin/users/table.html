@@ -21,7 +21,7 @@
             {% if page_obj.number %}<input type="hidden" name="page" value="{{ page_obj.number }}">{% endif %}
             <span class="workspace-muted">Bulk users action</span>
             <div class="workspace-bulk-actions">
-                <select name="bulk_action" class="form-select form-select-sm" style="max-width: 240px;">
+                <select name="bulk_action" class="form-select form-select-sm bulk-action-select">
                     <option value="activate">Activate selected</option>
                     <option value="deactivate">Deactivate selected</option>
                     <option value="grant_staff">Grant staff access</option>
@@ -37,7 +37,7 @@
         <table class="workspace-table">
             <thead>
                 <tr>
-                    <th style="width: 44px;">Sel</th>
+                    <th class="col-select">Sel</th>
                     <th>Username</th>
                     <th>Profile</th>
                     <th>Email</th>

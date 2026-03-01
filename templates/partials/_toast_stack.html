@@ -1,0 +1,68 @@
+{#
+  HeadlessUI Toast Stack partial — mounts once in base.html.
+
+  Fire toasts from Python (via HX-Trigger header):
+      from django_htmx.http import trigger_client_event
+      response = render(request, ...)
+      trigger_client_event(response, "hl-toast", {
+          "message": "Post saved!",
+          "level": "success",      # success | warning | danger | info
+          "duration": 4000,        # ms, optional
+      })
+
+  Fire toasts from JavaScript:
+      dispatchToast("Copied to clipboard", "success")
+      // or
+      window.dispatchEvent(new CustomEvent("hl-toast", {
+          detail: { message: "Error", level: "danger", duration: 6000 }
+      }))
+
+  Django messages are auto-converted to toasts by the htmx:afterRequest listener
+  in app.js (reads HX-Trigger: {"hl-toast": {...}} from response headers).
+#}
+<div
+    x-data="toastManager()"
+    @hl-toast.window="add($event.detail)"
+    class="hl-toast-stack"
+    aria-live="polite"
+    aria-atomic="false"
+    role="log"
+    x-cloak
+>
+    <template x-for="toast in toasts" :key="toast.id">
+        <div
+            class="hl-toast"
+            :class="'hl-toast--' + (toast.level || toast.type || 'info')"
+            x-show="toast.visible"
+            x-transition:enter="hl-enter"
+            x-transition:enter-start="hl-enter-from"
+            x-transition:enter-end="hl-enter-to"
+            x-transition:leave="hl-leave"
+            x-transition:leave-start="hl-leave-from"
+            x-transition:leave-end="hl-leave-to"
+            role="status"
+        >
+            {# Icon #}
+            <span class="hl-toast-icon" aria-hidden="true">
+                {# Each level resolves its icon via CSS :before content #}
+            </span>
+
+            {# Message #}
+            <span class="hl-toast-msg flex-grow-1" x-text="toast.message"></span>
+
+            {# Dismiss button #}
+            <button
+                type="button"
+                class="hl-toast-close btn-close btn-close-sm ms-2"
+                :aria-label="'Dismiss: ' + toast.message"
+                @click="remove(toast.id)"
+            ></button>
+
+            {# Drain bar #}
+            <div
+                class="hl-toast-drain"
+                :style="'animation-duration: ' + (toast.duration || 4000) + 'ms'"
+            ></div>
+        </div>
+    </template>
+</div>

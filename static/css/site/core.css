@@ -960,3 +960,70 @@ a.quick-link:hover,
         width: auto;
     }
 }
+
+/* ── PHASE 3 PUBLIC MICRO-INTERACTIONS ───────────────────────────────────── */
+
+/* Post-card thumbnail zoom on hover */
+.post-card .card-img-top,
+.post-card .post-card-cover {
+    transition: transform 0.4s ease;
+    will-change: transform;
+}
+.post-card:hover .card-img-top,
+.post-card:hover .post-card-cover {
+    transform: scale(1.06);
+}
+
+/* Reading progress bar ambient glow */
+.reading-progress-bar {
+    box-shadow: 0 0 8px color-mix(in srgb, var(--brand) 55%, transparent);
+}
+
+/* Reaction button spring via heart-pop keyframe (animations.css) */
+.post-reaction-btn:active {
+    animation: heart-pop 0.38s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+.post-reaction-btn.is-active {
+    animation: heart-pop 0.42s ease both;
+}
+
+/* Comment list stagger — each .comment-item fades up in sequence */
+.comment-item {
+    animation: comment-reveal 0.32s ease both;
+}
+.comment-item:nth-child(1)  { animation-delay: 0ms; }
+.comment-item:nth-child(2)  { animation-delay: 60ms; }
+.comment-item:nth-child(3)  { animation-delay: 120ms; }
+.comment-item:nth-child(4)  { animation-delay: 180ms; }
+.comment-item:nth-child(5)  { animation-delay: 240ms; }
+.comment-item:nth-child(n+6){ animation-delay: 300ms; }
+
+/* Like float bubble — fires when .liked class is toggled by JS */
+.post-reaction-btn.liked-fx {
+    animation: like-float 0.55s ease forwards;
+}
+
+/* Hero / page-enter transitions */
+.page-hero { animation: hero-fade-up 0.6s ease both; }
+
+/* Scroll-triggered elements (IntersectionObserver adds .is-visible) */
+.animate-on-scroll {
+    opacity: 0;
+    transform: translateY(18px);
+    transition: opacity 0.45s ease, transform 0.45s ease;
+}
+.animate-on-scroll.is-visible {
+    opacity: 1;
+    transform: none;
+}
+
+/* Reduced motion overrides */
+@media (prefers-reduced-motion: reduce) {
+    .post-card .card-img-top,
+    .post-card .post-card-cover,
+    .post-reaction-btn:active,
+    .post-reaction-btn.is-active,
+    .comment-item,
+    .animate-on-scroll { animation: none; transition: none; }
+    .animate-on-scroll { opacity: 1; transform: none; }
+}

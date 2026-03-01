@@ -63,6 +63,10 @@
     <link rel="stylesheet" href="{% static 'css/components.css' %}">
     <link rel="stylesheet" href="{% static 'css/layout.css' %}">
     
+    <!-- Animation keyframes registry (all @keyframes centralised here) -->
+    <link rel="stylesheet" href="{% static 'css/animations.css' %}">
+    <!-- HeadlessUI-inspired component styles (modal, drawer, toast, listbox, …) -->
+    <link rel="stylesheet" href="{% static 'css/headless.css' %}">
     <!-- Site-specific overrides -->
     <link rel="stylesheet" href="{% static 'css/site/core.css' %}">
     {% if site_appearance and site_appearance.css_variables %}
@@ -100,6 +104,7 @@
     <script src="https://unpkg.com/htmx.org@2.0.8"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.15.0/dist/cdn.min.js"></script>
     <script defer src="{% static 'js/alpine-store.js' %}"></script>
+    <script defer src="{% static 'js/app.js' %}"></script>
     <script defer src="{% static 'js/site/alpine-htmx-utils.js' %}"></script>
     <script defer src="{% static 'js/site/core.js' %}"></script>
     {% block extra_head %}{% endblock %}
@@ -149,6 +154,11 @@
     </div>
 </div>
 
+{# ── HeadlessUI interactive regions — mounted once, opened via Alpine events ── #}
+{% include "partials/_modal.html" %}
+{% include "partials/_toast_stack.html" %}
+{% include "partials/_drawer.html" %}
+
 <nav class="navbar navbar-expand-lg sticky-top app-nav border-bottom">
     <div class="container-fluid px-4">
         <a class="navbar-brand brand-mark" href="{% url 'blog:home' %}">
@@ -193,7 +203,7 @@
                         <span class="frontend-user-name">{{ current_user_profile.effective_name|default:user.get_full_name|default:user.username }}</span>
                         <a class="frontend-user-profile" href="{% url 'profile' %}">Profile</a>
                     </div>
-                    <form method="post" action="{% url 'logout' %}" style="display: inline;">
+                    <form method="post" action="{% url 'logout' %}" class="d-inline">
                         {% csrf_token %}
                         <button type="submit" class="btn btn-sm btn-outline-secondary">Sign out</button>
                     </form>

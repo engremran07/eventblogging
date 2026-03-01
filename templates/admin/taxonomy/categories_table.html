@@ -31,7 +31,7 @@
             {% if page_obj.number %}<input type="hidden" name="page" value="{{ page_obj.number }}">{% endif %}
             <span class="workspace-muted">Bulk categories action</span>
             <div class="workspace-bulk-actions">
-                <select name="bulk_action" class="form-select form-select-sm" style="max-width: 220px;">
+                <select name="bulk_action" class="form-select form-select-sm bulk-action-select">
                     <option value="protect">Mark as protected</option>
                     <option value="unprotect">Remove protection</option>
                     <option value="delete">Delete selected</option>
@@ -45,8 +45,8 @@
         <table class="workspace-table">
             <thead>
                 <tr>
-                    <th style="width: 48px;">Move</th>
-                    <th style="width: 44px;">Sel</th>
+                    <th class="col-move">Move</th>
+                    <th class="col-select">Sel</th>
                     <th>Name</th>
                     <th>Path</th>
                     <th>Parent</th>

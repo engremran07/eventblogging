@@ -619,3 +619,299 @@ input[type="radio"] {
   height: var(--border-width);
   background-color: var(--border);
 }
+
+/* =============================================================================
+   STAT WIDGET — extracted from components/stat_widget.html inline styles
+   ============================================================================= */
+
+.stat-widget {
+  padding: var(--p-lg, var(--space-6));
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  background-color: var(--surface-2);
+}
+
+.stat-widget-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.stat-widget-label {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.stat-widget-value {
+  margin: var(--space-2) 0 0 0;
+  font-size: var(--text-3xl);
+}
+
+.stat-widget-trend {
+  color: var(--success);
+}
+
+.stat-widget-icon {
+  font-size: var(--text-3xl);
+  color: var(--accent);
+  opacity: 0.5;
+}
+
+/* =============================================================================
+   DATA TABLE COMPONENT — extracted from components/data_table.html
+   ============================================================================= */
+
+.data-table-wrapper {
+  overflow-x: auto;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.data-table thead {
+  background-color: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+}
+
+.data-table th {
+  padding: var(--p-md, var(--space-4));
+  text-align: left;
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+}
+
+.data-table tr {
+  border-bottom: 1px solid var(--border);
+}
+
+.data-table tr:nth-child(even) {
+  background-color: var(--surface-2);
+}
+
+.data-table td {
+  padding: var(--p-md, var(--space-4));
+  color: var(--text-primary);
+}
+
+/* =============================================================================
+   CARD COMPONENT — extracted from components/card.html
+   ============================================================================= */
+
+.card-component {
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  padding: var(--p-md, var(--space-4));
+}
+
+.card-component-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: var(--space-4);
+}
+
+.card-component-icon {
+  margin-right: var(--space-2);
+}
+
+.card-component-title {
+  margin: 0;
+}
+
+/* =============================================================================
+   ALERT DISMISS — button utility
+   ============================================================================= */
+
+.alert-dismiss-btn {
+  background: none;
+  color: inherit;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  font-size: var(--text-lg);
+}
+
+.alert-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* =============================================================================
+   TOAST COMPONENT — extracted from components/toast.html
+   ============================================================================= */
+
+.toast-component {
+  position: fixed;
+  bottom: var(--space-6);
+  right: var(--space-6);
+  color: white;
+  padding: var(--p-md, var(--space-4));
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  z-index: var(--z-notification);
+  animation: slideInUp var(--transition-fast, 200ms) ease-out;
+}
+
+.toast-component-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.toast-close-btn {
+  background: none;
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-size: var(--text-lg);
+  padding: 0;
+  margin-left: var(--space-4);
+}
+
+/* Toast type colour modifiers */
+.toast-component--success { background-color: var(--success); }
+.toast-component--warning { background-color: var(--warning); color: var(--text-primary); }
+.toast-component--danger  { background-color: var(--danger); }
+.toast-component--info    { background-color: var(--info); }
+
+/* =============================================================================
+   MODAL COMPONENT — extracted from components/modal.html
+   ============================================================================= */
+
+.modal-component-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: var(--z-modal);
+}
+
+.modal-component-dialog {
+  background-color: var(--surface-1);
+  border-radius: var(--radius-lg);
+  padding: var(--p-lg, var(--space-6));
+  width: 90%;
+  box-shadow: var(--shadow-xl);
+}
+
+.modal-component-dialog--sm { max-width: 30rem; }
+.modal-component-dialog--md { max-width: 40rem; }
+.modal-component-dialog--lg { max-width: 50rem; }
+
+.modal-component-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-6);
+}
+
+.modal-component-title {
+  margin: 0;
+}
+
+.modal-component-close-btn {
+  background: none;
+  border: none;
+  font-size: var(--text-lg);
+  cursor: pointer;
+  color: var(--text-primary);
+}
+
+/* =============================================================================
+   INLINE STATE UTILITIES
+   ============================================================================= */
+
+.d-inline { display: inline; }
+.d-inline-block { display: inline-block; }
+
+/* Max-width constraint utilities */
+.mw-720 { max-width: 720px; }
+.mw-920 { max-width: 920px; }
+
+/* Error page large code display */
+.error-code-xl {
+  font-size: 6rem;
+  line-height: 1;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   BUTTON MICRO-INTERACTIONS
+   Uses keyframes from animations.css: btn-spin, btn-shake, shimmer-slide
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* Loading spinner state */
+.btn.is-loading {
+  pointer-events: none;
+  position: relative;
+  color: transparent !important;
+}
+.btn.is-loading::after {
+  content: '';
+  position: absolute;
+  inset: 50% 50%;
+  width: 1em;
+  height: 1em;
+  margin: -0.5em 0 0 -0.5em;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: btn-spin 600ms linear infinite;
+  color: inherit;
+  filter: brightness(0) invert(1);
+}
+
+/* Shake error state */
+.btn.is-error {
+  animation: btn-shake 400ms ease both;
+}
+
+/* Shimmer overlay for primary buttons */
+.btn-primary {
+  position: relative;
+  overflow: hidden;
+}
+.btn-primary::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(120deg, transparent 0%, rgba(255,255,255,.22) 50%, transparent 100%);
+  transition: none;
+}
+.btn-primary:hover::before {
+  animation: shimmer-slide 600ms ease forwards;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   FORM CHAR-COUNTER (headless.css has the full component — these are the states)
+   ───────────────────────────────────────────────────────────────────────────── */
+.form-char-counter.is-warning { color: var(--warning, #f59e0b); }
+.form-char-counter.is-danger  { color: var(--danger,  #ef4444); }
+.form-char-bar-fill.is-warning { background-color: var(--warning, #f59e0b); }
+.form-char-bar-fill.is-danger  { background-color: var(--danger,  #ef4444); }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   SKELETON SHIMMER STATE
+   ───────────────────────────────────────────────────────────────────────────── */
+.skeleton {
+  background: linear-gradient(90deg,
+    var(--surface-2, #e5e7eb) 25%,
+    var(--surface-3, #d1d5db) 37%,
+    var(--surface-2, #e5e7eb) 63%);
+  background-size: 400% 100%;
+  animation: skeleton-shimmer 1.4s ease infinite;
+  border-radius: var(--radius-sm, 4px);
+  color: transparent;
+  user-select: none;
+}
+

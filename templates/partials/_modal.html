@@ -1,0 +1,88 @@
+{#
+  HeadlessUI Modal partial — mounts once in base.html, opened via Alpine events.
+
+  Usage (fire from any template / HTMX view):
+      <!-- Open with a static body slot -->
+      <button @click="$dispatch('show-modal', { title: 'Confirm', size: 'sm',
+                                                bodyTemplate: '#my-body-tpl' })">
+          Open
+      </button>
+      <template id="my-body-tpl">
+          <p>Are you sure?</p>
+          <div class="d-flex gap-2 justify-content-end mt-3">
+              <button class="btn btn-secondary" @click="$dispatch('close-modal')">Cancel</button>
+              <button class="btn btn-danger" hx-delete="…">Delete</button>
+          </div>
+      </template>
+
+      <!-- Open with an HTMX-loaded body -->
+      <button hx-get="{% url 'items:hx_create_form' %}"
+              hx-target="#modal-body"
+              hx-swap="innerHTML"
+              @click="$dispatch('show-modal', { title: 'New Item' })">
+          Create
+      </button>
+
+  Sizes: 'sm' | 'md' (default) | 'lg' | 'xl'
+#}
+<div
+    x-data="modalManager()"
+    @show-modal.window="show($event.detail)"
+    @close-modal.window="close()"
+    @keydown.escape.window="close()"
+    role="dialog"
+    aria-modal="true"
+    :aria-label="title"
+    x-cloak
+    style="display:contents"
+>
+    {# ── Backdrop ──────────────────────────────────────────────────────────── #}
+    <div
+        class="hl-backdrop"
+        x-show="open"
+        x-transition:enter="hl-enter"
+        x-transition:enter-start="hl-enter-from"
+        x-transition:enter-end="hl-enter-to"
+        x-transition:leave="hl-leave"
+        x-transition:leave-start="hl-leave-from"
+        x-transition:leave-end="hl-leave-to"
+        @click.self="close()"
+    ></div>
+
+    {# ── Dialog panel ─────────────────────────────────────────────────────── #}
+    <div
+        class="hl-modal-wrap d-flex align-items-start justify-content-center"
+        style="position:fixed;inset:0;z-index:var(--z-modal,1050);padding:4rem 1rem 1rem;overflow-y:auto;pointer-events:none"
+        x-show="open"
+    >
+        <div
+            class="hl-modal w-100"
+            :class="'hl-modal--' + size"
+            x-show="open"
+            x-transition:enter="hl-enter"
+            x-transition:enter-start="hl-enter-from"
+            x-transition:enter-end="hl-enter-to"
+            x-transition:leave="hl-leave"
+            x-transition:leave-start="hl-leave-from"
+            x-transition:leave-end="hl-leave-to"
+            style="pointer-events:auto"
+            @click.stop
+        >
+            {# Header #}
+            <div class="modal-component-header d-flex align-items-center justify-content-between">
+                <h5 class="modal-component-title mb-0" x-text="title"></h5>
+                <button
+                    type="button"
+                    class="modal-component-close-btn btn-close"
+                    aria-label="Close"
+                    @click="close()"
+                ></button>
+            </div>
+
+            {# Body — HTMX and custom content swap here #}
+            <div id="modal-body" class="hl-modal-body p-4">
+                {# content injected by HTMX or JavaScript #}
+            </div>
+        </div>
+    </div>
+</div>

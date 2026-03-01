@@ -1,0 +1,69 @@
+{#
+  HeadlessUI Drawer / SlideOver partial — mounts once in base.html.
+
+  Usage:
+      <!-- Trigger -->
+      <button hx-get="{% url 'items:hx_detail' item.pk %}"
+              hx-target="#drawer-body"
+              hx-swap="innerHTML"
+              @click="$dispatch('show-drawer', { title: item.name, side: 'right' })">
+          View details
+      </button>
+
+  Sides: 'right' (default) | 'left'
+  The drawer body (#drawer-body) is filled by HTMX or JS.
+#}
+<div
+    x-data="drawerManager()"
+    @show-drawer.window="show($event.detail)"
+    @close-drawer.window="close()"
+    @keydown.escape.window="close()"
+    role="dialog"
+    aria-modal="true"
+    :aria-label="title"
+    x-cloak
+    style="display:contents"
+>
+    {# ── Backdrop ─────────────────────────────────────────────────────────── #}
+    <div
+        class="hl-backdrop"
+        x-show="open"
+        x-transition:enter="hl-enter"
+        x-transition:enter-start="hl-enter-from"
+        x-transition:enter-end="hl-enter-to"
+        x-transition:leave="hl-leave"
+        x-transition:leave-start="hl-leave-from"
+        x-transition:leave-end="hl-leave-to"
+        @click.self="close()"
+    ></div>
+
+    {# ── Drawer panel ─────────────────────────────────────────────────────── #}
+    <div
+        class="hl-drawer"
+        :class="side === 'left' ? 'hl-drawer--left' : ''"
+        x-show="open"
+        x-transition:enter="hl-slide-enter"
+        x-transition:enter-start="hl-slide-enter-from"
+        x-transition:enter-end="hl-slide-enter-to"
+        x-transition:leave="hl-slide-leave"
+        x-transition:leave-start="hl-slide-leave-from"
+        x-transition:leave-end="hl-slide-leave-to"
+        @click.stop
+    >
+        {# Sticky header #}
+        <div class="hl-drawer-header">
+            <h6 class="mb-0 fw-semibold" x-text="title"></h6>
+            <button
+                type="button"
+                class="btn-close"
+                aria-label="Close panel"
+                @click="close()"
+            ></button>
+        </div>
+
+        {# Scrollable body — HTMX target #}
+        <div id="drawer-body" class="hl-drawer-body">
+            {# content loaded by HTMX or JavaScript #}
+        </div>
+    </div>
+</div>

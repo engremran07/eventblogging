@@ -335,10 +335,15 @@ def post(db):
 
 **Owns:** Custom admin views, admin templates, admin bulk actions, admin settings
 
-**Current State (Mar 1, 2026):**
+**Current State (Mar 2, 2026):**
 - 36 request parameters annotated with `HttpRequest` — ✅
 - Return types on all 36 public view functions — ✅
-- Inline styles in `dashboard.html` (20) and `editor.html` (32) — ❌ PENDING
+- Inline styles in `dashboard.html` (20) — ✅ ELIMINATED
+- Inline styles in `editor.html` (32) — ✅ ELIMINATED
+- Embedded `<style>` blocks removed from both files — ✅
+- CSS classes added to `workspace.css` (~400 new lines) — ✅
+- Ctrl+S draft save shortcut in `workspace.js` — ✅
+- Row remove `.is-removing` animation wired — ✅
 
 **Critical Pattern:**
 ```python
@@ -353,11 +358,20 @@ def admin_posts_list(request: HttpRequest) -> HttpResponse:
 
 **Owns:** Public views, HTMX partials, Alpine components, templates for public site
 
-**Current State (Mar 1, 2026):**
+**Current State (Mar 2, 2026):**
 - 32 request parameters annotated with `HttpRequest` — ✅
 - SSE WSGI-blocking stream replaced with polling endpoint — ✅
-- HeadlessUI components — ❌ 0/13 implemented (HIGH PRIORITY backlog)
+- HeadlessUI components — ✅ 3/13 MVP (modal, toast_stack, drawer): CSS + JS + HTML templates
 - Custom 404 template (`templates/errors/404.html`) — ✅ Added
+- `static/js/app.js` — ✅ CREATED: 16 Alpine.data components registered
+- `static/css/animations.css` — ✅ CREATED: 28 keyframes
+- `static/css/headless.css` — ✅ CREATED: Full HeadlessUI CSS
+- `templates/partials/_modal.html` — ✅ CREATED
+- `templates/partials/_toast_stack.html` — ✅ CREATED
+- `templates/partials/_drawer.html` — ✅ CREATED
+- Public micro-interactions in `site/core.css` — ✅: image zoom, progress glow, comment stagger, reaction spring
+- Topbar glassmorphism elevation (`layout.css`) — ✅
+- `bindTopbarScrollElevation()` in `admin/core.js` — ✅
 
 ---
 
@@ -419,12 +433,14 @@ def admin_posts_list(request: HttpRequest) -> HttpResponse:
 
 | # | Item | Owner | Priority | Status |
 |---|---|---|---|---|
-| 1 | Admin dashboard.html: eliminate 20 inline styles | Agent 2 | HIGH | Not started |
-| 2 | Admin posts/editor.html: eliminate 32 inline styles | Agent 2 | HIGH | Not started |
-| 3 | HeadlessUI components 0/13 | Agent 3 | MEDIUM | Not started |
-| 4 | Add whitenoise to MIDDLEWARE in production.py | Agent 6 | MEDIUM | Not started |
+| 1 | Admin dashboard.html: eliminate 20 inline styles | Agent 2 | HIGH | ✅ Done |
+| 2 | Admin posts/editor.html: eliminate 32 inline styles | Agent 2 | HIGH | ✅ Done |
+| 3 | HeadlessUI components 3/13 MVP (_modal, _toast_stack, _drawer) | Agent 3 | MEDIUM | 3/13 done |
+| 4 | Add whitenoise to MIDDLEWARE in production.py | Agent 6 | MEDIUM | ✅ Done |
 | 5 | Add SEO audit `checks.py` count verification (must equal 25) | Agent 4 | MEDIUM | Not started |
-| 6 | Add `django-debug-toolbar` to development.py INSTALLED_APPS | Agent 6 | LOW | Not started |
+| 6 | Add `django-debug-toolbar` to development.py INSTALLED_APPS | Agent 6 | LOW | ✅ Done |
+| 7 | BaseModel inheritance migration for remaining models | Agent 1 | HIGH | Not started |
+| 8 | HeadlessUI components 4-13 (Disclosure, Listbox, Combobox, etc.) | Agent 3 | MEDIUM | Not started |
 
 ---
 

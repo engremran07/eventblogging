@@ -17,7 +17,7 @@
 <form method="get" class="content-panel p-3 mb-3">
     <div class="d-flex flex-wrap gap-2 align-items-center">
         <label class="small text-body-secondary mb-0" for="pages-sort">Sort</label>
-        <select id="pages-sort" class="form-select form-select-sm" name="sort" style="max-width: 260px;">
+        <select id="pages-sort" class="form-select form-select-sm bulk-action-select" name="sort">
             <option value="-updated_at" {% if sort_by == "-updated_at" %}selected{% endif %}>Recently updated</option>
             <option value="-created_at" {% if sort_by == "-created_at" %}selected{% endif %}>Newest created</option>
             <option value="-published_at" {% if sort_by == "-published_at" %}selected{% endif %}>Newest published</option>
@@ -44,7 +44,7 @@
     ></div>
     <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
         <label class="small text-body-secondary mb-0" for="page-bulk-action">Bulk action</label>
-        <select id="page-bulk-action" class="form-select form-select-sm" name="bulk_action" style="max-width: 260px;">
+        <select id="page-bulk-action" class="form-select form-select-sm bulk-action-select" name="bulk_action">
             <option value="publish">Publish selected</option>
             <option value="review">Move selected to review</option>
             <option value="archive">Archive selected</option>
@@ -62,7 +62,7 @@
     <table class="table align-middle mb-0">
         <thead>
             <tr>
-                <th style="width: 40px;"></th>
+                <th class="col-select"></th>
                 <th>Title</th>
                 <th>Status</th>
                 <th>Template</th>

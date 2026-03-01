@@ -1404,6 +1404,17 @@ python manage.py startapp [name] apps/[name]
 - `type: ignore` count in admin_views.py: 20+ → 13, all remaining are genuine gaps (8 × FileField django-stubs, 2 × tree model narrowing, 2 × Tagulous-patched save(), 1 × TextChoices comparison)
 - "38,475 code lines" in admin dashboard is the repo stat (Python + HTML + CSS + JS + migrations); actual Python-only app source is ~20,541 lines — already within 15-20k target, no code reduction needed
 - *(Claude appends new entries here each session)*
+**FROM UI PHASE 0-4 SESSION (Mar 2, 2026 Session 4):**
+- `color-mix(in srgb, var(--surface-1) 85%, transparent)` enables glassmorphism with CSS variables without hardcoding any rgba values — works in all major browsers (Chrome 111+, Firefox 113+, Safari 16.2+)
+- `.admin-topbar.topbar-elevated` modifier + `transition: box-shadow 200ms, background-color 200ms` on base creates smooth scroll elevation without JS transition management
+- Bootstrap 5 `btn-close` + `<button class="modal-component-close-btn btn-close">` mixes framework + custom class safely — BS close icon is purely CSS, not JS
+- `display:contents` on Alpine wrapper element (`style="display:contents"`) allows the wrapper div to be invisible to layout while still being an Alpine scope — critical for modal/drawer portals
+- `pointer-events:none` on the modal-wrap + `pointer-events:auto` on the inner dialog prevents clicks outside the dialog being silently blocked, while still allowing backdrop click capture
+- `animation: comment-reveal 0.32s ease both` + `:nth-child(n+6) { animation-delay: 300ms }` caps stagger at 300ms max — prevents late-loading comments feeling laggy on long threads
+- `will-change: transform` on post card images prevents compositor rasterisation on every frame during zoom — only add to elements that actually animate
+- Inline styles in CSS templates should NEVER be used for anything that can be expressed as a CSS class EXCEPT: (1) server-calculated `style="width: {{ X }}%"` progress bars; (2) third-party embed requirements (GTM noscript); (3) runtime JS-set dimensions
+- `shimmer-slide` keyframe: `left: -100% → left: 200%` for button shimmer needs `overflow: hidden` and `position: relative` on the parent button
+- HeadlessUI partials use `x-cloak` + `style="display:contents"` on root to prevent FOUC (flash of unstyled content) — `[x-cloak] { display: none !important }` in headless.css hides the entire structure until Alpine initialises
 
 
 ---
@@ -1447,36 +1458,52 @@ python manage.py startapp [name] apps/[name]
 ## 🎯 ACTIVE CONTEXT — UPDATE EVERY SESSION
 
 ```
-Last Updated:     Mar 1, 2026 (Session 3)
-Session Type:     SYSTEMATIC TAGULOUS TYPE STUBS — eliminate cast(Any) and type:ignore[union-attr]
-Working On:       apps/blog/admin_views.py, typings/tagulous/ (new stub package)
-Current App:      Entire codebase — type stub approach
-Status:           ✅ COMPLETE — 0 Pylance errors, 0 ruff violations, cast(Any) fully eliminated
+Last Updated:     Mar 2, 2026 (Session 4 — Phase 0-4 UI Enhancement)
+Session Type:     SYSTEMATIC UI ENHANCEMENT — animations, headless, inline styles, micro-interactions, public frontend, HeadlessUI partials
+Working On:       All frontend layers (static/css/, templates/, static/js/)
+Current App:      Entire frontend
+Status:           ✅ COMPLETE — 0 ruff violations, all 4 phases done
 Blocked By:       Nothing critical
 Next Steps:
-  1. Admin templates: eliminate 20 inline styles in dashboard.html (Agent 2)
-  2. Admin templates: eliminate 32 inline styles in editor.html (Agent 2)
-  3. HeadlessUI components: modalManager, toastManager, drawerManager (Agent 3, 0/13)
-  4. BaseModel inheritance migration for remaining models (Agent 1)
-  5. Add whitenoise to MIDDLEWARE list in production.py (Agent 6)
-  6. Add django-debug-toolbar to development.py INSTALLED_APPS (Agent 6)
+  1. BaseModel migration for remaining models (Agent 1 — HIGH)
+  2. HeadlessUI partials 4-13: Disclosure, Listbox, Combobox, Menu, Popover, RadioGroup, Switch, Tabs, Transition, CommandPalette (Agent 3)
+  3. Test suite expansion (Agent 6)
 Open Questions:   None blocking
-Last Commit:      c0df4a1 — "feat: add Tagulous type stubs — replace all cast(Any)/type:ignore[union-attr] with proper typed descriptors"
+Last Commit:      TBD — "feat: UI Phase 0-4 — animations.css, headless.css, app.js, zero inline styles, micro-interactions, HeadlessUI partials"
 
-FILES CHANGED THIS SESSION (Session 3):
-  - typings/tagulous/__init__.pyi: CREATED — empty stub package root
-  - typings/tagulous/models/__init__.pyi: CREATED — TagField, SingleTagField, TagRelatedManager, TagModel, BaseTagTreeModel with descriptor __get__ overloads and per-class Manager[SelfType] objects
-  - typings/tagulous/views.pyi: CREATED — autocomplete() stub
-  - typings/tagulous/utils.pyi: CREATED — split_tree_name(), render_tags(), parse_tags()
-  - pyrightconfig.json: Added "typingsPath": "typings"
-  - apps/blog/admin_views.py: Removed cast, removed 7 cast(Any,...) calls, removed 8 type:ignore[union-attr/attr-defined], added BaseTagTreeModel import, tree model narrowing with doc comments
+FILES CHANGED THIS SESSION (Session 4):
+  CREATED:
+    - static/js/app.js: Alpine.data registry (16 components + dispatchToast, countUp, scroll-animate, HTMX hooks)
+    - static/css/animations.css: 28 keyframes + utility classes + reduced-motion
+    - static/css/headless.css: full HeadlessUI CSS (backdrop, modal, drawer, toast-stack, listbox, switch, tabs, disclosure, menu, combobox, radio-group, command-palette, popover, skeleton, editable, tag-chips, seo-score-ring, form-char-counter)
+    - templates/partials/_modal.html: HeadlessUI modal partial (modalManager-driven)
+    - templates/partials/_toast_stack.html: HeadlessUI toast stack (toastManager-driven)
+    - templates/partials/_drawer.html: HeadlessUI drawer / slideover (drawerManager-driven)
+  UPDATED:
+    - templates/base.html: +animations.css, +headless.css, +app.js, 3 HeadlessUI includes, logout form d-inline fix
+    - config/settings/production.py: whitenoise added to MIDDLEWARE
+    - config/settings/development.py: debug_toolbar conditional block added
+    - templates/admin/dashboard.html: all 20 inline styles → CSS classes, <style> block removed
+    - templates/admin/posts/editor.html: all 29 inline styles → CSS classes, <style> block removed
+    - templates/components/*.html (6 files): all inline styles → CSS classes
+    - templates/components/button.html, badge.html: inline styles removed
+    - 15+ additional admin/seo/pages/blog templates: remaining inline styles eliminated
+    - static/css/admin/workspace.css: +400 lines (dashboard classes, editor classes, micro-interactions, .is-removing)
+    - static/css/components.css: +280 lines (component classes, button micro-interactions, skeleton)
+    - static/css/layout.css: .topbar-elevated glassmorphism state added to .admin-topbar
+    - static/css/site/core.css: Phase 3 public micro-interactions (image zoom, progress glow, comment stagger, reaction spring, scroll-animate)
+    - static/js/admin/workspace.js: Ctrl+S shortcut + htmx:beforeSwap row animation
+    - static/js/admin/core.js: bindTopbarScrollElevation() added + called on DOMContentLoaded
 
-TYPE: ignore BEFORE/AFTER in admin_views.py:
-  BEFORE: 20+ type: ignore (cast(Any) × 7, union-attr × 8, misc × 2, assignment × 8, comparison × 1)
-  AFTER:  13 type: ignore (misc × 2 [Tagulous save patch], assignment × 2 [tree narrowing] + 8 [django-stubs FileField], comparison × 1 [TextChoices])
+PHASE SUMMARY:
+  ✅ Phase 0 — Foundation: animations.css, headless.css, app.js created; base.html wired
+  ✅ Phase 1 — Zero inline styles: all 71 inline styles across 20+ templates eliminated (3 legitimate dynamic/GTM remain)
+  ✅ Phase 2 — Admin micro-interactions: topbar glassmorphism, row-remove animation, Ctrl+S, stat-card hover lift, KPI row hover
+  ✅ Phase 3 — Public micro-interactions: post-card image zoom, reading-progress glow, comment stagger, reaction spring, scroll-animate
+  ✅ Phase 4 — HeadlessUI HTML partials: modal, toast-stack, drawer (MVP set) wired into base.html
 
-RUFF STATUS: ✅ "All checks passed!" (0 violations across apps/ config/)
-PYLANCE STATUS: ✅ "No errors found" (0 errors workspace-wide)
+RUFF STATUS: ✅ "All checks passed!" (0 violations)
+PYLANCE STATUS: ✅ (unchanged — 0 errors from Session 3 carried forward)
 
 COMPLETED ACROSS ALL SESSIONS:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1495,7 +1522,7 @@ COMPLETED ACROSS ALL SESSIONS:
 ✅ get_category_max_depth() cached with 5-min TTL
 ✅ SeoRedirectRule save/delete invalidates middleware redirect cache
 ✅ INTERNAL_IPS in development.py
-✅ SESSION_ENGINE=cache + whitenoise in production.py
+✅ SESSION_ENGINE=cache + whitenoise in production.py + MIDDLEWARE
 ✅ get_all_tags_with_counts() alias in tags/selectors.py
 ✅ .env.example comprehensive rewrite
 ✅ AGENTS.md: single canonical version, onboarding guide, feature-add guides
@@ -1504,14 +1531,20 @@ COMPLETED ACROSS ALL SESSIONS:
 ✅ selectors.py pattern fully applied in all apps (blog, seo, comments, tags, pages)
 ✅ typings/tagulous/ stub package: TagField/SingleTagField descriptors + tree model attributes
 ✅ admin_views.py: cast(Any) × 7 eliminated; type:ignore[union-attr] × 8 eliminated; cast import removed
+✅ animations.css, headless.css, app.js created (Phase 0)
+✅ 71 inline styles across 20+ templates eliminated (Phase 1) — 3 legitimate remain
+✅ Admin micro-interactions: topbar glassmorphism, .is-removing row animation, Ctrl+S, hover states (Phase 2)
+✅ Public micro-interactions: image zoom, progress glow, comment stagger, reaction spring (Phase 3)
+✅ HeadlessUI HTML partials: _modal.html, _toast_stack.html, _drawer.html wired into base.html (Phase 4 MVP)
 
 REMAINING ISSUES (Known/Accepted):
-🟠 Admin dashboard.html: 20 inline styles not yet eliminated (Agent 2 — HIGH)
-🟠 Admin posts/editor.html: 32 inline styles not yet eliminated (Agent 2 — HIGH)
-🟠 HeadlessUI components 0/13 — pending (Agent 3 — MEDIUM)
+� Admin dashboard.html: 20 inline styles — ELIMINATED ✅
+🟢 Admin posts/editor.html: 32 inline styles — ELIMINATED ✅
+🟡 HeadlessUI components: 3/13 partials MVP'd (_modal, _toast_stack, _drawer) — CSS full, JS full, HTML ✅ (Agent 3 — MEDIUM)
 🟠 BaseModel not inherited by all models — pending migration planning (Agent 1 — HIGH)
-🟠 whitenoise missing from MIDDLEWARE in production.py (Agent 6 — MEDIUM)
-🟠 django-debug-toolbar not in development.py INSTALLED_APPS (Agent 6 — LOW)
+🟢 whitenoise missing from MIDDLEWARE in production.py — FIXED ✅
+🟢 django-debug-toolbar not in development.py INSTALLED_APPS — FIXED ✅
+3 remaining style= are all legitimate (2 dynamic server %widths + 1 GTM noscript)
 ```
 
 ---
@@ -1537,4 +1570,4 @@ REMAINING ISSUES (Known/Accepted):
 ---
 
 *Living document. Claude grows it every session. Team grows it. Never becomes stale.*
-*Audit: ✅ | HeadlessUI: 0/13 | Last session: Mar 1 2026 — multiagent full execution | Model: Sonnet / Opus / Haiku*
+*Audit: ✅ | HeadlessUI: 3/13 MVP | Last session: Mar 2 2026 — Phase 0-4 UI enhancement | Model: Sonnet / Opus / Haiku*

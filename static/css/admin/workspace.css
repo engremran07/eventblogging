@@ -485,3 +485,424 @@
         justify-content: flex-start;
     }
 }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   DASHBOARD — extracted from inline styles in dashboard.html
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.admin-page-content {
+    padding: var(--space-8);
+}
+
+.admin-page-heading {
+    margin-bottom: var(--space-6);
+}
+
+/* KPI stat cards grid */
+.admin-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: var(--space-4);
+    margin-bottom: var(--space-8);
+}
+
+/* Two-column activity layout */
+.admin-activity-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: var(--space-6);
+    margin-bottom: var(--space-8);
+}
+
+@media (max-width: 900px) {
+    .admin-activity-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Stat card */
+.stat-card {
+    background-color: var(--surface-1);
+    border: var(--border-width) solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-6);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    transition: all var(--transition-duration);
+}
+
+.stat-card:hover {
+    background-color: var(--surface-2);
+    border-color: var(--accent);
+}
+
+.stat-value {
+    font-size: var(--text-4xl);
+    font-weight: var(--fw-bold);
+    color: var(--accent);
+}
+
+.stat-label {
+    font-size: var(--text-sm);
+    font-weight: var(--fw-semibold);
+    color: var(--text-primary);
+}
+
+.stat-subtext {
+    font-size: var(--text-xs);
+    color: var(--text-secondary);
+}
+
+.seo-score-positive {
+    color: var(--success);
+}
+
+/* Card header title (removes margin from h2/h3 inside .card-header) */
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: var(--space-4);
+    border-bottom: var(--border-width) solid var(--border);
+    margin-bottom: var(--space-4);
+}
+
+.card-title-inline {
+    margin: 0;
+}
+
+/* Recent posts table */
+.admin-kpi-table {
+    width: 100%;
+    font-size: var(--text-sm);
+}
+
+.admin-table-row {
+    border-bottom: var(--border-width) solid var(--border);
+}
+
+.admin-table-cell {
+    padding: var(--space-3);
+    text-align: left;
+}
+
+.admin-table-cell--right {
+    padding: var(--space-3);
+    text-align: right;
+}
+
+.admin-table-cell--muted {
+    padding: var(--space-3);
+    text-align: right;
+    color: var(--text-muted);
+}
+
+.admin-table-empty-cell {
+    padding: var(--space-4);
+    color: var(--text-muted);
+    text-align: center;
+}
+
+.admin-link {
+    color: var(--accent);
+    text-decoration: none;
+}
+
+.admin-link:hover {
+    text-decoration: underline;
+}
+
+/* Quick actions column */
+.admin-quick-actions {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+/* Pending comments feed */
+.admin-comments-feed {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+.admin-comment-item {
+    padding-bottom: var(--space-4);
+    border-bottom: var(--border-width) solid var(--border);
+}
+
+.admin-comment-meta {
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+}
+
+.admin-comment-body {
+    margin: var(--space-2) 0 0;
+    font-size: var(--text-sm);
+}
+
+.admin-comment-actions {
+    margin-top: var(--space-2);
+    display: flex;
+    gap: var(--space-2);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   EDITOR — extracted from inline styles + <style> block in editor.html
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.post-editor-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 400px);
+    gap: var(--sp-6);
+    margin-top: var(--sp-8);
+    align-items: start;
+}
+
+@media (max-width: 1200px) {
+    .post-editor-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .post-editor-side {
+        position: static !important;
+    }
+}
+
+.post-editor-main {
+    min-width: 0;
+}
+
+.post-editor-side {
+    position: sticky;
+    top: var(--topbar-height, 64px);
+    height: fit-content;
+}
+
+.post-editor-seo-panel {
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    padding: var(--sp-6);
+    background: var(--surface-1);
+}
+
+.post-editor-main .summernote-bridge-host,
+.post-editor-main .summernote-bridge-host .note-editor.note-frame {
+    max-width: 100%;
+}
+
+/* Slug + lock-button row */
+.editor-input-row {
+    display: flex;
+    gap: var(--sp-2);
+}
+
+/* Rich text hint line */
+.editor-rich-text-hint {
+    margin-bottom: var(--sp-3);
+}
+
+/* Markdown textarea */
+.editor-body-textarea {
+    font-family: var(--font-mono);
+    min-height: 500px;
+    padding: var(--sp-4);
+}
+
+/* Meta overrides collapsible */
+.editor-meta-details {
+    margin-top: var(--sp-6);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    padding: var(--sp-4);
+}
+
+.editor-details-summary {
+    cursor: pointer;
+    font-weight: 600;
+    margin-bottom: var(--sp-4);
+}
+
+/* Publishing flags 2-col grid */
+.editor-flags-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--sp-2);
+}
+
+/* Submit/action button row */
+.editor-submit-row {
+    display: flex;
+    gap: var(--sp-4);
+    margin-top: var(--sp-8);
+    border-top: 1px solid var(--border);
+    padding-top: var(--sp-6);
+}
+
+/* SEO panel section heading */
+.editor-panel-heading {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    margin-bottom: var(--sp-4);
+    text-transform: uppercase;
+    color: var(--text-3);
+}
+
+/* SEO stats grid inside the side panel */
+.editor-panel-stats {
+    display: grid;
+    gap: var(--sp-3);
+}
+
+/* Stat label + value row */
+.editor-panel-stat-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 4px;
+}
+
+/* Reading time pill row */
+.editor-panel-reading {
+    display: flex;
+    justify-content: space-between;
+    padding: var(--sp-3);
+    background: var(--surface-2);
+    border-radius: var(--r-md);
+}
+
+/* Thin progress bar track */
+.editor-panel-bar {
+    height: 4px;
+    background: var(--surface-2);
+    border-radius: var(--r-full);
+}
+
+/* Progress bar fill — width + bg-color set dynamically by JS */
+.editor-panel-bar-fill {
+    height: 100%;
+    border-radius: var(--r-full);
+    width: 0%;
+    background: var(--success);
+    transition: width 0.3s ease, background-color 0.3s ease;
+}
+
+/* Monospace stat values */
+.editor-panel-mono {
+    font-family: var(--font-mono);
+    font-weight: 600;
+}
+
+/* Hint below a bar */
+.editor-panel-hint {
+    display: block;
+    margin-top: 4px;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   SHARED FORM UTILITIES (used in editor + admin forms)
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.form-control {
+    width: 100%;
+    padding: var(--sp-3);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    background: var(--surface-2);
+    color: var(--text-1);
+    font-family: inherit;
+    font-size: inherit;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--border-focus, var(--accent));
+    box-shadow: 0 0 0 3px var(--accent-dim, rgba(99, 102, 241, 0.15));
+}
+
+.form-group {
+    margin-bottom: var(--sp-6);
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: var(--sp-2);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--text-2);
+}
+
+.checkbox-line {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+}
+
+details > summary {
+    color: var(--text-2);
+}
+
+details > summary:hover {
+    color: var(--text-1);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   TABLE UTILITY COLUMN WIDTHS & BULK ACTION SELECT
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* Narrow checkbox / action column header */
+.col-select  { width: 44px; }
+.col-move    { width: 48px; }
+
+/* Bulk action drop-down — constrained to avoid stretching across the whole toolbar */
+.bulk-action-select { max-width: 280px; }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   EDITOR BAR FILL INITIAL COLOUR VARIANTS (JS overrides at runtime)
+   ───────────────────────────────────────────────────────────────────────────── */
+.editor-panel-bar-fill--danger  { background: var(--danger); }
+.editor-panel-bar-fill--success { background: var(--success); }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   UTILITY — max-width constraint for standalone card pages
+   ───────────────────────────────────────────────────────────────────────────── */
+.card-constrained { max-width: 920px; }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   MICRO-INTERACTIONS
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* Row removal — htmx:beforeSwap adds this, row-remove keyframe in animations.css */
+.is-removing {
+  animation: row-remove 250ms ease-out forwards;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* Drag-handle column */
+.col-drag-handle {
+  cursor: grab;
+  color: var(--text-muted, #999);
+  user-select: none;
+}
+.col-drag-handle:active { cursor: grabbing; }
+
+/* Stat card hover lift */
+.stat-card {
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+.stat-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md, 0 4px 16px rgba(0,0,0,.12));
+}
+
+/* KPI table row hover highlight */
+.admin-table-row:hover td,
+.admin-table-row:hover .admin-table-cell {
+  background-color: var(--surface-2, rgba(0,0,0,.03));
+}
+
+/* Inline link transitions */
+.admin-link {
+  transition: color 120ms ease;
+}

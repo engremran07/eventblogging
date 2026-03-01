@@ -1,10 +1,10 @@
-<div class="data-table-wrapper {% if css_class %}{{ css_class }}{% endif %}" style="overflow-x: auto;">
-  <table style="width: 100%; border-collapse: collapse; border: 1px solid var(--color-border); border-radius: var(--radius-lg); overflow: hidden;">
+<div class="data-table-wrapper {% if css_class %}{{ css_class }}{% endif %}">
+  <table class="data-table">
     {% if headers %}
-    <thead style="background-color: var(--color-bg-secondary); border-bottom: 1px solid var(--color-border);">
+    <thead>
       <tr>
         {% for header in headers %}
-        <th style="padding: var(--p-md); text-align: left; font-weight: var(--fw-semibold); color: var(--color-text-primary);">{{ header }}</th>
+        <th>{{ header }}</th>
         {% endfor %}
       </tr>
     </thead>
@@ -12,9 +12,9 @@
     {% if rows %}
     <tbody>
       {% for row in rows %}
-      <tr style="border-bottom: 1px solid var(--color-border); {% if forloop.counter|divisibleby:2 %}background-color: var(--color-bg-secondary);{% endif %}">
+      <tr>
         {% for cell in row %}
-        <td style="padding: var(--p-md); color: var(--color-text-primary);">{{ cell }}</td>
+        <td>{{ cell }}</td>
         {% endfor %}
       </tr>
       {% endfor %}

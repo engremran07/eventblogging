@@ -44,8 +44,23 @@ SECURE_HSTS_PRELOAD = True
 SESSION_ENGINE = "django.contrib.sessions.backends.cache"
 
 # Static files — whitenoise serves compressed, fingerprinted assets from collectstatic output.
-# Add 'whitenoise.middleware.WhiteNoiseMiddleware' to MIDDLEWARE after SecurityMiddleware.
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+
+# Override MIDDLEWARE to insert WhiteNoise right after SecurityMiddleware.
+MIDDLEWARE = [
+    "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",  # must be immediately after Security
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "seo.middleware.SeoRedirectMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "core.middleware.PlatformGuardMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django_htmx.middleware.HtmxMiddleware",
+    "blog.middleware.ContentDateRefreshMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
+]
 
 # Email backend for production
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"

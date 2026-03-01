@@ -14,7 +14,7 @@
         {% csrf_token %}
         <div class="d-flex flex-wrap align-items-center gap-2">
             <label class="small text-body-secondary mb-0" for="comment-bulk-action">Bulk action</label>
-            <select id="comment-bulk-action" class="form-select form-select-sm" name="bulk_action" style="max-width: 220px;">
+            <select id="comment-bulk-action" class="form-select form-select-sm bulk-action-select" name="bulk_action">
                 <option value="approve">Approve selected</option>
                 <option value="unapprove">Unapprove selected</option>
                 <option value="delete">Delete selected</option>

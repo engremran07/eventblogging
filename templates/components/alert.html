@@ -1,6 +1,11 @@
-<div class="alert alert-{{ alert_type }}" style="padding: var(--p-md); border-radius: var(--radius-lg); margin-bottom: var(--space-4); background-color: var(--color-{{ alert_type }}-50); border: 1px solid var(--color-{{ alert_type }}-200); color: var(--color-{{ alert_type }}-900);">
-  <div style="display: flex; justify-content: space-between; align-items: center;">
+<div class="alert alert-{{ alert_type }}">
+  <div class="alert-header">
     <span>{{ message }}</span>
-    {% if dismissible %}<button onclick="this.parentElement.parentElement.style.display='none';" style="background: none; color: inherit; border: none; cursor: pointer; padding: 0; font-size: var(--text-lg);">&times;</button>{% endif %}
+    {% if dismissible %}
+      <button onclick="this.closest('.alert').style.display='none';"
+              class="alert-dismiss-btn"
+              type="button"
+              aria-label="Dismiss">&times;</button>
+    {% endif %}
   </div>
 </div>

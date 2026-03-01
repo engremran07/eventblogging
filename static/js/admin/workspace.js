@@ -541,4 +541,27 @@
         const target = event.detail && event.detail.target ? event.detail.target : document;
         initializeWorkspace(target);
     });
+
+    // ── CTRL+S / CMD+S — save current editor form as draft ──────────────────
+    document.addEventListener("keydown", (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+            const draftBtn = document.querySelector(".post-editor-form button[value='draft']");
+            if (!draftBtn) return;
+            e.preventDefault();
+            draftBtn.click();
+            notifyWorkspace("success", "Saving draft\u2026");
+        }
+    });
+
+    // ── HTMX row-removal animation ─────────────────────────────────────────
+    // Add .is-removing to a <tr> before HTMX removes it so CSS can play the
+    // row-remove keyframe before the DOM node disappears.
+    document.body.addEventListener("htmx:beforeSwap", (event) => {
+        const target = event.detail && event.detail.target;
+        if (!target) return;
+        const row = target.closest("tr");
+        if (row && event.detail.xhr && event.detail.xhr.status === 200) {
+            row.classList.add("is-removing");
+        }
+    });
 })();

@@ -35,7 +35,7 @@
 
       <div class="form-group">
         <label for="slug">Slug *</label>
-        <div style="display: flex; gap: var(--sp-2);">
+        <div class="editor-input-row">
           <input
             type="text"
             id="slug"
@@ -100,7 +100,7 @@
         <small class="text-3">Comma-separated category paths (max depth {{ category_max_depth }}).</small>
       </div>
 
-      <div class="small text-3" style="margin-bottom: var(--sp-3);">
+      <div class="small text-3 editor-rich-text-hint">
         Rich editor enabled with Markdown sync for SEO and revision pipelines.
       </div>
 
@@ -110,7 +110,7 @@
           id="body_markdown"
           name="body_markdown"
           class="form-control"
-          style="font-family: var(--font-mono); min-height: 500px; padding: var(--sp-4);"
+          class="form-control editor-body-textarea"
           data-summernote="markdown"
           data-summernote-height="500"
           placeholder="Write your post in Markdown..."
@@ -118,8 +118,8 @@
         <small class="text-3" id="word-count">0 words</small>
       </div>
 
-      <details style="margin-top: var(--sp-6); border: 1px solid var(--border); border-radius: var(--r-md); padding: var(--sp-4);">
-        <summary style="cursor: pointer; font-weight: 600; margin-bottom: var(--sp-4);">Meta Overrides</summary>
+      <details class="editor-meta-details">
+        <summary class="editor-details-summary">Meta Overrides</summary>
 
         <div class="form-group">
           <label for="meta_title">Meta Title</label>
@@ -174,7 +174,7 @@
           />
           <small class="text-3">Optional. If set with Publish, the post stays hidden until this time.</small>
         </div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-2);">
+        <div class="editor-flags-grid">
           <label class="checkbox-line">
             <input type="checkbox" name="is_featured" {% if post.is_featured %}checked{% endif %}>
             Featured
@@ -194,7 +194,7 @@
         </div>
       </div>
 
-      <div style="display: flex; gap: var(--sp-4); margin-top: var(--sp-8); border-top: 1px solid var(--border); padding-top: var(--sp-6);">
+      <div class="editor-submit-row">
         <input type="hidden" name="status" value="{{ post.status|default:'draft' }}">
         <button type="submit" name="action" value="draft" class="btn btn-secondary">Save Draft</button>
         <button type="submit" name="action" value="review" class="btn btn-secondary">Submit for Review</button>
@@ -208,54 +208,54 @@
 
   <div class="post-editor-side">
     <div class="post-editor-seo-panel">
-      <h3 style="font-size: var(--text-sm); font-weight: 600; margin-bottom: var(--sp-4); text-transform: uppercase; color: var(--text-3);">
+      <h3 class="editor-panel-heading">
         Live SEO Analysis
       </h3>
 
-      <div style="display: grid; gap: var(--sp-3);">
+      <div class="editor-panel-stats">
         <div>
-          <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+          <div class="editor-panel-stat-row">
             <span class="text-xs text-2">Word count</span>
-            <span id="panel-wordcount" class="text-xs text-1" style="font-family: var(--font-mono); font-weight: 600;">0</span>
+            <span id="panel-wordcount" class="text-xs text-1 editor-panel-mono">0</span>
           </div>
-          <div style="height: 4px; background: var(--surface-2); border-radius: var(--r-full);">
-            <div id="panel-wordcount-bar" style="height: 100%; background: var(--danger); border-radius: var(--r-full); width: 0%;"></div>
+          <div class="editor-panel-bar">
+            <div id="panel-wordcount-bar" class="editor-panel-bar-fill editor-panel-bar-fill--danger"></div>
           </div>
-          <small class="text-3" style="display: block; margin-top: 4px;">Min 600 words</small>
+          <small class="text-3 editor-panel-hint">Min 600 words</small>
         </div>
 
-        <div style="display: flex; justify-content: space-between; padding: var(--sp-3); background: var(--surface-2); border-radius: var(--r-md);">
+        <div class="editor-panel-reading">
           <span class="text-sm text-2">Reading time</span>
-          <span id="panel-reading-time" class="text-sm text-1" style="font-family: var(--font-mono); font-weight: 600;">1 min</span>
+          <span id="panel-reading-time" class="text-sm text-1 editor-panel-mono">1 min</span>
         </div>
 
         <div>
-          <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+          <div class="editor-panel-stat-row">
             <span class="text-xs text-2">Readability</span>
-            <span id="panel-flesch" class="text-xs text-1" style="font-family: var(--font-mono); font-weight: 600;">--</span>
+            <span id="panel-flesch" class="text-xs text-1 editor-panel-mono">--</span>
           </div>
-          <div style="height: 4px; background: var(--surface-2); border-radius: var(--r-full);">
-            <div id="panel-flesch-bar" style="height: 100%; background: var(--success); border-radius: var(--r-full); width: 0%;"></div>
+          <div class="editor-panel-bar">
+            <div id="panel-flesch-bar" class="editor-panel-bar-fill editor-panel-bar-fill--success"></div>
           </div>
         </div>
 
         <div>
-          <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+          <div class="editor-panel-stat-row">
             <span class="text-xs text-2">Meta title</span>
-            <span id="panel-title-len" class="text-xs text-1" style="font-family: var(--font-mono); font-weight: 600;">0/60</span>
+            <span id="panel-title-len" class="text-xs text-1 editor-panel-mono">0/60</span>
           </div>
-          <div style="height: 4px; background: var(--surface-2); border-radius: var(--r-full);">
-            <div id="panel-title-bar" style="height: 100%; background: var(--success); border-radius: var(--r-full); width: 0%;"></div>
+          <div class="editor-panel-bar">
+            <div id="panel-title-bar" class="editor-panel-bar-fill editor-panel-bar-fill--success"></div>
           </div>
         </div>
 
         <div>
-          <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+          <div class="editor-panel-stat-row">
             <span class="text-xs text-2">Meta description</span>
-            <span id="panel-desc-len" class="text-xs text-1" style="font-family: var(--font-mono); font-weight: 600;">0/155</span>
+            <span id="panel-desc-len" class="text-xs text-1 editor-panel-mono">0/155</span>
           </div>
-          <div style="height: 4px; background: var(--surface-2); border-radius: var(--r-full);">
-            <div id="panel-desc-bar" style="height: 100%; background: var(--success); border-radius: var(--r-full); width: 0%;"></div>
+          <div class="editor-panel-bar">
+            <div id="panel-desc-bar" class="editor-panel-bar-fill editor-panel-bar-fill--success"></div>
           </div>
         </div>
       </div>
@@ -278,7 +278,7 @@
         hx-target="#admin-live-seo-checks"
         hx-swap="innerHTML"
       >
-        <div class="text-3" style="margin-top: var(--sp-4);">Running realtime SEO checks...</div>
+        <div class="text-3 editor-panel-hint">Running realtime SEO checks...</div>
       </div>
     </div>
   </div>
@@ -383,88 +383,4 @@ if (editorForm) {
 updateLiveIndicators();
 </script>
 
-<style>
-.post-editor-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(320px, 400px);
-  gap: var(--sp-6);
-  margin-top: var(--sp-8);
-  align-items: start;
-}
-
-.post-editor-main {
-  min-width: 0;
-}
-
-.post-editor-side {
-  position: sticky;
-  top: var(--topbar-height, 64px);
-  height: fit-content;
-}
-
-.post-editor-seo-panel {
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
-  padding: var(--sp-6);
-  background: var(--surface-1);
-}
-
-.post-editor-main .summernote-bridge-host,
-.post-editor-main .summernote-bridge-host .note-editor.note-frame {
-  max-width: 100%;
-}
-
-.form-control {
-  width: 100%;
-  padding: var(--sp-3);
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
-  background: var(--surface-2);
-  color: var(--text-1);
-  font-family: inherit;
-  font-size: inherit;
-}
-
-.form-control:focus {
-  outline: none;
-  border-color: var(--border-focus);
-  box-shadow: 0 0 0 3px var(--accent-dim);
-}
-
-.form-group {
-  margin-bottom: var(--sp-6);
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: var(--sp-2);
-  font-size: var(--text-sm);
-  font-weight: 500;
-  color: var(--text-2);
-}
-
-.checkbox-line {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-2);
-}
-
-details > summary {
-  color: var(--text-2);
-}
-
-details > summary:hover {
-  color: var(--text-1);
-}
-
-@media (max-width: 1200px) {
-  .post-editor-layout {
-    grid-template-columns: 1fr;
-  }
-
-  .post-editor-side {
-    position: static;
-  }
-}
-</style>
 {% endblock %}

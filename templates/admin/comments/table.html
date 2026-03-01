@@ -20,7 +20,7 @@
             {% if page_obj.number %}<input type="hidden" name="page" value="{{ page_obj.number }}">{% endif %}
             <span class="workspace-muted">Bulk comments action</span>
             <div class="workspace-bulk-actions">
-                <select name="bulk_action" class="form-select form-select-sm" style="max-width: 220px;">
+                <select name="bulk_action" class="form-select form-select-sm bulk-action-select">
                     <option value="approve">Approve selected</option>
                     <option value="unapprove">Unapprove selected</option>
                     <option value="delete">Delete selected</option>

@@ -148,7 +148,7 @@
             {% csrf_token %}
             <input type="hidden" name="return_section" value="metadata">
             <div class="d-flex p-2 gap-2 align-items-center border-bottom">
-                <select name="bulk_action" class="form-select form-select-sm" style="max-width: 180px;">
+                <select name="bulk_action" class="form-select form-select-sm bulk-action-select">
                     <option value="">Bulk Action</option>
                     <option value="approve">Approve</option>
                     <option value="reject">Reject</option>

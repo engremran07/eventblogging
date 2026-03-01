@@ -303,6 +303,19 @@
         window.addEventListener("popstate", onChangelistPopState);
     }
 
+    // ── TOPBAR SCROLL ELEVATION ────────────────────────────────────────────────
+    // Adds .topbar-elevated to the admin topbar when the page is scrolled so CSS
+    // can apply a glassmorphism / shadow upgrade via the workspace.css class.
+    function bindTopbarScrollElevation() {
+        const topbar = document.querySelector(".workspace-topbar, .admin-topbar, [data-topbar]");
+        if (!topbar) return;
+        const update = () => {
+            topbar.classList.toggle("topbar-elevated", window.scrollY > 8);
+        };
+        window.addEventListener("scroll", update, { passive: true });
+        update();
+    }
+
     document.addEventListener("DOMContentLoaded", function () {
         applyTheme(getThemeMode(), getThemePreset());
         bindHtmxCsrfHeader();
@@ -310,5 +323,6 @@
         bindThemeStateSync();
         bindThemeStorageSync();
         bindChangelistPartialization();
+        bindTopbarScrollElevation();
     });
 })();

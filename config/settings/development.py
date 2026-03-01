@@ -26,3 +26,24 @@ EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 SHELL_PLUS_IMPORTS = [
     "from django.contrib.auth.models import User",
 ]
+
+# django-debug-toolbar — only when package is installed
+try:
+    import debug_toolbar  # noqa: F401  # type: ignore[import-untyped]
+    INSTALLED_APPS += ["debug_toolbar"]  # noqa: F405
+    MIDDLEWARE = [
+        "django.middleware.security.SecurityMiddleware",
+        "debug_toolbar.middleware.DebugToolbarMiddleware",
+        "django.contrib.sessions.middleware.SessionMiddleware",
+        "django.middleware.common.CommonMiddleware",
+        "seo.middleware.SeoRedirectMiddleware",
+        "django.middleware.csrf.CsrfViewMiddleware",
+        "django.contrib.auth.middleware.AuthenticationMiddleware",
+        "core.middleware.PlatformGuardMiddleware",
+        "django.contrib.messages.middleware.MessageMiddleware",
+        "django_htmx.middleware.HtmxMiddleware",
+        "blog.middleware.ContentDateRefreshMiddleware",
+        "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    ]
+except ImportError:
+    pass  # debug_toolbar not installed — silently skip

@@ -1385,7 +1385,17 @@ python manage.py startapp [name] apps/[name]
 - `PERF401`: Loop-with-append → list comprehension for creation; `list.extend(gen)` for additions to existing list
 - `RUF005`: `list1 + [item]` → `[*list1, item]` for unpacking style
 - Ruff `isort` (`I` rules) was missing— after adding, `known-first-party` must list all project module names to properly sort internal vs external imports
+**FROM PYLANCE SIGNAL SESSION (Mar 1, 2026 Session 2):**
+- Django signal handlers: always annotate `sender: type[Any]`, `instance: Any`, `**kwargs: Any` — unannotated triggers ~40 cascade errors per handler
+- `evaluate_comment_risk` returns `dict[str, object]` — access via `.get("score", 0)` not tuple unpack; always check return type before unpacking
+- `int(result.get("score", 0))  # type: ignore[arg-type]` pattern for `dict[str, object]` to `int` narrowing
+- `int(getattr(obj, "field", default))  # type: ignore[arg-type]` pattern to safely narrow `object`-typed getattr results
+- `type(instance).objects.filter(...)  # type: ignore[union-attr]` to suppress `type[Any]` ORM access in signal handlers
+- Bare `dict` in function signatures → `dict[str, Any]` in strict mode (bare dict = `dict[Unknown, Unknown]`)
+- Always add `-> bool` (or appropriate return type) when function has explicit `return True`/`return False` branches
+- `emit_platform_webhook` calling side: "partially unknown" error goes away after fixing the callee's parameter type from bare `dict` to `dict[str, Any]`
 - *(Claude appends new entries here each session)*
+
 
 ---
 
@@ -1428,11 +1438,11 @@ python manage.py startapp [name] apps/[name]
 ## 🎯 ACTIVE CONTEXT — UPDATE EVERY SESSION
 
 ```
-Last Updated:     Mar 1, 2026
-Session Type:     MULTIAGENT FULL EXECUTION — Backend + Config + Docs
-Working On:       All 6 agent phases from AGENTS.md
-Current App:      All apps (blog, seo, tags, core, config)
-Status:           Session complete — all backend/config items done; admin templates + HeadlessUI pending
+Last Updated:     Mar 1, 2026 (Session 2)
+Session Type:     PYLANCE STRICT — Full workspace zero-error pass
+Working On:       All apps — Pylance strict error resolution
+Current App:      apps/blog/signals.py, apps/core/integrations.py (final fixes)
+Status:           ✅ COMPLETE — 0 Pylance errors workspace-wide, 0 ruff violations
 Blocked By:       Nothing critical
 Next Steps:
   1. Admin templates: eliminate 20 inline styles in dashboard.html (Agent 2)
@@ -1442,26 +1452,17 @@ Next Steps:
   5. Add whitenoise to MIDDLEWARE list in production.py (Agent 6)
   6. Add django-debug-toolbar to development.py INSTALLED_APPS (Agent 6)
 Open Questions:   None blocking
+Last Commit:      991b3cc — "fix: pylance strict — annotate signal handlers, fix evaluate_comment_risk call, bare dict in integrations; cast(Any) for Tagulous boundaries; FileField and Mode type ignores in admin_views"
 
-FILES CHANGED THIS SESSION:
-  - apps/blog/models.py: Added is_published property, get_reading_time_display(), can_be_edited_by()
-  - apps/blog/signals.py: CREATED — publish webhook + comment moderation backstop
-  - apps/blog/apps.py: ready() now imports blog.signals
-  - apps/blog/context_processors.py: site_appearance() caches 5 get_solo() calls (300s TTL)
-  - apps/blog/taxonomy_rules.py: get_category_max_depth() caches result (300s TTL)
-  - apps/seo/signals.py: SeoRedirectRule save/delete now invalidates redirect cache
-  - apps/tags/selectors.py: Added get_all_tags_with_counts() canonical alias
-  - config/views.py: Added handler404_view + handler500_view
-  - config/urls.py: Registered handler404 + handler500
-  - config/settings/development.py: Added INTERNAL_IPS
-  - config/settings/production.py: SESSION_ENGINE=cache, whitenoise CompressedManifest storage
-  - templates/errors/404.html: CREATED — extends base.html
-  - templates/errors/500.html: CREATED — standalone static (no DB/context processors)
-  - .env.example: Full rewrite with section comments
-  - AGENTS.md: Consolidated (removed duplicate), added full onboarding + feature guides
-  - CLAUDE.md: Active Context updated
+FILES CHANGED THIS SESSION (Session 2):
+  - apps/blog/signals.py: All params annotated (Any); TextChoices .value fix; evaluate_comment_risk call fixed (dict access)
+  - apps/core/integrations.py: bare dict → dict[str, Any]; -> bool return type added; from typing import Any
+  - apps/blog/admin_views.py: cast(Any) for all Tagulous tag_model boundaries; FileField # type: ignore[assignment]; Mode .value fix
+  - apps/seo/services.py: audit_content_batch annotated — Iterable[Any], dict[str, int] return
+  - apps/blog/services.py: apply_auto_taxonomy_to_post annotated — dict[str, Any] return
 
 RUFF STATUS: ✅ "All checks passed!" (0 violations across apps/ config/)
+PYLANCE STATUS: ✅ "No errors found" (0 errors workspace-wide)
 
 COMPLETED ACROSS ALL SESSIONS:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1473,7 +1474,8 @@ COMPLETED ACROSS ALL SESSIONS:
 ✅ Silent exceptions log via logger.warning — zero silent failures
 ✅ SSE WSGI blocking stream → polling endpoint
 ✅ Post model: is_published, get_reading_time_display(), can_be_edited_by()
-✅ apps/blog/signals.py created + wired in apps.py ready()
+✅ apps/blog/signals.py: all params typed, TextChoices fixed, evaluate_comment_risk call corrected
+✅ apps/core/integrations.py: dict[str, Any] payload, -> bool return type
 ✅ handler404 + handler500 in urls.py + views.py + error templates
 ✅ site_appearance() context processor: 5 DB hits/request → 0 (cached 5 min)
 ✅ get_category_max_depth() cached with 5-min TTL
@@ -1488,8 +1490,6 @@ COMPLETED ACROSS ALL SESSIONS:
 ✅ selectors.py pattern fully applied in all apps (blog, seo, comments, tags, pages)
 
 REMAINING ISSUES (Known/Accepted):
-🟡 Residual Pylance "unknown" warnings from Tagulous dynamic tag models — no stubs available
-🟡 Residual Pylance warnings from Django's dynamic metaclass — expected with strict mode
 🟠 Admin dashboard.html: 20 inline styles not yet eliminated (Agent 2 — HIGH)
 🟠 Admin posts/editor.html: 32 inline styles not yet eliminated (Agent 2 — HIGH)
 🟠 HeadlessUI components 0/13 — pending (Agent 3 — MEDIUM)

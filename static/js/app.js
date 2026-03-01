@@ -1,16 +1,603 @@
+/* =============================================================================
+   APP.JS  UNIFIED ALPINE + THEME + COMPONENT REGISTRY
+   =============================================================================
+   Consolidated from: theme-core.js, alpine-store.js, app.js
+   Load order: This file first (defer), then Alpine CDN (defer, last).
+   Contains:
+     1. ThemeCore IIFE (window.ThemeCore  shared theme management)
+     2. Alpine stores (alpine:init listener  .ui, .user, .admin)
+     3. Named Alpine component functions (modalManager, drawerManager, etc.)
+   ============================================================================= */
+
+
+/* ============================================================================
+   MERGED FROM: theme-core.js
+   ============================================================================ */
+
+/**
+ * theme-core.js â€” Shared Theme Management
+ * Single source of truth for theme utilities used by both admin and public.
+ * Loaded as the FIRST deferred script in both base.html and base_site.html.
+ * Exposes window.ThemeCore for consumption by admin/core.js and site/core.js.
+ */
+(function () {
+    "use strict";
+
+    var afterApplyHooks = [];
+
+    function getCookie(name) {
+        var cookieValue = document.cookie
+            .split("; ")
+            .find(function (row) { return row.startsWith(name + "="); });
+        return cookieValue ? decodeURIComponent(cookieValue.split("=")[1]) : null;
+    }
+
+    function getThemeMode() {
+        return document.documentElement.getAttribute("data-bs-theme") || "light";
+    }
+
+    function getThemePreset() {
+        return document.documentElement.getAttribute("data-app-preset") || "aurora";
+    }
+
+    function applyAppearanceVariables(cssVariables) {
+        if (!cssVariables || typeof cssVariables !== "object") {
+            return;
+        }
+        Object.entries(cssVariables).forEach(function (entry) {
+            var variableName = entry[0];
+            var variableValue = entry[1];
+            if (typeof variableName !== "string" || !variableName.startsWith("--")) {
+                return;
+            }
+            if (typeof variableValue !== "string") {
+                return;
+            }
+            document.documentElement.style.setProperty(variableName, variableValue);
+        });
+    }
+
+    function applyThemeLogos(mode) {
+        var safeMode = mode === "dark" ? "dark" : "light";
+        document.querySelectorAll("[data-theme-logo]").forEach(function (element) {
+            var lightLogo = element.dataset.logoLight || element.getAttribute("src") || "";
+            var darkLogo = element.dataset.logoDark || lightLogo;
+            var nextSource = safeMode === "dark" ? darkLogo : lightLogo;
+            if (nextSource && element.getAttribute("src") !== nextSource) {
+                element.setAttribute("src", nextSource);
+            }
+        });
+    }
+
+    function applyTheme(mode, preset, cssVariables) {
+        var safeMode = mode === "dark" ? "dark" : "light";
+        var safePreset = (preset || "").trim() || getThemePreset();
+
+        document.documentElement.setAttribute("data-bs-theme", safeMode);
+        document.documentElement.setAttribute("data-app-preset", safePreset);
+        applyAppearanceVariables(cssVariables);
+        if (document.body) {
+            document.body.setAttribute("data-bs-theme", safeMode);
+            document.body.setAttribute("data-app-preset", safePreset);
+        }
+        applyThemeLogos(safeMode);
+
+        if (window.Alpine && typeof window.Alpine.store === "function") {
+            var uiStore = window.Alpine.store("ui");
+            if (uiStore && typeof uiStore === "object") {
+                uiStore.theme = safeMode;
+            }
+        }
+
+        try {
+            localStorage.setItem("global_theme_mode", safeMode);
+            localStorage.setItem("global_theme_preset", safePreset);
+        } catch (_error) {
+            // localStorage may be unavailable in private mode; ignore.
+        }
+
+        // Execute post-apply hooks (e.g., admin glyph toggle)
+        afterApplyHooks.forEach(function (fn) {
+            fn(safeMode, safePreset);
+        });
+    }
+
+    function fetchThemeState(url) {
+        return fetch(url, {
+            method: "GET",
+            credentials: "same-origin",
+            headers: {
+                "X-Requested-With": "XMLHttpRequest",
+            },
+            cache: "no-store",
+        }).then(function (response) {
+            if (!response.ok) {
+                throw new Error("theme_state_failed");
+            }
+            return response.json();
+        });
+    }
+
+    function bindThemeStateSync() {
+        var stateUrl = document.body && document.body.dataset
+            ? document.body.dataset.themeStateUrl || ""
+            : "";
+        if (!stateUrl) {
+            return;
+        }
+
+        var inFlight = false;
+
+        var sync = function () {
+            if (inFlight || document.visibilityState === "hidden") {
+                return;
+            }
+            inFlight = true;
+            fetchThemeState(stateUrl)
+                .then(function (payload) {
+                    applyTheme(
+                        payload.mode || getThemeMode(),
+                        payload.preset || getThemePreset(),
+                        payload.css_variables || null
+                    );
+                })
+                .catch(function () {
+                    // Keep current theme when sync request fails.
+                })
+                .finally(function () {
+                    inFlight = false;
+                });
+        };
+
+        window.setInterval(sync, 15000);
+        document.addEventListener("visibilitychange", function () {
+            if (document.visibilityState === "visible") {
+                sync();
+            }
+        });
+    }
+
+    function bindThemeStorageSync() {
+        window.addEventListener("storage", function (event) {
+            if (event.key !== "global_theme_mode" && event.key !== "global_theme_preset") {
+                return;
+            }
+            var mode = getThemeMode();
+            var preset = getThemePreset();
+            try {
+                mode = localStorage.getItem("global_theme_mode") || mode;
+                preset = localStorage.getItem("global_theme_preset") || preset;
+            } catch (_error) {
+                // localStorage may be unavailable in private mode; ignore.
+            }
+            applyTheme(mode, preset);
+        });
+    }
+
+    // Public API â€” consumed by admin/core.js, site/core.js, alpine-store.js
+    window.ThemeCore = {
+        getCookie: getCookie,
+        getThemeMode: getThemeMode,
+        getThemePreset: getThemePreset,
+        applyAppearanceVariables: applyAppearanceVariables,
+        applyThemeLogos: applyThemeLogos,
+        applyTheme: applyTheme,
+        fetchThemeState: fetchThemeState,
+        bindThemeStateSync: bindThemeStateSync,
+        bindThemeStorageSync: bindThemeStorageSync,
+        /**
+         * Register a callback to run after every applyTheme() call.
+         * Used by admin/core.js for glyph toggling.
+         * @param {function(string, string): void} fn  Receives (mode, preset)
+         */
+        onAfterApply: function (fn) {
+            if (typeof fn === "function") {
+                afterApplyHooks.push(fn);
+            }
+        }
+    };
+})();
+
+
+/* ============================================================================
+   MERGED FROM: alpine-store.js
+   ============================================================================ */
+
+/**
+ * Alpine.js Central Store
+ * Single source of truth for all UI and user state
+ * Access via $store.ui and $store.user in any Alpine.js component
+ */
+
+// All store registrations are deferred until Alpine fires 'alpine:init'.
+// This lets Alpine CDN load LAST in the defer chain (correct per Alpine 3 docs)
+// while this script runs first â€” no 'Alpine is not defined' errors.
+// Helper functions are scoped INSIDE the callback â€” zero window pollution.
+document.addEventListener('alpine:init', () => {
+
+  // â”€â”€ Private helpers (scoped to this callback, not on window) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  function normalizeLevel(level) {
+    const allowed = ["success", "info", "warning", "error"];
+    return allowed.includes(level) ? level : "info";
+  }
+
+  // getCookie is provided by theme-core.js (loaded before this script).
+  // Fallback to inline version if ThemeCore is unavailable (defensive).
+  var getCookie = (window.ThemeCore && window.ThemeCore.getCookie) || function (name) {
+    const cookieValue = document.cookie
+      .split("; ")
+      .find((row) => row.startsWith(name + "="));
+    return cookieValue ? decodeURIComponent(cookieValue.split("=")[1]) : "";
+  };
+
+  function findInlineSlot(target) {
+    if (!target) {
+      return document.querySelector('[data-ui-feedback-slot="global"]');
+    }
+    if (typeof target !== "string") {
+      return null;
+    }
+    const key = target.trim();
+    if (!key) {
+      return document.querySelector('[data-ui-feedback-slot="global"]');
+    }
+    if (key.startsWith("#") || key.startsWith(".") || key.startsWith("[")) {
+      return document.querySelector(key);
+    }
+    return document.querySelector(`[data-ui-feedback-slot="${key}"]`);
+  }
+
+  function renderInline(slot, level, message) {
+    if (!slot) {
+      return;
+    }
+    if (!slot.dataset.baseClass) {
+      slot.dataset.baseClass = slot.className || "";
+    }
+
+    const currentLevel = normalizeLevel(level);
+    slot.className =
+      slot.dataset.baseClass +
+      " ui-inline-feedback ui-inline-feedback-" +
+      currentLevel;
+    slot.classList.remove("d-none");
+
+    slot.replaceChildren();
+    const icon = document.createElement("span");
+    icon.className = "ui-inline-feedback-icon";
+    icon.setAttribute("aria-hidden", "true");
+    icon.textContent = currentLevel === "success" ? "+" : currentLevel === "error" ? "x" : "i";
+
+    const text = document.createElement("span");
+    text.className = "ui-inline-feedback-text";
+    text.textContent = message || "Action completed.";
+
+    slot.append(icon, text);
+  }
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+Alpine.store('ui', {
+  // UI State - Theme and sidebar
+  sidebarOpen: localStorage.getItem('sidebar_open') !== 'false',
+  theme: document.documentElement.getAttribute('data-bs-theme') || 'light',
+  loading: false,
+  notificationsOpen: false,
+  
+  // Toast and modal state
+  toasts: [],
+  toastCounter: 0,
+  _confirmOpen: false,
+  _modal: null,
+
+  // Theme Methods
+  async toggleTheme() {
+    const nextTheme = this.theme === "dark" ? "light" : "dark";
+    const toggleUrl = document.body?.dataset?.adminThemeToggleUrl || "";
+
+    if (toggleUrl) {
+      try {
+        const response = await fetch(toggleUrl, {
+          method: "POST",
+          credentials: "same-origin",
+          headers: {
+            "X-CSRFToken": getCookie("csrftoken"),
+            "X-Requested-With": "XMLHttpRequest",
+          },
+        });
+        if (response.ok) {
+          const payload = await response.json();
+          this.theme = payload.mode || nextTheme;
+        } else {
+          this.theme = nextTheme;
+        }
+      } catch (_error) {
+        this.theme = nextTheme;
+      }
+    } else {
+      this.theme = nextTheme;
+    }
+
+    document.documentElement.setAttribute("data-bs-theme", this.theme);
+    if (document.body) {
+      document.body.setAttribute("data-bs-theme", this.theme);
+    }
+  },
+
+  toggleSidebar() {
+    this.sidebarOpen = !this.sidebarOpen;
+    localStorage.setItem('sidebar_open', this.sidebarOpen);
+  },
+
+  setLoading(isLoading) {
+    this.loading = isLoading;
+  },
+
+  // Toast Methods - Combined implementation
+  toastIcon(level) {
+    const safeLevel = normalizeLevel(level);
+    if (safeLevel === "success") {
+      return "+";
+    }
+    if (safeLevel === "warning") {
+      return "!";
+    }
+    if (safeLevel === "error") {
+      return "x";
+    }
+    return "i";
+  },
+
+  notify(level, message, opts = {}) {
+    const safeLevel = normalizeLevel(level);
+    const safeMessage = (message || "").trim() || "Action completed.";
+    const duration = Number(opts.duration || 3400);
+
+    const id = ++this.toastCounter;
+    this.toasts.push({
+      id: id,
+      level: safeLevel,
+      message: safeMessage,
+      visible: true,
+    });
+
+    window.setTimeout(() => {
+      this.dismissToast(id);
+    }, duration);
+  },
+
+  dismissToast(id) {
+    const toast = this.toasts.find((entry) => entry.id === id);
+    if (!toast) {
+      return;
+    }
+    toast.visible = false;
+    window.setTimeout(() => {
+      this.toasts = this.toasts.filter((entry) => entry.id !== id);
+    }, 180);
+  },
+
+  // Legacy toast methods for backward compatibility
+  addToast(message, type = 'info', duration = 3000) {
+    this.notify(type, message, { duration });
+  },
+
+  removeToast(id) {
+    this.dismissToast(id);
+  },
+
+  clearToasts() {
+    this.toasts = [];
+    this.toastCounter = 0;
+  },
+
+  // Inline feedback method
+  setInline(target, level, message) {
+    const slot = findInlineSlot(target);
+    if (!slot) {
+      return;
+    }
+    renderInline(slot, level, message);
+  },
+
+  // Modal / Confirmation Methods
+  openModal(modalId) {
+    this._modal = modalId;
+  },
+
+  closeModal() {
+    this._modal = null;
+  },
+
+  showConfirm(options = {}) {
+    const title = options.title || "Confirm Action";
+    const message = options.message || "Are you sure you want to continue?";
+    const confirmText = options.confirmText || "Confirm";
+    const cancelText = options.cancelText || "Cancel";
+    const inlineTarget = options.inlineTarget || "global";
+
+    if (this._confirmOpen) {
+      return Promise.resolve(false);
+    }
+
+    if (!window.bootstrap || !window.bootstrap.Modal) {
+      this.setInline(
+        inlineTarget,
+        "warning",
+        "Confirmation dialog is unavailable. Action blocked."
+      );
+      this.notify(
+        "warning",
+        "Confirmation dialog is unavailable. Action blocked."
+      );
+      return Promise.resolve(false);
+    }
+
+    const modalElement = document.getElementById("ui-confirm-modal");
+    const titleElement = document.getElementById("uiConfirmTitle");
+    const messageElement = document.getElementById("uiConfirmMessage");
+    const approveButton = document.getElementById("ui-confirm-approve");
+    const cancelButton = document.getElementById("ui-confirm-cancel");
+
+    if (
+      !modalElement ||
+      !titleElement ||
+      !messageElement ||
+      !approveButton ||
+      !cancelButton
+    ) {
+      this.setInline(
+        inlineTarget,
+        "warning",
+        "Confirmation dialog is unavailable. Action blocked."
+      );
+      this.notify(
+        "warning",
+        "Confirmation dialog is unavailable. Action blocked."
+      );
+      return Promise.resolve(false);
+    }
+
+    titleElement.textContent = title;
+    messageElement.textContent = message;
+    approveButton.textContent = confirmText;
+    cancelButton.textContent = cancelText;
+
+    const activeElement = document.activeElement;
+    this._modal = this._modal || new window.bootstrap.Modal(modalElement);
+    this._confirmOpen = true;
+
+    return new Promise((resolve) => {
+      let confirmed = false;
+
+      const cleanup = () => {
+        modalElement.removeEventListener("hidden.bs.modal", onHidden);
+        approveButton.removeEventListener("click", onApprove);
+        this._confirmOpen = false;
+        if (activeElement && typeof activeElement.focus === "function") {
+          activeElement.focus();
+        }
+      };
+
+      const onApprove = () => {
+        confirmed = true;
+        this._modal.hide();
+      };
+
+      const onHidden = () => {
+        cleanup();
+        resolve(confirmed);
+      };
+
+      modalElement.addEventListener("hidden.bs.modal", onHidden, {
+        once: true,
+      });
+      approveButton.addEventListener("click", onApprove, { once: true });
+      this._modal.show();
+    });
+  },
+});
+
+/**
+ * User State Store
+ * Contains information about the currently logged-in user
+ */
+Alpine.store('user', {
+  id: null,
+  username: '',
+  email: '',
+  role: 'guest',
+  permissions: [],
+  is_staff: false,
+  is_superuser: false,
+
+  init(userData) {
+    if (userData) {
+      this.id = userData.id;
+      this.username = userData.username;
+      this.email = userData.email;
+      this.role = userData.role || 'guest';
+      this.permissions = userData.permissions || [];
+      this.is_staff = userData.is_staff || false;
+      this.is_superuser = userData.is_superuser || false;
+    }
+  },
+
+  hasPermission(permission) {
+    return this.is_superuser || this.permissions.includes(permission);
+  },
+
+  isAuthenticated() {
+    return this.id !== null;
+  },
+
+  isStaff() {
+    return this.is_staff || this.is_superuser;
+  },
+});
+
+/**
+ * Admin State Store
+ * Contains admin-specific state and operations
+ */
+Alpine.store('admin', {
+  panelOpen: true,
+  activeSection: null,
+  notifications: [],
+  
+  togglePanel() {
+    this.panelOpen = !this.panelOpen;
+  },
+
+  setActiveSection(section) {
+    this.activeSection = section;
+  },
+
+  addNotification(message, type = 'info', duration = 3000) {
+    const id = Math.random().toString(36).substr(2, 9);
+    this.notifications.push({ id, message, type });
+    
+    if (duration > 0) {
+      window.setTimeout(() => this.removeNotification(id), duration);
+    }
+  },
+
+  removeNotification(id) {
+    this.notifications = this.notifications.filter(n => n.id !== id);
+  },
+
+  clearNotifications() {
+    this.notifications = [];
+  },
+}); // end Alpine.store('admin')
+
+// Initialize theme immediately after stores are registered (still inside alpine:init)
+  const theme = Alpine.store('ui').theme;
+  document.documentElement.setAttribute('data-bs-theme', theme);
+  if (document.body) {
+    document.body.setAttribute('data-bs-theme', theme);
+  }
+
+}); // end document.addEventListener('alpine:init')
+
+
+
+/* ============================================================================
+   MERGED FROM: app.js
+   ============================================================================ */
+
 /**
  * ============================================================================
- * APP.JS — THE SINGLE ALPINE COMPONENT REGISTRY
+ * APP.JS â€” THE SINGLE ALPINE COMPONENT REGISTRY
  * ============================================================================
  * All Alpine component functions live here. One file, zero duplication.
- * This file coexists with alpine-store.js (Alpine.store approach) —
+ * This file coexists with alpine-store.js (Alpine.store approach) â€”
  * alpine-store.js owns global reactive state ($store.ui), this file owns
  * named component functions used via x-data="functionName()".
  *
- * Load order in base.html: alpine-store.js → app.js → alpinejs defer
+ * Load order in base.html: alpine-store.js â†’ app.js â†’ alpinejs defer
  *
  * Patterns:
- *  - Named functions — used as x-data="modalManager()"
+ *  - Named functions â€” used as x-data="modalManager()"
  *  - ARIA attributes set in HTML, driven by Alpine state
  *  - Keyboard navigation built into every interactive component
  *  - Focus management for a11y (modals trap focus, drawers return focus)
@@ -33,7 +620,7 @@ function appShell() {
       this._restoreScrollProgress();
     },
     _restoreScrollProgress() {
-      // No-op placeholder — extended by site/core.js
+      // No-op placeholder â€” extended by site/core.js
     },
   };
 }
@@ -141,13 +728,13 @@ function toastManager() {
       const id = Date.now() + Math.random();
       const duration = detail.duration || 3800;
       const level = detail.type || detail.level || "info";
-      const icons = { success: "✓", warning: "⚠", danger: "✕", info: "ℹ" };
+      const icons = { success: "âœ“", warning: "âš ", danger: "âœ•", info: "â„¹" };
       this.toasts.push({
         id,
         message: typeof detail === "string" ? detail : (detail.message || ""),
         title: detail.title || "",
         level,
-        icon: detail.icon || icons[level] || "ℹ",
+        icon: detail.icon || icons[level] || "â„¹",
         duration,
         visible: true,
       });
@@ -167,7 +754,7 @@ function toastManager() {
 }
 
 /**
- * Global helper — call from anywhere: dispatchToast("Saved!", "success")
+ * Global helper â€” call from anywhere: dispatchToast("Saved!", "success")
  * @param {string} message
  * @param {"success"|"warning"|"danger"|"info"} type
  * @param {number} duration  ms
@@ -187,7 +774,7 @@ document.addEventListener("htmx:afterRequest", (e) => {
     if (data.showToast) {
       dispatchToast(data.showToast.message, data.showToast.type, data.showToast.duration);
     }
-  } catch (_) { /* Non-JSON trigger header — ignore */ }
+  } catch (_) { /* Non-JSON trigger header â€” ignore */ }
 });
 
 /* ============================================================================
@@ -205,7 +792,7 @@ function listbox(cfg = {}) {
     query: "",
 
     get displayLabel() {
-      if (!this.selected) return cfg.placeholder || "Select…";
+      if (!this.selected) return cfg.placeholder || "Selectâ€¦";
       return this.selected[this.labelKey] ?? this.selected;
     },
 
@@ -675,7 +1262,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 /* ============================================================================
-   VIEW TRANSITIONS — HTMX integration
+   VIEW TRANSITIONS â€” HTMX integration
    ============================================================================ */
 
 // htmx.config.globalViewTransitions is set in base.html templates

@@ -1438,6 +1438,16 @@ python manage.py startapp [name] apps/[name]
 - `.btn-xs` using Bootstrap CSS custom properties (`--bs-btn-padding-y`) is overridden by `.btn:not(.note-btn) { padding: ... }` at higher specificity — must convert to explicit `padding` and bump selector to `.btn.btn-xs` (0,2,0) to tie
 - To discover the exact DOM structure a third-party widget creates, fetch and read its FULL source JS from CDN — documentation rarely shows the actual renderer templates with Bootstrap class reuse
 - `enforceToolbarStyles()` must be called at 4+ points after Summernote init: immediately, 100ms, 500ms, and via `onInit` callback — Summernote's own CSS applies asynchronously across multiple animation frames
+**FROM STATIC CONSOLIDATION SESSION (Mar 1, 2026 Session 9):**
+- `.env` with `DJANGO_DEBUG=False` in dev causes CSRF 403 (production-mode enforcement + no trusted origins) AND blocks `django.contrib.staticfiles` serving — always confirm DEBUG=True in dev `.env`
+- `DJANGO_CSRF_TRUSTED_ORIGINS` must include `http://127.0.0.1:8000` AND `http://localhost:8000` for local dev — empty value means no origins trusted at all
+- CSS file merging order matters: tokens/variables MUST come before rules that reference them — `foundation.css` = tokens → design-system → base (in that order)
+- JS IIFE concatenation is safe as long as each module is self-contained — verify no cross-file `var` leakage; `const`/`let`/IIFE scoping prevents collisions
+- `<meta name="htmx-config">` MUST appear BEFORE the htmx `<script>` tag — htmx reads it during initialisation; placing it after means config is ignored
+- `htmx.config.globalViewTransitions = true` in `<meta>` tag and in inline `<script>` are NOT cumulative — prefer the meta tag (declarative, single source) and remove the duplicate script assignment
+- When consolidating admin static files referenced in child `{% block extrajs %}` / `{% block extrahead %}`, move them to the admin base template and REMOVE the child block overrides — otherwise the styles/scripts load twice
+- `django-csp==4.0` in requirements does NOT enforce CSP unless `CSP_*` settings AND `CspMiddleware` are configured — mere pip install is a no-op
+- HTTP requests per page reduced from 13 CSS+JS to 6 = 54% fewer requests — significant for perceived load time on first visit (before browser cache)
 
 
 ---
@@ -1477,6 +1487,9 @@ python manage.py startapp [name] apps/[name]
 | **[SUMMERNOTE ROOT CAUSE]** Global `.card`/`.btn` rules bleed into Summernote | Summernote BS5 reuses `.card`, `.card-header`, `.btn`, `.btn-sm` Bootstrap classes on its DOM — global overrides for these classes corrupt the editor | Use `:not(.note-editor)` / `:not(.note-btn)` / `:not(.note-toolbar)` on global rules + JS `classList.remove()` |
 | **[SUMMERNOTE ROOT CAUSE]** CSS `!important` isolation alone insufficient | Even with `!important` overrides, global padding/font-size from shared Bootstrap classes still applies first paint causing FOUC before JS corrects it | Prevent bleeding at source with `:not()` selectors; keep `!important` + JS as backup only |
 | **[SPECIFICITY]** Adding `:not()` bumps specificity from 0,1,0 to 0,2,0 | Downstream selectors at 0,1,0 or 0,1,1 that override the base rule silently lose | Audit ALL overrides after adding `:not()` to a widely-used selector |
+| **[STATIC CONSOLIDATION]** Duplicate CSS/JS across child `{% block extrahead/extrajs %}` | Child blocks override parent — if base already loads the file, child block causes double-load | Move shared assets to base template, remove child block overrides |
+| **[STATIC CONSOLIDATION]** `DJANGO_DEBUG=False` in dev `.env` | Blocks staticfiles serving + enforces production CSRF → 403 + blank pages | Always verify `.env` has `DJANGO_DEBUG=True` for local development |
+| **[HTMX CONFIG]** `<meta name="htmx-config">` placed AFTER htmx `<script>` | htmx reads meta during init — late placement means config is silently ignored | Place htmx-config meta tag BEFORE the htmx script tag |
 | *(Human corrections appended here)* | |
 
 ---
@@ -1484,76 +1497,69 @@ python manage.py startapp [name] apps/[name]
 ## 🎯 ACTIVE CONTEXT — UPDATE EVERY SESSION
 
 ```
-Last Updated:     Mar 2, 2026 (Session 8 — Summernote Root Cause Fix)
-Session Type:     BUGFIX — Summernote CSS root cause + JS dedup + meta auto-sync (Sessions 5-8 cumulative)
-Working On:       static/css/components.css, static/js/summernote-bridge.js, static/css/admin/control.css
-Current App:      Frontend CSS/JS (cross-cutting)
-Status:           ✅ COMPLETE — root cause identified and three-layer fix applied
+Last Updated:     Mar 1, 2026 (Session 9 — Static Consolidation + CSRF Fix)
+Session Type:     REFACTOR — CSS/JS consolidation, CSRF fix, HTMX enhancement, template cleanup
+Working On:       static/css/*, static/js/*, templates/base.html, templates/admin/base_site.html
+Current App:      Frontend static pipeline (cross-cutting)
+Status:           ✅ COMPLETE — 19 static files → 9, all templates updated, CSRF fixed, HTMX enhanced
 Blocked By:       Nothing critical
 Next Steps:
   1. BaseModel migration for remaining models (Agent 1 — HIGH)
   2. HeadlessUI partials 4-13: Disclosure, Listbox, Combobox, Menu, Popover, RadioGroup, Switch, Tabs, Transition, CommandPalette (Agent 3)
   3. Test suite expansion (Agent 6)
 Open Questions:   None blocking
-Last Commit:      "fix: root-cause Summernote CSS isolation via :not() exclusions + class stripping"
+Last Commit:      "refactor: consolidate static files (CSS 11→5, JS 8→4) + fix CSRF + enhance HTMX"
 
-SESSION 8 CHANGES (Current — Summernote Root Cause Fix):
-  DISCOVERY:
-    - Fetched full Summernote BS5 source from CDN (~700KB) — found exact renderer templates
-    - Summernote intentionally applies .card, .card-header, .btn, .btn-sm, .card-block Bootstrap classes
-    - Our global CSS for these classes (padding, font-size, font-weight, margin) bled into Summernote DOM
-  MODIFIED:
-    - static/css/components.css: .card → .card:not(.note-editor), .card-header → .card-header:not(.note-toolbar),
-      .btn → .btn:not(.note-btn), .btn-sm → .btn-sm:not(.note-btn), .btn i/svg → .btn:not(.note-btn) i/svg
-    - static/js/summernote-bridge.js: enforceToolbarStyles() now also does classList.remove("card"),
-      classList.remove("card-header"), classList.remove("card-block")
-    - static/css/admin/control.css: .btn-xs converted from CSS custom properties to explicit padding
-      (was dead due to .btn:not(.note-btn) specificity bump)
+SESSION 9 CHANGES (Current — Static Consolidation + CSRF Fix):
+  ROOT CAUSE FIXES:
+    - .env: DJANGO_DEBUG=False → True (was running production mode in dev, blocking static serving)
+    - .env: DJANGO_CSRF_TRUSTED_ORIGINS= (empty) → http://127.0.0.1:8000,http://localhost:8000
+    - These two .env changes fixed: CSRF 403 on admin login, "nothing visible" (no static serving), Summernote not loading
+    - CSP: Confirmed django-csp==4.0 in production.txt but ZERO CSP_* settings configured — NOT causing issues
+    - Summernote: Bridge has 40-retry mechanism (150ms × 40 = 6s), all toolbar features present — works fine once page loads
 
-SESSION 5-7 CHANGES (Previously undocumented):
-  Commits: 1fcf121, 92f65ef, 4115c35, ca5f581, 1490fd9, 1926e17, b343efc, 8609756, 80fd164
-  CREATED:
-    - static/js/theme-core.js: Consolidated dark mode logic from 3 files into single source
-    - templates/pages/page_form.html: Public page form with meta auto-sync
-  MODIFIED:
-    - static/js/admin/core.js: Slimmed ~200 lines — theme logic extracted to theme-core.js
-    - static/js/site/core.js: Slimmed ~200 lines — theme logic extracted to theme-core.js
-    - static/js/alpine-store.js: Cleaned up duplicate theme state
-    - static/js/summernote-bridge.js: Added enforceToolbarStyles() with inline !important + onInit callback
-    - static/css/components.css: Added Summernote isolation rules (~80 lines !important CSS)
-    - static/css/layout.css: Removed overflow-y:auto from .admin-content (Summernote dropdown clipping fix)
-    - templates/admin/base_site.html: Fixed Alpine CDN load order (last after stores), added theme-core.js
-    - templates/admin/posts/editor.html: Meta auto-sync (title/desc/canonical), Summernote word counting
-    - templates/blog/post_form.html: Meta auto-sync fields
-    - templates/partials/_toast_stack.html: x-cloak fix (replaced display:contents)
-    - templates/admin/comments/list.html, groups/list.html, pages/list.html, posts/list.html,
-      taxonomy/categories_list.html, flat_list.html, users/list.html: Fixed {# #} → {% comment %} blocks
-    - templates/admin/settings.html, seo/admin/base.html: Removed stale inline styles
-    - config/urls.py: Registered debug_toolbar URLs under __debug__/ when DEBUG=True
+  CSS CONSOLIDATION (11 files → 5 files):
+    CREATED:
+      - static/css/foundation.css (23,372B) = tokens.css + design-system.css + base.css
+      - static/css/admin/admin.css (36,307B) = workspace.css + dashboard.css + control.css
+    REPLACED (merged into existing):
+      - static/css/components.css (63,470B) = old components.css + headless.css
+      - static/css/layout.css (33,095B) = old layout.css + animations.css
+    UNCHANGED:
+      - static/css/site/core.css (23,164B)
+    DELETED:
+      - tokens.css, design-system.css, base.css, headless.css, animations.css
+      - admin/workspace.css, admin/dashboard.css, admin/control.css
 
-FILES CHANGED IN SESSION 4:
-  CREATED:
-    - static/js/app.js: Alpine.data registry (16 components + dispatchToast, countUp, scroll-animate, HTMX hooks)
-    - static/css/animations.css: 28 keyframes + utility classes + reduced-motion
-    - static/css/headless.css: full HeadlessUI CSS (backdrop, modal, drawer, toast-stack, listbox, switch, tabs, disclosure, menu, combobox, radio-group, command-palette, popover, skeleton, editable, tag-chips, seo-score-ring, form-char-counter)
-    - templates/partials/_modal.html: HeadlessUI modal partial (modalManager-driven)
-    - templates/partials/_toast_stack.html: HeadlessUI toast stack (toastManager-driven)
-    - templates/partials/_drawer.html: HeadlessUI drawer / slideover (drawerManager-driven)
-  UPDATED:
-    - templates/base.html: +animations.css, +headless.css, +app.js, 3 HeadlessUI includes, logout form d-inline fix
-    - config/settings/production.py: whitenoise added to MIDDLEWARE
-    - config/settings/development.py: debug_toolbar conditional block added
-    - templates/admin/dashboard.html: all 20 inline styles → CSS classes, <style> block removed
-    - templates/admin/posts/editor.html: all 29 inline styles → CSS classes, <style> block removed
-    - templates/components/*.html (6 files): all inline styles → CSS classes
-    - templates/components/button.html, badge.html: inline styles removed
-    - 15+ additional admin/seo/pages/blog templates: remaining inline styles eliminated
-    - static/css/admin/workspace.css: +400 lines (dashboard classes, editor classes, micro-interactions, .is-removing)
-    - static/css/components.css: +280 lines (component classes, button micro-interactions, skeleton)
-    - static/css/layout.css: .topbar-elevated glassmorphism state added to .admin-topbar
-    - static/css/site/core.css: Phase 3 public micro-interactions (image zoom, progress glow, comment stagger, reaction spring, scroll-animate)
-    - static/js/admin/workspace.js: Ctrl+S shortcut + htmx:beforeSwap row animation
-    - static/js/admin/core.js: bindTopbarScrollElevation() added + called on DOMContentLoaded
+  JS CONSOLIDATION (8 files → 4 files):
+    REPLACED (merged into existing):
+      - static/js/app.js (40,754B) = theme-core.js + alpine-store.js + old app.js
+    CREATED:
+      - static/js/site/site.js (23,409B) = alpine-htmx-utils.js + site/core.js
+      - static/js/admin/admin.js (33,678B) = admin/core.js + admin/workspace.js + admin/control.js
+    UNCHANGED:
+      - static/js/summernote-bridge.js (15,660B)
+    DELETED:
+      - theme-core.js, alpine-store.js
+      - site/alpine-htmx-utils.js, site/core.js
+      - admin/core.js, admin/workspace.js, admin/control.js
+
+  TEMPLATE UPDATES:
+    - templates/base.html: 8 CSS links → 4 (foundation, components, layout, site/core); 5 JS scripts → 2 (app, site/site)
+    - templates/admin/base_site.html: 8 CSS links → 4 (foundation, components, layout, admin/admin); 3 JS scripts → 2 (app, admin/admin)
+    - 6 admin child templates: removed redundant {% block extrajs %} workspace.js includes (now in base)
+    - templates/admin/index.html: removed redundant dashboard.css extrahead (now in admin/admin.css)
+    - templates/seo/admin/base.html: removed redundant control.css + control.js extrahead (now in base)
+    - templates/blog/dashboard.html: workspace.css → admin/admin.css reference
+
+  HTMX ENHANCEMENT:
+    - Added <meta name="htmx-config"> in both base templates (BEFORE htmx script load):
+      globalViewTransitions, defaultSwapStyle=innerHTML, defaultSettleDelay=100ms, scrollBehavior=smooth, includeIndicatorStyles=true
+
+  STATIC FILE TOTALS:
+    CSS: 5 files, 179,408 bytes (was 11 files, ~172,000 bytes — slight increase from merge headers)
+    JS:  4 files, 113,501 bytes (was 8 files, ~109,000 bytes — slight increase from merge headers)
+    HTTP requests per page: 6 CSS+JS (was 13) — 54% fewer requests
 
 PHASE SUMMARY:
   ✅ Phase 0 — Foundation: animations.css, headless.css, app.js created; base.html wired
@@ -1561,9 +1567,10 @@ PHASE SUMMARY:
   ✅ Phase 2 — Admin micro-interactions: topbar glassmorphism, row-remove animation, Ctrl+S, stat-card hover lift, KPI row hover
   ✅ Phase 3 — Public micro-interactions: post-card image zoom, reading-progress glow, comment stagger, reaction spring, scroll-animate
   ✅ Phase 4 — HeadlessUI HTML partials: modal, toast-stack, drawer (MVP set) wired into base.html
+  ✅ Phase 5 — Static consolidation: CSS 11→5, JS 8→4, templates updated, HTMX config meta tag
 
 RUFF STATUS: ✅ "All checks passed!" (0 violations)
-PYLANCE STATUS: ✅ (unchanged — 0 errors from Session 3 carried forward)
+DJANGO CHECK: ✅ "System check identified no issues"
 
 COMPLETED ACROSS ALL SESSIONS:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1603,6 +1610,11 @@ COMPLETED ACROSS ALL SESSIONS:
 ✅ overflow-y:auto removed from .admin-content — fixed Summernote dropdown clipping
 ✅ Summernote root cause fix: :not() exclusions on .card/.btn/.card-header + JS class stripping
 ✅ .btn-xs specificity fix: explicit padding at .btn.btn-xs (0,2,0) to compete with :not() bump
+✅ CSRF 403 fix: .env DEBUG=True + CSRF_TRUSTED_ORIGINS populated
+✅ CSS consolidated: 11 files → 5 (foundation, components, layout, admin/admin, site/core)
+✅ JS consolidated: 8 files → 4 (app, site/site, admin/admin, summernote-bridge)
+✅ Template refs updated: base.html, base_site.html + 10 child templates cleaned
+✅ HTMX enhanced: <meta name="htmx-config"> with globalViewTransitions, scrollBehavior, settleDelay
 
 REMAINING ISSUES (Known/Accepted):
 🟡 HeadlessUI components: 3/13 partials MVP'd (_modal, _toast_stack, _drawer) — remaining 10 not started (Agent 3 — MEDIUM)
@@ -1618,8 +1630,8 @@ REMAINING ISSUES (Known/Accepted):
  3. ONE services.py per app — all business logic
  4. ONE selectors.py per app — all ORM queries
  5. ONE apps/core/ — all shared utilities, tags, mixins, base models
- 6. ONE static/js/app.js — all Alpine components
- 7. ONE static/css/headless.css — all HeadlessUI component styles
+ 6. ONE static/js/app.js — all Alpine components + theme + stores
+ 7. ONE static/css/components.css — all HeadlessUI + component styles
  8. ZERO business logic in views, models, or templates
  9. ZERO hardcoded URLs — {% url %} and reverse() everywhere
 10. ZERO duplication — exists twice = belongs in core
@@ -1627,10 +1639,10 @@ REMAINING ISSUES (Known/Accepted):
 12. ZERO secrets in code — .env always
 13. ZERO cross-app direct imports — use core/ or signals
 14. ALL apps self-contained under apps/ with app_name in urls.py
-15. ALL HeadlessUI components = app.js function + HTML partial + headless.css
+15. ALL HeadlessUI components = app.js function + HTML partial + components.css
 ```
 
 ---
 
 *Living document. Claude grows it every session. Team grows it. Never becomes stale.*
-*Audit: ✅ | HeadlessUI: 3/13 MVP | Last session: Mar 2 2026 — Session 8 Summernote root cause fix | Model: Sonnet / Opus / Haiku*
+*Audit: ✅ | HeadlessUI: 3/13 MVP | Last session: Mar 1 2026 — Session 9 Static Consolidation + CSRF Fix | Model: Sonnet / Opus / Haiku*

@@ -119,7 +119,4 @@
     </div>
 {% endblock %}
 
-{% block extrajs %}
-    {{ block.super }}
-    <script defer src="{% static 'js/admin/workspace.js' %}"></script>
-{% endblock %}
+{# admin/admin.js already loaded in base_site.html — no extrajs needed #}

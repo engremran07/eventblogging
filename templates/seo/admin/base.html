@@ -1,11 +1,7 @@
 ﻿{% extends "admin/base_site.html" %}
 {% load static %}
 
-{% block extrahead %}
-    {{ block.super }}
-    <link rel="stylesheet" href="{% static 'css/admin/control.css' %}">
-    <script defer src="{% static 'js/admin/control.js' %}"></script>
-{% endblock %}
+{# admin/admin.css and admin/admin.js already loaded in base_site.html #}
 
 {% block content_title %}{{ admin_control_title }}{% endblock %}
 

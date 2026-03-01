@@ -1,4 +1,228 @@
-﻿(function () {
+/* =============================================================================
+   ADMIN.JS  ADMIN WORKSPACE UTILITIES
+   =============================================================================
+   Consolidated from: core.js, workspace.js, control.js
+   Contains:
+     1. Admin core (theme glyph toggle, HTMX CSRF, changelist partialization)
+     2. Workspace (filter forms, SEO meters, bulk actions, category drag-drop)
+     3. SEO control panel (section switching, scan job monitoring)
+   ============================================================================= */
+
+
+/* ============================================================================
+   MERGED FROM: core.js
+   ============================================================================ */
+
+(function () {
+    "use strict";
+
+    // â”€â”€ Shared theme utilities loaded from theme-core.js â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    var TC = window.ThemeCore;
+    window.adminGetCookie = TC.getCookie;
+
+    // â”€â”€ Admin-only: FontAwesome sun/moon glyph toggle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    function applyThemeGlyph(mode) {
+        var nextMode = mode === "dark" ? "dark" : "light";
+        document.querySelectorAll("[data-theme-glyph]").forEach(function (element) {
+            element.classList.toggle("fa-sun", nextMode === "dark");
+            element.classList.toggle("fa-moon", nextMode !== "dark");
+        });
+    }
+
+    // Register glyph toggle as a post-apply hook on the shared theme core
+    TC.onAfterApply(applyThemeGlyph);
+
+    // â”€â”€ Admin-only: POST toggle to server â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    function postThemeToggle(url) {
+        return fetch(url, {
+            method: "POST",
+            credentials: "same-origin",
+            headers: {
+                "X-CSRFToken": TC.getCookie("csrftoken") || "",
+                "X-Requested-With": "XMLHttpRequest",
+            },
+        }).then(function (response) {
+            if (!response.ok) {
+                throw new Error("theme_toggle_failed");
+            }
+            return response.json();
+        });
+    }
+
+    function bindThemeToggleButton() {
+        document.addEventListener("click", function (event) {
+            var button = event.target.closest("[data-theme-toggle]");
+            if (!button) {
+                return;
+            }
+            event.preventDefault();
+
+            var toggleUrl = document.body && document.body.dataset
+                ? document.body.dataset.adminThemeToggleUrl || ""
+                : "";
+            var nextMode = TC.getThemeMode() === "dark" ? "light" : "dark";
+            button.disabled = true;
+
+            var done = function () { button.disabled = false; };
+
+            if (toggleUrl) {
+                postThemeToggle(toggleUrl)
+                    .then(function (payload) {
+                        TC.applyTheme(
+                            payload.mode || nextMode,
+                            payload.preset || TC.getThemePreset(),
+                            payload.css_variables || null
+                        );
+                    })
+                    .catch(function () {
+                        TC.applyTheme(nextMode, TC.getThemePreset());
+                    })
+                    .finally(done);
+            } else {
+                TC.applyTheme(nextMode, TC.getThemePreset());
+                done();
+            }
+        });
+    }
+
+    function bindHtmxCsrfHeader() {
+        if (!window.htmx || !document.body) {
+            return;
+        }
+        document.body.addEventListener("htmx:configRequest", function (event) {
+            var token = TC.getCookie("csrftoken");
+            if (token) {
+                event.detail.headers["X-CSRFToken"] = token;
+            }
+        });
+    }
+
+    function getChangelistRoot() {
+        return document.querySelector("#changelist");
+    }
+
+    function isChangelistPage() {
+        return Boolean(getChangelistRoot());
+    }
+
+    function sameChangelistPath(url) {
+        try {
+            const parsed = new URL(url, window.location.origin);
+            return (
+                parsed.origin === window.location.origin
+                && parsed.pathname === window.location.pathname
+            );
+        } catch (_error) {
+            return false;
+        }
+    }
+
+    function requestChangelist(url, pushUrl) {
+        const target = getChangelistRoot();
+        if (!target || !window.htmx) {
+            window.location.href = url;
+            return;
+        }
+
+        htmx.ajax("GET", url, {
+            target,
+            swap: "outerHTML",
+            select: "#changelist",
+        });
+
+        if (pushUrl) {
+            window.history.pushState({ adminChangelist: true }, "", url);
+        }
+    }
+
+    function onChangelistLinkClick(event) {
+        if (!isChangelistPage()) {
+            return;
+        }
+
+        const link = event.target.closest("#changelist a[href]");
+        if (!link || link.target || link.hasAttribute("download")) {
+            return;
+        }
+
+        const href = link.getAttribute("href");
+        if (!href || href.startsWith("#") || href.startsWith("javascript:")) {
+            return;
+        }
+        if (!sameChangelistPath(link.href)) {
+            return;
+        }
+
+        event.preventDefault();
+        requestChangelist(link.href, true);
+    }
+
+    function onChangelistSearchSubmit(event) {
+        if (!isChangelistPage()) {
+            return;
+        }
+
+        const form = event.target;
+        if (!(form instanceof HTMLFormElement) || form.id !== "changelist-search") {
+            return;
+        }
+
+        event.preventDefault();
+        const base = new URL(window.location.pathname, window.location.origin);
+        const params = new URLSearchParams(new FormData(form));
+        for (const [key, value] of Array.from(params.entries())) {
+            if (!String(value).trim()) {
+                params.delete(key);
+            }
+        }
+        const query = params.toString();
+        const url = query ? `${base.toString()}?${query}` : base.toString();
+        requestChangelist(url, true);
+    }
+
+    function onChangelistPopState() {
+        if (!isChangelistPage()) {
+            return;
+        }
+        requestChangelist(window.location.href, false);
+    }
+
+    function bindChangelistPartialization() {
+        document.addEventListener("click", onChangelistLinkClick);
+        document.addEventListener("submit", onChangelistSearchSubmit);
+        window.addEventListener("popstate", onChangelistPopState);
+    }
+
+    // â”€â”€ TOPBAR SCROLL ELEVATION â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // Adds .topbar-elevated to the admin topbar when the page is scrolled so CSS
+    // can apply a glassmorphism / shadow upgrade via the workspace.css class.
+    function bindTopbarScrollElevation() {
+        const topbar = document.querySelector(".workspace-topbar, .admin-topbar, [data-topbar]");
+        if (!topbar) return;
+        const update = () => {
+            topbar.classList.toggle("topbar-elevated", window.scrollY > 8);
+        };
+        window.addEventListener("scroll", update, { passive: true });
+        update();
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+        TC.applyTheme(TC.getThemeMode(), TC.getThemePreset());
+        bindHtmxCsrfHeader();
+        bindThemeToggleButton();
+        TC.bindThemeStateSync();
+        TC.bindThemeStorageSync();
+        bindChangelistPartialization();
+        bindTopbarScrollElevation();
+    });
+})();
+
+
+/* ============================================================================
+   MERGED FROM: workspace.js
+   ============================================================================ */
+
+(function () {
     "use strict";
 
     function debounce(fn, delay) {
@@ -562,6 +786,143 @@
         const row = target.closest("tr");
         if (row && event.detail.xhr && event.detail.xhr.status === 200) {
             row.classList.add("is-removing");
+        }
+    });
+})();
+
+
+/* ============================================================================
+   MERGED FROM: control.js
+   ============================================================================ */
+
+(function () {
+    "use strict";
+
+    let monitoredJobId = null;
+    let monitorIntervalId = null;
+
+    function stopMonitoring() {
+        if (monitorIntervalId) {
+            window.clearInterval(monitorIntervalId);
+            monitorIntervalId = null;
+        }
+        monitoredJobId = null;
+    }
+
+    function setActiveSection(section) {
+        document.querySelectorAll("#seo-control-tabs .nav-link").forEach(function (link) {
+            const isActive = (link.getAttribute("data-control-section") || "") === section;
+            link.classList.toggle("active", isActive);
+        });
+    }
+
+    function monitorScanCard(card) {
+        const progressUrl = card.getAttribute("data-progress-url");
+        const jobId = card.getAttribute("data-job-id");
+        if (!progressUrl) {
+            return;
+        }
+        if (jobId && monitoredJobId === jobId && monitorIntervalId) {
+            return;
+        }
+        stopMonitoring();
+        monitoredJobId = jobId;
+        const statusNode = card.querySelector("[data-job-status]");
+        const progressBar = card.querySelector("[data-job-progress-bar]");
+        const progressText = card.querySelector("[data-job-progress-text]");
+        const countsNode = card.querySelector("[data-job-counts]");
+        const currentNode = card.querySelector("[data-job-current-item]");
+
+        async function refresh() {
+            let payload = null;
+            try {
+                const response = await fetch(progressUrl, {
+                    headers: { "X-Requested-With": "XMLHttpRequest" },
+                    credentials: "same-origin",
+                });
+                if (!response.ok) {
+                    return false;
+                }
+                payload = await response.json();
+            } catch (_error) {
+                return false;
+            }
+            const status = String(payload.status || "");
+            const percent = Number(payload.progress_percent || 0);
+            if (statusNode) {
+                statusNode.textContent = status;
+            }
+            if (progressBar) {
+                progressBar.style.width = percent + "%";
+            }
+            if (progressText) {
+                progressText.textContent = percent + "%";
+            }
+            if (countsNode) {
+                countsNode.textContent = payload.processed_items + "/" + payload.total_items + " processed";
+            }
+            if (currentNode) {
+                const item = payload.current_item || {};
+                if (item.object_id) {
+                    currentNode.textContent = "Working on " + item.content_type__model + " #" + item.object_id;
+                } else {
+                    currentNode.textContent = "";
+                }
+            }
+            return status === "queued" || status === "running";
+        }
+
+        monitorIntervalId = window.setInterval(async function () {
+            const keepPolling = await refresh();
+            if (!keepPolling) {
+                stopMonitoring();
+            }
+        }, 2000);
+    }
+
+    function bindSectionSwapHandlers() {
+        document.body.addEventListener("htmx:beforeRequest", function (event) {
+            const source = event.detail && event.detail.elt ? event.detail.elt : null;
+            if (!source) {
+                return;
+            }
+            const section = source.getAttribute("data-control-section");
+            if (section) {
+                setActiveSection(section);
+            }
+        });
+
+        document.body.addEventListener("htmx:afterSwap", function (event) {
+            const target = event.detail && event.detail.target ? event.detail.target : null;
+            if (!target || target.id !== "seo-control-section") {
+                return;
+            }
+            const requestPath = event.detail.pathInfo && event.detail.pathInfo.requestPath
+                ? event.detail.pathInfo.requestPath
+                : "";
+            const sectionMatch = requestPath.match(/\/section\/([a-z-]+)\//);
+            if (sectionMatch) {
+                const activeSection = sectionMatch[1];
+                setActiveSection(activeSection);
+            }
+            const scanCard = target.querySelector("[data-seo-scan-monitor='true']");
+            if (scanCard) {
+                monitorScanCard(scanCard);
+            } else {
+                stopMonitoring();
+            }
+        });
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+        bindSectionSwapHandlers();
+        const activeLink = document.querySelector("#seo-control-tabs .nav-link.active");
+        if (activeLink) {
+            setActiveSection(activeLink.getAttribute("data-control-section") || "");
+        }
+        const scanCard = document.querySelector("[data-seo-scan-monitor='true']");
+        if (scanCard) {
+            monitorScanCard(scanCard);
         }
     });
 })();

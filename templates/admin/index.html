@@ -4,10 +4,7 @@
 {% block bodyclass %}{{ block.super }} dashboard{% endblock %}
 {% block content_title %}{% trans 'Dashboard' %}{% endblock %}
 
-{% block extrahead %}
-    {{ block.super }}
-    <link rel="stylesheet" href="{% static 'css/admin/dashboard.css' %}">
-{% endblock %}
+{# admin/admin.css already loaded in base_site.html #}
 
 {% block breadcrumbs %}
     <ol class="breadcrumb">

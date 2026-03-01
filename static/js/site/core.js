@@ -1,146 +1,10 @@
 ﻿(function () {
   "use strict";
 
-  function getCookie(name) {
-    const cookieValue = document.cookie
-      .split("; ")
-      .find((row) => row.startsWith(name + "="));
-    return cookieValue ? decodeURIComponent(cookieValue.split("=")[1]) : null;
-  }
+  // ── Shared theme utilities loaded from theme-core.js ──────────────────────
+  var TC = window.ThemeCore;
 
-  function getThemeMode() {
-    return document.documentElement.getAttribute("data-bs-theme") || "light";
-  }
-
-  function getThemePreset() {
-    return document.documentElement.getAttribute("data-app-preset") || "aurora";
-  }
-
-  function applyAppearanceVariables(cssVariables) {
-    if (!cssVariables || typeof cssVariables !== "object") {
-      return;
-    }
-    Object.entries(cssVariables).forEach(([variableName, variableValue]) => {
-      if (typeof variableName !== "string" || !variableName.startsWith("--")) {
-        return;
-      }
-      if (typeof variableValue !== "string") {
-        return;
-      }
-      document.documentElement.style.setProperty(variableName, variableValue);
-    });
-  }
-
-  function applyThemeLogos(mode) {
-    const safeMode = mode === "dark" ? "dark" : "light";
-    document.querySelectorAll("[data-theme-logo]").forEach((element) => {
-      const lightLogo = element.dataset.logoLight || element.getAttribute("src") || "";
-      const darkLogo = element.dataset.logoDark || lightLogo;
-      const nextSource = safeMode === "dark" ? darkLogo : lightLogo;
-      if (nextSource && element.getAttribute("src") !== nextSource) {
-        element.setAttribute("src", nextSource);
-      }
-    });
-  }
-
-  function applyTheme(mode, preset, cssVariables) {
-    const safeMode = mode === "dark" ? "dark" : "light";
-    const safePreset = (preset || "").trim() || getThemePreset();
-
-    document.documentElement.setAttribute("data-bs-theme", safeMode);
-    document.documentElement.setAttribute("data-app-preset", safePreset);
-    applyAppearanceVariables(cssVariables);
-    if (document.body) {
-      document.body.setAttribute("data-bs-theme", safeMode);
-      document.body.setAttribute("data-app-preset", safePreset);
-    }
-    applyThemeLogos(safeMode);
-
-    if (window.Alpine && typeof window.Alpine.store === "function") {
-      const uiStore = window.Alpine.store("ui");
-      if (uiStore && typeof uiStore === "object") {
-        uiStore.theme = safeMode;
-      }
-    }
-
-    try {
-      localStorage.setItem("global_theme_mode", safeMode);
-      localStorage.setItem("global_theme_preset", safePreset);
-    } catch (_error) {
-      // localStorage may be unavailable in private mode; ignore.
-    }
-  }
-
-  async function fetchThemeState(url) {
-    const response = await fetch(url, {
-      method: "GET",
-      credentials: "same-origin",
-      headers: {
-        "X-Requested-With": "XMLHttpRequest",
-      },
-      cache: "no-store",
-    });
-    if (!response.ok) {
-      throw new Error("theme_state_failed");
-    }
-    return response.json();
-  }
-
-  function bindThemeStateSync() {
-    const stateUrl = document.body?.dataset?.themeStateUrl || "";
-    if (!stateUrl) {
-      return;
-    }
-
-    let inFlight = false;
-    const sync = async () => {
-      if (inFlight || document.visibilityState === "hidden") {
-        return;
-      }
-      inFlight = true;
-      try {
-        const payload = await fetchThemeState(stateUrl);
-        applyTheme(
-          payload.mode || getThemeMode(),
-          payload.preset || getThemePreset(),
-          payload.css_variables || null
-        );
-      } catch (_error) {
-        // Keep current theme when sync request fails.
-      } finally {
-        inFlight = false;
-      }
-    };
-
-    window.setInterval(sync, 15000);
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible") {
-        sync();
-      }
-    });
-  }
-
-  function bindThemeStorageSync() {
-    window.addEventListener("storage", (event) => {
-      if (event.key !== "global_theme_mode" && event.key !== "global_theme_preset") {
-        return;
-      }
-      let mode = getThemeMode();
-      let preset = getThemePreset();
-      try {
-        mode = localStorage.getItem("global_theme_mode") || mode;
-        preset = localStorage.getItem("global_theme_preset") || preset;
-      } catch (_error) {
-        // localStorage may be unavailable in private mode; ignore.
-      }
-      applyTheme(mode, preset);
-    });
-  }
-
-  function normalizeLevel(level) {
-    const allowed = ["success", "info", "warning", "error"];
-    return allowed.includes(level) ? level : "info";
-  }
+  // ── Feedback parsing utilities ────────────────────────────────────────────
 
   function parseJson(value) {
     if (!value) {
@@ -154,71 +18,22 @@
   }
 
   function parseHxTriggerPayload(headerValue) {
-    const parsed = parseJson(headerValue);
+    var parsed = parseJson(headerValue);
     if (!parsed || typeof parsed !== "object") {
       return null;
     }
     return parsed["ui:feedback"] || null;
   }
 
-  function findInlineSlot(target) {
-    if (!target) {
-      return document.querySelector('[data-ui-feedback-slot="global"]');
-    }
-    if (typeof target !== "string") {
-      return null;
-    }
-    const key = target.trim();
-    if (!key) {
-      return document.querySelector('[data-ui-feedback-slot="global"]');
-    }
-    if (
-      key.startsWith("#") ||
-      key.startsWith(".") ||
-      key.startsWith("[")
-    ) {
-      return document.querySelector(key);
-    }
-    return document.querySelector(`[data-ui-feedback-slot="${key}"]`);
-  }
-
   function resolveFeedbackTarget(element) {
     if (!element || !(element instanceof Element)) {
       return "global";
     }
-    const source = element.closest("[data-ui-feedback-target]");
+    var source = element.closest("[data-ui-feedback-target]");
     if (!source) {
       return "global";
     }
     return source.dataset.uiFeedbackTarget || "global";
-  }
-
-  function renderInline(slot, level, message) {
-    if (!slot) {
-      return;
-    }
-    if (!slot.dataset.baseClass) {
-      slot.dataset.baseClass = slot.className || "";
-    }
-
-    const currentLevel = normalizeLevel(level);
-    slot.className =
-      slot.dataset.baseClass +
-      " ui-inline-feedback ui-inline-feedback-" +
-      currentLevel;
-    slot.classList.remove("d-none");
-
-    slot.replaceChildren();
-    const icon = document.createElement("span");
-    icon.className = "ui-inline-feedback-icon";
-    icon.setAttribute("aria-hidden", "true");
-    icon.textContent = currentLevel === "success" ? "+" : currentLevel === "error" ? "x" : "i";
-
-    const text = document.createElement("span");
-    text.className = "ui-inline-feedback-text";
-    text.textContent = message || "Action completed.";
-
-    slot.append(icon, text);
   }
 
   function getSelectedBulkLabel(form) {
@@ -468,14 +283,14 @@
   document.addEventListener("alpine:init", initUiStore);
   document.addEventListener("DOMContentLoaded", function () {
     initUiStore();
-    applyTheme(getThemeMode(), getThemePreset());
-    bindThemeStateSync();
-    bindThemeStorageSync();
+    TC.applyTheme(TC.getThemeMode(), TC.getThemePreset());
+    TC.bindThemeStateSync();
+    TC.bindThemeStorageSync();
     bindDashboardLiveSync();
   });
 
   document.body.addEventListener("htmx:configRequest", function (event) {
-    const token = getCookie("csrftoken");
+    var token = TC.getCookie("csrftoken");
     if (token) {
       event.detail.headers["X-CSRFToken"] = token;
     }

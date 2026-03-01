@@ -104,6 +104,7 @@
     <script src="https://unpkg.com/htmx.org@2.0.8"></script>
     <!-- Alpine scripts: stores + component functions MUST load before the Alpine CDN
          so every function is defined before Alpine walks the DOM. Alpine CDN goes LAST. -->
+    <script defer src="{% static 'js/theme-core.js' %}"></script>
     <script defer src="{% static 'js/alpine-store.js' %}"></script>
     <script defer src="{% static 'js/app.js' %}"></script>
     <script defer src="{% static 'js/site/alpine-htmx-utils.js' %}"></script>

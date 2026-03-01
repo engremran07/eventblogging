@@ -115,9 +115,11 @@
 <script>
 (() => {
     const titleInput = document.getElementById("id_title");
+    const slugInput = document.getElementById("id_slug");
     const excerptInput = document.getElementById("id_excerpt");
     const metaTitleInput = document.getElementById("id_meta_title");
     const metaDescriptionInput = document.getElementById("id_meta_description");
+    const canonicalInput = document.getElementById("id_canonical_url");
 
     if (!(titleInput && excerptInput && metaTitleInput && metaDescriptionInput)) {
         return;
@@ -128,6 +130,26 @@
 
     let metaTitleManual = false;
     let metaDescriptionManual = false;
+    let canonicalManual = canonicalInput ? Boolean(canonicalInput.value.trim()) : false;
+
+    /* If existing meta matches auto-sync output, keep auto mode */
+    if (metaTitleInput.value.trim() && normalize(metaTitleInput.value) === clamp(titleInput.value, 70)) {
+        metaTitleManual = false;
+    }
+    if (metaDescriptionInput.value.trim() && normalize(metaDescriptionInput.value) === clamp(excerptInput.value, 170)) {
+        metaDescriptionManual = false;
+    }
+
+    function buildCanonicalUrl() {
+        if (!slugInput) return "";
+        const slug = (slugInput.value || "").trim();
+        if (!slug) return "";
+        return window.location.origin + "/" + encodeURIComponent(slug) + "/";
+    }
+
+    if (canonicalManual && canonicalInput && canonicalInput.value.trim() === buildCanonicalUrl()) {
+        canonicalManual = false;
+    }
 
     const syncMetaTitle = () => {
         if (!metaTitleManual) {
@@ -139,6 +161,11 @@
         if (!metaDescriptionManual) {
             metaDescriptionInput.value = clamp(excerptInput.value, 170);
         }
+    };
+
+    const syncCanonical = () => {
+        if (canonicalManual || !canonicalInput) return;
+        canonicalInput.value = buildCanonicalUrl();
     };
 
     metaTitleInput.addEventListener("input", () => {
@@ -153,8 +180,21 @@
         metaDescriptionManual = current !== "" && current !== autoValue;
     });
 
-    titleInput.addEventListener("input", syncMetaTitle);
+    if (canonicalInput) {
+        canonicalInput.addEventListener("input", () => {
+            canonicalManual = canonicalInput.value.trim() !== "" && canonicalInput.value.trim() !== buildCanonicalUrl();
+        });
+    }
+
+    titleInput.addEventListener("input", () => {
+        syncMetaTitle();
+        syncCanonical();
+    });
     excerptInput.addEventListener("input", syncMetaDescription);
+
+    if (slugInput) {
+        slugInput.addEventListener("input", syncCanonical);
+    }
 
     const statusField = document.getElementById("id_status");
     document.querySelectorAll("[data-post-status-submit]").forEach((button) => {
@@ -171,6 +211,7 @@
 
     syncMetaTitle();
     syncMetaDescription();
+    syncCanonical();
 })();
 </script>
 {% endblock %}

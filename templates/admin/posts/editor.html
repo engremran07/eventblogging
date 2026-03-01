@@ -118,7 +118,7 @@
       </div>
 
       <details class="editor-meta-details">
-        <summary class="editor-details-summary">Meta Overrides</summary>
+        <summary class="editor-details-summary">Meta Overrides <small class="text-3 ms-2" id="meta-auto-badge">Auto-synced from title &amp; excerpt</small></summary>
 
         <div class="form-group">
           <label for="meta_title">Meta Title</label>
@@ -128,10 +128,10 @@
             name="meta_title"
             class="form-control"
             value="{{ post.meta_title }}"
-            maxlength="60"
-            placeholder="SEO title (50-60 chars)"
+            maxlength="70"
+            placeholder="Auto-filled from title (50-60 chars ideal)"
           />
-          <small class="text-3">{{ post.meta_title|length }}/60 characters</small>
+          <small class="text-3"><span id="meta-title-count">{{ post.meta_title|length }}</span>/70 characters <span id="meta-title-sync-hint" class="text-success"></span></small>
         </div>
 
         <div class="form-group">
@@ -141,10 +141,10 @@
             name="meta_description"
             class="form-control"
             rows="2"
-            maxlength="155"
-            placeholder="SEO description (120-155 chars)"
+            maxlength="170"
+            placeholder="Auto-filled from excerpt (120-160 chars ideal)"
           >{{ post.meta_description }}</textarea>
-          <small class="text-3">{{ post.meta_description|length }}/155 characters</small>
+          <small class="text-3"><span id="meta-desc-count">{{ post.meta_description|length }}</span>/170 characters <span id="meta-desc-sync-hint" class="text-success"></span></small>
         </div>
 
         <div class="form-group">
@@ -155,8 +155,9 @@
             name="canonical_url"
             class="form-control"
             value="{{ post.canonical_url }}"
-            placeholder="https://example.com/original-article"
+            placeholder="Auto-generated from slug"
           />
+          <small class="text-3" id="canonical-hint">Leave blank for auto-generated canonical.</small>
         </div>
       </details>
 
@@ -284,102 +285,274 @@
 </div>
 
 <script>
-function updateLiveIndicators() {
-  const body = document.getElementById("body_markdown").value;
-  const title = document.getElementById("title").value;
-  const metaTitle = document.getElementById("meta_title").value || title;
-  const metaDesc = document.getElementById("meta_description").value;
+(function () {
+  "use strict";
 
-  const wordCount = body.trim().split(/\s+/).filter(Boolean).length;
-  const readingTime = Math.max(1, Math.ceil(wordCount / 200));
-  document.getElementById("panel-wordcount").textContent = wordCount;
-  document.getElementById("word-count").textContent = `${wordCount} words`;
-  document.getElementById("panel-reading-time").textContent = `${readingTime} min read`;
+  /* ───── DOM references ───── */
+  const titleInput      = document.getElementById("title");
+  const slugInput       = document.getElementById("slug");
+  const slugLock        = document.getElementById("slug-lock");
+  const excerptInput    = document.getElementById("excerpt");
+  const bodyTextarea    = document.getElementById("body_markdown");
+  const metaTitleInput  = document.getElementById("meta_title");
+  const metaDescInput   = document.getElementById("meta_description");
+  const canonicalInput  = document.getElementById("canonical_url");
+  const editorForm      = document.querySelector(".post-editor-form");
 
-  const wordPercent = Math.min(100, (wordCount / 600) * 100);
-  const wordBar = document.getElementById("panel-wordcount-bar");
-  wordBar.style.width = `${wordPercent}%`;
-  if (wordCount < 300) wordBar.style.backgroundColor = "var(--danger)";
-  else if (wordCount < 600) wordBar.style.backgroundColor = "var(--warning)";
-  else wordBar.style.backgroundColor = "var(--success)";
+  /* Panel indicators */
+  const panelWordcount    = document.getElementById("panel-wordcount");
+  const panelReadingTime  = document.getElementById("panel-reading-time");
+  const panelTitleLen     = document.getElementById("panel-title-len");
+  const panelTitleBar     = document.getElementById("panel-title-bar");
+  const panelDescLen      = document.getElementById("panel-desc-len");
+  const panelDescBar      = document.getElementById("panel-desc-bar");
+  const panelWordcountBar = document.getElementById("panel-wordcount-bar");
+  const panelFleschBar    = document.getElementById("panel-flesch-bar");
+  const panelFlesch       = document.getElementById("panel-flesch");
+  const wordCountEl       = document.getElementById("word-count");
+  const metaTitleCount    = document.getElementById("meta-title-count");
+  const metaDescCount     = document.getElementById("meta-desc-count");
+  const metaTitleHint     = document.getElementById("meta-title-sync-hint");
+  const metaDescHint      = document.getElementById("meta-desc-sync-hint");
+  const canonicalHint     = document.getElementById("canonical-hint");
 
-  const titleLen = metaTitle.length;
-  document.getElementById("panel-title-len").textContent = `${titleLen}/60`;
-  const titleBar = document.getElementById("panel-title-bar");
-  titleBar.style.width = `${Math.min(100, (titleLen / 60) * 100)}%`;
-  if (titleLen < 30) titleBar.style.backgroundColor = "var(--warning)";
-  else if (titleLen > 60) titleBar.style.backgroundColor = "var(--danger)";
-  else titleBar.style.backgroundColor = "var(--success)";
+  let slugLocked  = false;
+  let submitAction = "draft";
 
-  const descLen = metaDesc.length;
-  document.getElementById("panel-desc-len").textContent = `${descLen}/155`;
-  const descBar = document.getElementById("panel-desc-bar");
-  descBar.style.width = `${Math.min(100, (descLen / 155) * 100)}%`;
-  if (descLen < 100) descBar.style.backgroundColor = "var(--warning)";
-  else if (descLen > 155) descBar.style.backgroundColor = "var(--danger)";
-  else descBar.style.backgroundColor = "var(--success)";
-}
+  /* ───── Auto-sync tracking ─────
+     Meta fields auto-sync from title/excerpt UNTIL the user manually types
+     a value that diverges from the auto-generated value. */
+  let metaTitleManual = Boolean(metaTitleInput.value.trim());
+  let metaDescManual  = Boolean(metaDescInput.value.trim());
+  let canonicalManual = Boolean(canonicalInput.value.trim());
 
-let slugLocked = false;
-const titleInput = document.getElementById("title");
-const slugInput = document.getElementById("slug");
-const slugLock = document.getElementById("slug-lock");
-const editorForm = document.querySelector(".post-editor-form");
-let submitAction = "draft";
+  /* If existing meta matches what auto-sync would generate, keep auto mode */
+  const normalize = (v) => (v || "").replace(/\s+/g, " ").trim();
+  const clamp = (v, max) => normalize(v).slice(0, max);
 
-slugLock.addEventListener("click", (e) => {
-  e.preventDefault();
-  slugLocked = !slugLocked;
-  slugLock.textContent = slugLocked ? "Unlock" : "Lock";
-  slugLock.classList.toggle("btn-primary");
-  slugLock.classList.toggle("btn-secondary");
-});
+  if (metaTitleManual && normalize(metaTitleInput.value) === clamp(titleInput.value, 70)) {
+    metaTitleManual = false;
+  }
+  if (metaDescManual && normalize(metaDescInput.value) === clamp(excerptInput.value, 170)) {
+    metaDescManual = false;
+  }
 
-titleInput.addEventListener("input", () => {
-  if (slugLocked) return;
-  const slug = titleInput.value
-    .toLowerCase()
-    .replace(/[^\w\s-]/g, "")
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-")
-    .substring(0, 240);
-  slugInput.value = slug;
-});
+  /* ───── Canonical URL builder ───── */
+  function buildCanonicalUrl() {
+    const slug = (slugInput.value || "").trim();
+    if (!slug) return "";
+    const origin = window.location.origin;
+    return origin + "/" + encodeURIComponent(slug) + "/";
+  }
 
-["body_markdown", "title", "meta_title", "meta_description"].forEach((id) => {
-  const element = document.getElementById(id);
-  if (!element) return;
-  element.addEventListener("input", updateLiveIndicators);
-});
+  /* ───── Meta auto-sync functions ───── */
+  function syncMetaTitle() {
+    if (metaTitleManual) return;
+    metaTitleInput.value = clamp(titleInput.value, 70);
+    updateMetaCounts();
+  }
 
-if (editorForm) {
-  editorForm.querySelectorAll("button[type='submit'][name='action']").forEach((button) => {
-    button.addEventListener("click", () => {
-      submitAction = button.value || "draft";
-    });
+  function syncMetaDescription() {
+    if (metaDescManual) return;
+    metaDescInput.value = clamp(excerptInput.value, 170);
+    updateMetaCounts();
+  }
+
+  function syncCanonical() {
+    if (canonicalManual) return;
+    canonicalInput.value = buildCanonicalUrl();
+    updateCanonicalHint();
+  }
+
+  /* ───── Detect manual edits on meta fields ───── */
+  metaTitleInput.addEventListener("input", function () {
+    const current  = normalize(metaTitleInput.value);
+    const autoVal  = clamp(titleInput.value, 70);
+    metaTitleManual = current !== "" && current !== autoVal;
+    if (metaTitleHint) metaTitleHint.textContent = metaTitleManual ? "(manually set)" : "(auto from title)";
+    updateMetaCounts();
+    updateLiveIndicators();
   });
 
-  editorForm.addEventListener("submit", (event) => {
-    const bodyValue = (document.getElementById("body_markdown").value || "").trim();
-    if (submitAction === "published" && !bodyValue) {
-      event.preventDefault();
-      const editable = document.querySelector(".summernote-bridge-host .note-editable");
-      if (editable) {
-        editable.focus();
-      }
-      if (window.Alpine && typeof window.Alpine.store === "function") {
-        const uiStore = window.Alpine.store("ui");
-        if (uiStore && typeof uiStore.notify === "function") {
-          uiStore.notify("error", "Post body is required before publishing.");
-          return;
-        }
-      }
-      window.alert("Post body is required before publishing.");
+  metaDescInput.addEventListener("input", function () {
+    const current  = normalize(metaDescInput.value);
+    const autoVal  = clamp(excerptInput.value, 170);
+    metaDescManual = current !== "" && current !== autoVal;
+    if (metaDescHint) metaDescHint.textContent = metaDescManual ? "(manually set)" : "(auto from excerpt)";
+    updateMetaCounts();
+    updateLiveIndicators();
+  });
+
+  canonicalInput.addEventListener("input", function () {
+    canonicalManual = canonicalInput.value.trim() !== "" && canonicalInput.value.trim() !== buildCanonicalUrl();
+    updateCanonicalHint();
+  });
+
+  /* ───── Update meta character counters ───── */
+  function updateMetaCounts() {
+    if (metaTitleCount) metaTitleCount.textContent = metaTitleInput.value.length;
+    if (metaDescCount) metaDescCount.textContent = metaDescInput.value.length;
+  }
+
+  function updateCanonicalHint() {
+    if (!canonicalHint) return;
+    if (canonicalManual) {
+      canonicalHint.textContent = "Custom canonical URL set.";
+    } else if (canonicalInput.value) {
+      canonicalHint.textContent = "Auto: " + canonicalInput.value;
+    } else {
+      canonicalHint.textContent = "Leave blank for auto-generated canonical.";
     }
-  });
-}
+  }
 
-updateLiveIndicators();
+  /* ───── Live SEO indicators ───── */
+  function getEditableText() {
+    /* Read from the Summernote rich-text area if available, otherwise from the textarea */
+    const editable = document.querySelector(".summernote-bridge-host .note-editable");
+    if (editable) return (editable.textContent || "").trim();
+    return (bodyTextarea.value || "").trim();
+  }
+
+  function barColor(value, low, ideal) {
+    if (value < low) return "var(--warning)";
+    if (value > ideal) return "var(--danger)";
+    return "var(--success)";
+  }
+
+  function updateLiveIndicators() {
+    const bodyText  = getEditableText();
+    const metaTitle = metaTitleInput.value || titleInput.value;
+    const metaDesc  = metaDescInput.value;
+
+    /* Word count + reading time */
+    const words = bodyText.split(/\s+/).filter(Boolean).length;
+    const readingMin = Math.max(1, Math.ceil(words / 200));
+
+    if (panelWordcount) panelWordcount.textContent = words;
+    if (wordCountEl) wordCountEl.textContent = words + " words";
+    if (panelReadingTime) panelReadingTime.textContent = readingMin + " min read";
+
+    /* Word count bar (target: 600) */
+    if (panelWordcountBar) {
+      const pct = Math.min(100, (words / 600) * 100);
+      panelWordcountBar.style.width = pct + "%";
+      panelWordcountBar.style.backgroundColor = barColor(words, 300, 3000);
+    }
+
+    /* Meta title bar (ideal: 30-60) */
+    const titleLen = metaTitle.length;
+    if (panelTitleLen) panelTitleLen.textContent = titleLen + "/70";
+    if (panelTitleBar) {
+      panelTitleBar.style.width = Math.min(100, (titleLen / 70) * 100) + "%";
+      panelTitleBar.style.backgroundColor = barColor(titleLen, 30, 70);
+    }
+
+    /* Meta description bar (ideal: 100-160) */
+    const descLen = metaDesc.length;
+    if (panelDescLen) panelDescLen.textContent = descLen + "/170";
+    if (panelDescBar) {
+      panelDescBar.style.width = Math.min(100, (descLen / 170) * 100) + "%";
+      panelDescBar.style.backgroundColor = barColor(descLen, 100, 170);
+    }
+
+    /* Flesch readability estimate (rough) */
+    if (panelFlesch && bodyText.length > 50) {
+      const sentences = (bodyText.match(/[.!?]+/g) || []).length || 1;
+      const syllables = bodyText.split(/\s+/).reduce(function (sum, w) {
+        return sum + Math.max(1, (w.match(/[aeiouy]+/gi) || []).length);
+      }, 0);
+      const flesch = Math.round(206.835 - 1.015 * (words / sentences) - 84.6 * (syllables / words));
+      const clampedFlesch = Math.max(0, Math.min(100, flesch));
+      panelFlesch.textContent = clampedFlesch;
+      if (panelFleschBar) {
+        panelFleschBar.style.width = clampedFlesch + "%";
+        panelFleschBar.style.backgroundColor = barColor(clampedFlesch, 30, 100);
+      }
+    }
+
+    updateMetaCounts();
+  }
+
+  /* ───── Title input → slug + meta_title + canonical ───── */
+  titleInput.addEventListener("input", function () {
+    /* Auto-slug */
+    if (!slugLocked) {
+      slugInput.value = titleInput.value
+        .toLowerCase()
+        .replace(/[^\w\s-]/g, "")
+        .replace(/\s+/g, "-")
+        .replace(/-+/g, "-")
+        .substring(0, 240);
+    }
+    syncMetaTitle();
+    syncCanonical();
+    updateLiveIndicators();
+  });
+
+  /* ───── Excerpt input → meta_description ───── */
+  excerptInput.addEventListener("input", function () {
+    syncMetaDescription();
+    updateLiveIndicators();
+  });
+
+  /* ───── Slug input → canonical URL ───── */
+  slugInput.addEventListener("input", function () {
+    syncCanonical();
+  });
+
+  /* ───── Body textarea input → word count indicators ───── */
+  bodyTextarea.addEventListener("input", updateLiveIndicators);
+
+  /* ───── Slug lock toggle ───── */
+  slugLock.addEventListener("click", function (e) {
+    e.preventDefault();
+    slugLocked = !slugLocked;
+    slugLock.textContent = slugLocked ? "Unlock" : "Lock";
+    slugLock.classList.toggle("btn-primary", slugLocked);
+    slugLock.classList.toggle("btn-secondary", !slugLocked);
+  });
+
+  /* ───── Submit action tracking + validation ───── */
+  if (editorForm) {
+    editorForm.querySelectorAll("button[type='submit'][name='action']").forEach(function (btn) {
+      btn.addEventListener("click", function () { submitAction = btn.value || "draft"; });
+    });
+
+    editorForm.addEventListener("submit", function (event) {
+      const bodyValue = (bodyTextarea.value || "").trim();
+      if (submitAction === "published" && !bodyValue) {
+        event.preventDefault();
+        var editable = document.querySelector(".summernote-bridge-host .note-editable");
+        if (editable) editable.focus();
+        if (window.Alpine && typeof window.Alpine.store === "function") {
+          var uiStore = window.Alpine.store("ui");
+          if (uiStore && typeof uiStore.notify === "function") {
+            uiStore.notify("error", "Post body is required before publishing.");
+            return;
+          }
+        }
+        window.alert("Post body is required before publishing.");
+      }
+    });
+  }
+
+  /* ───── Summernote-aware live updates ─────
+     summernote-bridge.js fires "input" on the textarea after every sync.
+     We also observe the rich-text container directly for instant feedback. */
+  var snHost = document.querySelector(".summernote-bridge-host");
+  if (snHost) {
+    var observer = new MutationObserver(updateLiveIndicators);
+    observer.observe(snHost, { childList: true, subtree: true, characterData: true });
+  }
+
+  /* ───── Initial state ───── */
+  syncMetaTitle();
+  syncMetaDescription();
+  syncCanonical();
+  updateLiveIndicators();
+  if (metaTitleHint) metaTitleHint.textContent = metaTitleManual ? "(manually set)" : "(auto from title)";
+  if (metaDescHint) metaDescHint.textContent = metaDescManual ? "(manually set)" : "(auto from excerpt)";
+})();
 </script>
 
 {% endblock %}

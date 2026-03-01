@@ -204,6 +204,8 @@ select:focus {
   border: var(--border-width) solid var(--border);
   border-radius: var(--radius-md);
   background: var(--surface-1);
+  /* Undo global .card { padding } — Summernote's .note-frame.card inherits it */
+  padding: 0;
   /* Dropdowns from the toolbar must not be clipped at the frame level */
   overflow: visible;
 }
@@ -215,12 +217,49 @@ select:focus {
   flex-wrap: wrap;
   align-items: center;
   gap: 0.35rem;
+  /* Undo global .card-header overrides — Summernote uses .card-header on .note-toolbar */
+  font-weight: normal;
+  font-size: inherit;
+  margin-bottom: 0;
+  padding: 0.5rem 0.5rem;
+  color: inherit;
 }
 
 .summernote-bridge-host .note-toolbar .note-btn-group {
   display: inline-flex;
   align-items: center;
   margin: 0;
+}
+
+/* ── Bootstrap .card / .card-header isolation ────────────────────────────────
+   Summernote BS5 applies .card to .note-frame and .card-header to .note-toolbar.
+   Our global .card / .card-header overrides add unwanted padding, font, and margin.
+   Summernote CSS loads AFTER ours (via extrahead block), so these rules at
+   specificity >= 0,3,0 ensure our resets beat both our globals and Summernote's
+   own same-specificity cascade.
+   ──────────────────────────────────────────────────────────────────────────── */
+
+.summernote-bridge-host .note-editor.note-frame.card {
+  padding: 0;
+  transition: border-color var(--transition-duration);
+}
+
+.summernote-bridge-host .note-editor.note-frame.card:hover {
+  border-color: var(--border);
+}
+
+.summernote-bridge-host .note-editor .note-toolbar.card-header {
+  font-weight: normal;
+  font-size: inherit;
+  margin-bottom: 0;
+  padding: 0.5rem 0.5rem;
+  color: inherit;
+  background: var(--surface-2);
+  border-bottom: var(--border-width) solid var(--border);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
 }
 
 .summernote-bridge-host .note-btn {
@@ -281,6 +320,33 @@ select:focus {
   color: var(--text-primary);
   border-color: var(--border);
   z-index: 2000;
+}
+
+/* Summernote modal overlay (link/image/video dialogs with dialogsInBody:true) */
+.note-modal {
+  z-index: 2050;
+}
+
+.note-modal .note-modal-backdrop {
+  z-index: 2049;
+}
+
+/* Summernote status bar (resize grip at bottom) */
+.summernote-bridge-host .note-statusbar {
+  background: var(--surface-2);
+  border-top: var(--border-width) solid var(--border);
+}
+
+.summernote-bridge-host .note-statusbar .note-resizebar {
+  border-top: none;
+  padding: 2px 0;
+  height: auto;
+}
+
+.summernote-bridge-host .note-statusbar .note-icon-bar {
+  border-top: 1px solid var(--text-muted);
+  width: 24px;
+  margin: 1px auto;
 }
 
 .summernote-bridge-host .note-dropdown-menu {

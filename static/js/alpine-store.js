@@ -16,12 +16,14 @@ document.addEventListener('alpine:init', () => {
     return allowed.includes(level) ? level : "info";
   }
 
-  function getCookie(name) {
+  // getCookie is provided by theme-core.js (loaded before this script).
+  // Fallback to inline version if ThemeCore is unavailable (defensive).
+  var getCookie = (window.ThemeCore && window.ThemeCore.getCookie) || function (name) {
     const cookieValue = document.cookie
       .split("; ")
       .find((row) => row.startsWith(name + "="));
     return cookieValue ? decodeURIComponent(cookieValue.split("=")[1]) : "";
-  }
+  };
 
   function findInlineSlot(target) {
     if (!target) {

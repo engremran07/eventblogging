@@ -107,3 +107,101 @@
     </div>
 </div>
 {% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  "use strict";
+
+  var titleInput      = document.getElementById("id_title");
+  var slugInput       = document.getElementById("id_slug");
+  var summaryInput    = document.getElementById("id_summary");
+  var metaTitleInput  = document.getElementById("id_meta_title");
+  var metaDescInput   = document.getElementById("id_meta_description");
+  var canonicalInput  = document.getElementById("id_canonical_url");
+
+  if (!(titleInput && metaTitleInput && metaDescInput)) return;
+
+  var normalize = function (v) { return (v || "").replace(/\s+/g, " ").trim(); };
+  var clamp     = function (v, max) { return normalize(v).slice(0, max); };
+
+  /* ── Auto-sync tracking ── */
+  var metaTitleManual = Boolean(metaTitleInput.value.trim());
+  var metaDescManual  = Boolean(metaDescInput.value.trim());
+  var canonicalManual = canonicalInput ? Boolean(canonicalInput.value.trim()) : false;
+
+  /* If existing value matches what auto-sync would produce, keep auto mode */
+  if (metaTitleManual && normalize(metaTitleInput.value) === clamp(titleInput.value, 70)) {
+    metaTitleManual = false;
+  }
+  if (summaryInput && metaDescManual && normalize(metaDescInput.value) === clamp(summaryInput.value, 170)) {
+    metaDescManual = false;
+  }
+
+  function buildCanonicalUrl() {
+    if (!slugInput) return "";
+    var slug = (slugInput.value || "").trim();
+    if (!slug) return "";
+    return window.location.origin + "/pages/" + encodeURIComponent(slug) + "/";
+  }
+
+  if (canonicalManual && canonicalInput && canonicalInput.value.trim() === buildCanonicalUrl()) {
+    canonicalManual = false;
+  }
+
+  /* ── Sync functions ── */
+  function syncMetaTitle() {
+    if (metaTitleManual) return;
+    metaTitleInput.value = clamp(titleInput.value, 70);
+  }
+
+  function syncMetaDescription() {
+    if (metaDescManual || !summaryInput) return;
+    metaDescInput.value = clamp(summaryInput.value, 170);
+  }
+
+  function syncCanonical() {
+    if (canonicalManual || !canonicalInput) return;
+    canonicalInput.value = buildCanonicalUrl();
+  }
+
+  /* ── Detect manual edits ── */
+  metaTitleInput.addEventListener("input", function () {
+    var current = normalize(metaTitleInput.value);
+    var autoVal = clamp(titleInput.value, 70);
+    metaTitleManual = current !== "" && current !== autoVal;
+  });
+
+  metaDescInput.addEventListener("input", function () {
+    var current = normalize(metaDescInput.value);
+    var autoVal = summaryInput ? clamp(summaryInput.value, 170) : "";
+    metaDescManual = current !== "" && current !== autoVal;
+  });
+
+  if (canonicalInput) {
+    canonicalInput.addEventListener("input", function () {
+      canonicalManual = canonicalInput.value.trim() !== "" && canonicalInput.value.trim() !== buildCanonicalUrl();
+    });
+  }
+
+  /* ── Wiring ── */
+  titleInput.addEventListener("input", function () {
+    syncMetaTitle();
+    syncCanonical();
+  });
+
+  if (summaryInput) {
+    summaryInput.addEventListener("input", syncMetaDescription);
+  }
+
+  if (slugInput) {
+    slugInput.addEventListener("input", syncCanonical);
+  }
+
+  /* ── Initial sync on load ── */
+  syncMetaTitle();
+  syncMetaDescription();
+  syncCanonical();
+})();
+</script>
+{% endblock %}

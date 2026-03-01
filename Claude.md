@@ -1415,6 +1415,13 @@ python manage.py startapp [name] apps/[name]
 - Inline styles in CSS templates should NEVER be used for anything that can be expressed as a CSS class EXCEPT: (1) server-calculated `style="width: {{ X }}%"` progress bars; (2) third-party embed requirements (GTM noscript); (3) runtime JS-set dimensions
 - `shimmer-slide` keyframe: `left: -100% → left: 200%` for button shimmer needs `overflow: hidden` and `position: relative` on the parent button
 - HeadlessUI partials use `x-cloak` + `style="display:contents"` on root to prevent FOUC (flash of unstyled content) — `[x-cloak] { display: none !important }` in headless.css hides the entire structure until Alpine initialises
+**FROM META AUTO-SYNC SESSION (Session 5):**
+- Meta field auto-sync pattern: use `metaTitleManual` / `metaDescManual` / `canonicalManual` boolean flags. Set `true` only when user manually types a value DIFFERENT from the auto-generated value. This allows clearing the field to re-enable auto-sync.
+- Canonical URL auto-generation: `window.location.origin + "/" + slug + "/"` — always use `encodeURIComponent(slug)` for safety. Admin editor uses `/{slug}/`, public post form uses `/{slug}/`, page form uses `/pages/{slug}/` to match URL patterns.
+- `maxlength` in HTML inputs MUST match model `max_length` (70 for meta_title, 170 for meta_description) — prior mismatch (60/155 in admin editor) silently truncated user input below model capacity.
+- Summernote-aware word counting: prefer reading from `.note-editable` textContent (immediate) over the hidden markdown textarea (delayed by bridge sync). Use `MutationObserver` on `.summernote-bridge-host` for real-time updates as user types in rich editor.
+- `.note-modal { z-index: 2050 }` must be higher than `.note-modal-content { z-index: 2000 }` — the overlay wrapper needs to be above the admin sidebar (z-index: 100).
+- `.note-statusbar` needs explicit theme styling (`background: var(--surface-2)`, `border-top`) — Summernote default is white which breaks dark mode.
 
 
 ---

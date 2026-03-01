@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, cast
+from typing import cast
 from django.db.models import Q, Count, Avg, QuerySet
 from django.shortcuts import get_object_or_404
 from django.http import Http404
@@ -8,10 +8,7 @@ from django.utils import timezone
 from django.contrib.auth.models import User
 
 from comments.models import Comment, PostLike, PostBookmark, PostView
-from .models import Post
-
-if TYPE_CHECKING:
-    pass
+from .models import Post, PostQuerySet
 
 
 # ============================================================================
@@ -44,7 +41,7 @@ def get_post_by_slug(slug: str, user: User | None = None) -> Post:
     raise Http404("Post not available")
 
 
-def get_published_posts() -> QuerySet[Post]:
+def get_published_posts() -> PostQuerySet:
     """Get all published posts ordered by publication date (newest first)."""
     return (
         Post.objects.filter(
@@ -59,7 +56,7 @@ def get_published_posts() -> QuerySet[Post]:
     )
 
 
-def get_user_posts(user: User) -> QuerySet[Post]:
+def get_user_posts(user: User) -> PostQuerySet:
     """Get all posts for a specific user with reaction counts."""
     return (
         Post.objects.filter(author=user)
@@ -145,7 +142,9 @@ def get_post_comments(post: Post, user: User | None = None) -> QuerySet[Comment]
     If user is post author or staff, returns all comments.
     Otherwise, returns only approved comments.
     """
-    comments = cast(QuerySet[Comment], post.comments.select_related("author"))  # type: ignore[attr-defined]
+    # post.comments is the reverse FK manager from Comment.post ForeignKey.
+    # Django's reverse relations are dynamic; cast ensures correct typing for Pylance.
+    comments = cast(QuerySet[Comment], post.comments.all().select_related("author"))  # type: ignore[attr-defined]
     
     is_post_author = user and user.is_authenticated and user == post.author
     is_staff = user and user.is_staff

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import re
 from dataclasses import dataclass
 from datetime import timedelta
@@ -29,6 +30,8 @@ from .models import (
     SeoRedirectRule,
     SeoSuggestion,
 )
+
+logger = logging.getLogger(__name__)
 
 TOKEN_RE = re.compile(r"[a-zA-Z0-9]{2,}")
 
@@ -564,7 +567,7 @@ def audit_instance(instance, *, trigger="save", request=None):
         _apply_interlinks(adapter, interlink_suggestions, settings)
     except Exception:
         # Preserve audit snapshot even if link auto-application fails.
-        pass
+        logger.warning("Auto-interlink application failed for %s pk=%s", adapter.route_type, adapter.pk, exc_info=True)
 
     return snapshot
 

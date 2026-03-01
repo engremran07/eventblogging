@@ -6,7 +6,7 @@ No business logic, only ORM queries with proper optimization.
 from __future__ import annotations
 
 from django.contrib.auth.models import User
-from django.db.models import QuerySet, Count, Q, Exists, OuterRef
+from django.db.models import QuerySet
 from django.shortcuts import get_object_or_404
 
 from blog.models import Post

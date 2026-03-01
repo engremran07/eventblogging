@@ -133,15 +133,15 @@ def render_markdown_to_safe_html(markdown_text: str) -> str:
     )
 
 
-class PostQuerySet(models.QuerySet):
-    def published(self):
+class PostQuerySet(models.QuerySet["Post"]):
+    def published(self) -> "PostQuerySet":
         return self.filter(
             status=Post.Status.PUBLISHED,
             published_at__isnull=False,
             published_at__lte=timezone.now(),
         )
 
-    def visible_to(self, user):
+    def visible_to(self, user: User | None) -> "PostQuerySet":
         public_posts = Q(
             status=Post.Status.PUBLISHED,
             published_at__isnull=False,
@@ -151,10 +151,10 @@ class PostQuerySet(models.QuerySet):
             return self.filter(public_posts | Q(author=user))
         return self.filter(public_posts)
 
-    def editor_picks(self):
+    def editor_picks(self) -> "PostQuerySet":
         return self.published().filter(is_editors_pick=True)
 
-    def search(self, text: str):
+    def search(self, text: str) -> "PostQuerySet":
         clean_text = text.strip()
         if not clean_text:
             return self
@@ -182,7 +182,7 @@ class PostQuerySet(models.QuerySet):
                 | Q(categories__name__icontains=clean_text)
             )
 
-    def with_reaction_counts(self):
+    def with_reaction_counts(self) -> "PostQuerySet":
         return self.annotate(
             like_total=Count("likes", distinct=True),
             bookmark_total=Count("bookmarks", distinct=True),

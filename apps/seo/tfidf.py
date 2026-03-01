@@ -5,6 +5,7 @@ Extracts top N keywords from post content and matches against existing taxonomie
 
 from __future__ import annotations
 
+import logging
 import re
 from typing import Any
 
@@ -12,6 +13,8 @@ from django.db.models import QuerySet
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 from blog.models import Post
+
+logger = logging.getLogger(__name__)
 
 
 class PostTfidfExtractor:
@@ -61,12 +64,14 @@ class PostTfidfExtractor:
         try:
             self.vectorizer.fit(corpus)
         except Exception:
+            logger.warning("TF-IDF vectorizer fit failed", exc_info=True)
             return []
 
         # Transform the current post
         try:
             tfidf_matrix = self.vectorizer.transform([body_text])
         except Exception:
+            logger.warning("TF-IDF vectorizer transform failed", exc_info=True)
             return []
 
         # Get feature names and scores

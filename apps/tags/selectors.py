@@ -4,13 +4,9 @@ Tags app database query selectors.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
 from django.db.models import QuerySet, Count
 
 from tagulous.models import TagModel
-
-if TYPE_CHECKING:
-    pass
 
 
 # ============================================================================

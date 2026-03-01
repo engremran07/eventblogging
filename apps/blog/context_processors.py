@@ -1,5 +1,6 @@
 ﻿from __future__ import annotations
 
+import logging
 import subprocess
 from datetime import timedelta
 from pathlib import Path
@@ -23,6 +24,8 @@ from .models import (
     ContentRefreshSettings,
     Post,
 )
+
+logger = logging.getLogger(__name__)
 
 
 SITE_STATS_CACHE_KEY = "blog_site_stats_v1"
@@ -214,7 +217,7 @@ def _build_admin_overview():
         topic_total = Post.primary_topic.tag_model.objects.count()
         category_total = Post.categories.tag_model.objects.count()
     except Exception:
-        pass
+        logger.warning("Failed to count Tagulous taxonomy totals", exc_info=True)
 
     top_posts = list(
         published_qs.order_by("-views_count", "-published_at")
@@ -235,6 +238,7 @@ def _build_admin_overview():
 
         seo = seo_overview_metrics()
     except Exception:
+        logger.warning("SEO overview metrics unavailable", exc_info=True)
         seo = {}
     posts_total = Post.objects.count()
     draft_posts = Post.objects.filter(status=Post.Status.DRAFT).count()
@@ -332,6 +336,7 @@ def _build_admin_nav_badges():
             status=SeoSuggestion.Status.PENDING
         ).count()
     except Exception:
+        logger.warning("Failed to count pending SEO suggestions", exc_info=True)
         payload["seo_pending_total"] = 0
     return payload
 
@@ -409,6 +414,7 @@ def site_appearance(request):
                 "timezone": profile.timezone,
             }
         except Exception:
+            logger.warning("Failed to load UserProfile for user pk=%s", request.user.pk, exc_info=True)
             current_user_profile = {}
 
     return {

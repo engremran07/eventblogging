@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import json
+from typing import Any
+
+from django.http import HttpResponse
 
 
-def _parse_hx_trigger_header(raw_header: str) -> dict:
+def _parse_hx_trigger_header(raw_header: str) -> dict[str, Any]:
     if not raw_header:
         return {}
 
@@ -14,7 +17,7 @@ def _parse_hx_trigger_header(raw_header: str) -> dict:
     except (TypeError, ValueError):
         pass
 
-    event_map = {}
+    event_map: dict[str, Any] = {}
     for item in raw_header.split(","):
         event_name = item.strip()
         if event_name:
@@ -22,8 +25,12 @@ def _parse_hx_trigger_header(raw_header: str) -> dict:
     return event_map
 
 
-def attach_ui_feedback(response, toast=None, inline=None):
-    payload = {}
+def attach_ui_feedback(
+    response: HttpResponse,
+    toast: dict[str, Any] | None = None,
+    inline: dict[str, Any] | None = None,
+) -> HttpResponse:
+    payload: dict[str, Any] = {}
     if toast:
         payload["toast"] = toast
     if inline:

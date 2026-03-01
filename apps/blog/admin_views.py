@@ -113,7 +113,8 @@ def _redirect_next(request, fallback_url_name: str):
 def _get_post_categories():
     try:
         return Post.categories.tag_model.objects.order_by("name")
-    except Exception:
+    except Exception:  # noqa: BLE001 — Tagulous tag model may not exist at startup
+        logger.warning("Could not load post categories for admin filter", exc_info=True)
         return []
 
 
@@ -343,7 +344,7 @@ def admin_dashboard(request):
         seo_pending_count = 0
 
     context = {
-        "total_posts": published_posts,
+        "total_posts": Post.objects.count(),
         "published_posts": published_posts,
         "draft_posts": draft_posts,
         "pending_comments": pending_comments,

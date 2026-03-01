@@ -1,14 +1,12 @@
 ﻿from __future__ import annotations
 
-import json
 import logging
-import time
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db.models import F, Q
-from django.http import Http404, HttpResponseBadRequest, JsonResponse, StreamingHttpResponse
+from django.http import Http404, HttpResponseBadRequest, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -1191,69 +1189,53 @@ def api_appearance_state(request):
 @require_GET
 def dashboard_stats_stream(request):
     """
-    Server-Sent Events (SSE) endpoint that streams dashboard statistics.
-    
-    Streams JSON data every 5 seconds with:
-    - PostView count
-    - Comment count
-    - Post count
-    - Recent activity
-    
-    Client connects via HTMX with: hx-sse="connect:/api/dashboard/stats/"
+    Polling JSON endpoint for dashboard statistics.
+
+    Previously implemented as a Server-Sent Events (SSE) stream, which blocked
+    WSGI workers indefinitely via ``time.sleep(5)`` inside a generator.  SSE
+    over WSGI is unsafe for production: each open connection occupies a thread
+    for its entire lifetime, exhausting the worker pool under any load.
+
+    This endpoint now returns a **single JSON snapshot** on each request.
+    The client should poll it at the desired interval using HTMX:
+
+        <div hx-get="{% url 'blog:dashboard_stats_stream' %}"
+             hx-trigger="every 5s"
+             hx-swap="none"
+             @htmx:after-request="updateDashboardStats($event.detail.xhr.responseText)">
+        </div>
+
+    This is WSGI-safe and requires no persistent connection.
     """
+    try:
+        metrics = get_dashboard_metrics(request.user)
+    except Exception:
+        logger.exception("Error fetching dashboard metrics for stats endpoint")
+        return JsonResponse({"error": "metrics_unavailable"}, status=500)
 
-    def event_generator():
-        """Generate SSE events with dashboard stats."""
-        while True:
-            try:
-                # Get current metrics
-                metrics = get_dashboard_metrics(request.user)
+    top_posts = [
+        {
+            "id": post.id,
+            "title": post.title,
+            "views": post.views_count,
+            "url": post.get_absolute_url(),
+        }
+        for post in metrics.get("dashboard_top_posts", [])[:3]
+    ]
 
-                # Format stats
-                stats = {
-                    "timestamp": timezone.now().isoformat(),
-                    "post_count": metrics.get("dashboard_post_count", 0),
-                    "published_count": metrics.get("dashboard_published_count", 0),
-                    "draft_count": metrics.get("dashboard_draft_count", 0),
-                    "total_views": metrics.get("dashboard_total_views", 0),
-                    "total_comments": metrics.get("dashboard_total_comments", 0),
-                    "total_likes": metrics.get("dashboard_total_likes", 0),
-                    "total_bookmarks": metrics.get("dashboard_total_bookmarks", 0),
-                    "recent_activity_count": metrics.get("dashboard_activity_count", 0),
-                }
-
-                # Format top posts
-                top_posts = []
-                for post in metrics.get("dashboard_top_posts", [])[:3]:
-                    top_posts.append({
-                        "id": post.id,
-                        "title": post.title,
-                        "views": post.views_count,
-                        "url": post.get_absolute_url(),
-                    })
-
-                stats["top_posts"] = top_posts
-
-                # Yield as SSE event
-                yield f"data: {json.dumps(stats)}\n\n"
-
-                # Wait before next event (5 seconds)
-                time.sleep(5)
-
-            except Exception:
-                # Keep stream alive, but avoid leaking internal errors to clients.
-                logger.exception("Error while streaming dashboard stats")
-                yield f"data: {json.dumps({'error': 'stream_error'})}\n\n"
-                time.sleep(5)
-
-    # Return streaming response with SSE content type
-    response = StreamingHttpResponse(
-        event_generator(),
-        content_type="text/event-stream",
-    )
-    response["Cache-Control"] = "no-cache"
-    response["X-Accel-Buffering"] = "no"
-    return response
+    payload = {
+        "timestamp": timezone.now().isoformat(),
+        "post_count": metrics.get("dashboard_post_count", 0),
+        "published_count": metrics.get("dashboard_published_count", 0),
+        "draft_count": metrics.get("dashboard_draft_count", 0),
+        "total_views": metrics.get("dashboard_total_views", 0),
+        "total_comments": metrics.get("dashboard_total_comments", 0),
+        "total_likes": metrics.get("dashboard_total_likes", 0),
+        "total_bookmarks": metrics.get("dashboard_total_bookmarks", 0),
+        "recent_activity_count": metrics.get("dashboard_activity_count", 0),
+        "top_posts": top_posts,
+    }
+    return JsonResponse(payload)
 
 
 

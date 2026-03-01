@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 import math
 import re
 from collections import Counter
@@ -18,6 +19,8 @@ from seo.synonyms import augment_weighted_terms, expand_terms
 from .forms import PostFilterForm
 from .models import Post
 from comments.models import NewsletterSubscriber, PostBookmark, PostLike
+
+logger = logging.getLogger(__name__)
 
 TOKEN_RE = re.compile(r"[a-zA-Z0-9]{2,}")
 HEADING_RE = re.compile(r"^\s{0,3}#{1,6}\s+(.+?)\s*$", re.MULTILINE)
@@ -235,10 +238,11 @@ def _lexical_rank_map(post_ids, seed_text: str):
         max_rank = max(float(rank or 0.0) for _, rank in rows) or 1.0
         return {post_id: min(max(float(rank or 0.0) / max_rank, 0.0), 1.0) for post_id, rank in rows}
     except Exception:
+        logger.warning("FTS rank scoring failed; returning empty ranking map", exc_info=True)
         return {}
 
 
-def _recommendation_type(post, taxonomy_score, semantic_score):
+def _recommendation_type(post: Post, taxonomy_score: float, semantic_score: float) -> str:
     if post.reading_time >= 8:
         return "deep_dive"
     if taxonomy_score < 0.18 and semantic_score >= 0.62:
@@ -247,12 +251,12 @@ def _recommendation_type(post, taxonomy_score, semantic_score):
 
 
 def get_related_posts_algorithmic(
-    user,
+    user: object,
     query_text: str = "",
     limit: int = 5,
     anchor_post: Post | None = None,
     with_explanations: bool = False,
-):
+) -> list[Post] | list[dict[str, object]]:
     candidates = list(
         Post.objects.visible_to(user)
         .select_related("author", "primary_topic")
@@ -373,11 +377,11 @@ def _get_auto_tagging_settings():
             }
         )
     except Exception:
-        pass
+        logger.warning("Failed to load FeatureControlSettings for taxonomy; using defaults", exc_info=True)
     return defaults
 
 
-def _extract_heading_text(markdown_text: str):
+def _extract_heading_text(markdown_text: str) -> str:
     if not markdown_text:
         return ""
     headings = [match.group(1).strip() for match in HEADING_RE.finditer(markdown_text)]
@@ -420,7 +424,7 @@ def _collect_candidate_terms(tag_model, fallback_terms, limit=260):
     try:
         terms.extend(list(tag_model.objects.order_by("-count", "name").values_list("name", flat=True)[:limit]))
     except Exception:
-        pass
+        logger.warning("Could not query tag model %r for candidate terms", tag_model, exc_info=True)
     for term in fallback_terms:
         if term not in terms:
             terms.append(term)
@@ -441,6 +445,7 @@ def _collect_terms_matching_top_tokens(tag_model, token_weights, limit=120):
             .values_list("name", flat=True)[:limit]
         )
     except Exception:
+        logger.warning("Could not query tag model %r for matching tokens", tag_model, exc_info=True)
         return []
 
 
@@ -723,6 +728,7 @@ def get_sidebar_data():
         topic_cloud = Post.primary_topic.tag_model.objects.weight(min=1, max=6).order_by("-count", "name")[:20]
         category_tree = Post.categories.tag_model.objects.as_nested_list()
     except Exception:
+        logger.warning("Failed to load sidebar tag/topic/category data", exc_info=True)
         tag_cloud = []
         topic_cloud = []
         category_tree = []
@@ -766,7 +772,7 @@ def get_tagulous_live_metrics(limit=10):
             }
         )
     except Exception:
-        pass
+        logger.warning("Failed to load extended tag/topic/category metrics", exc_info=True)
 
     return metrics
 
@@ -805,6 +811,7 @@ def get_listing_context(request, forced_filters=None, per_page=9):
 
         global_reactions_enabled = FeatureControlSettings.get_solo().enable_reactions
     except Exception:
+        logger.warning("Could not read FeatureControlSettings.enable_reactions; defaulting to True", exc_info=True)
         global_reactions_enabled = True
 
     liked_ids: set[int] = set()
@@ -960,7 +967,7 @@ def get_search_suggestion_context(user, query: str):
             categories = list(cat_qs.order_by("-count", "name")[:8])
             topics = list(topic_qs.order_by("-count", "name")[:8])
     except Exception:
-        pass
+        logger.warning("Failed to load tag/category/topic suggestions for search query %r", clean_query, exc_info=True)
 
     return {
         "search_query": clean_query,

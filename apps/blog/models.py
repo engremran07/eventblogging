@@ -353,6 +353,26 @@ class Post(models.Model):
             return self.excerpt
         return (self.body_markdown or "")[:160]
 
+    @property
+    def is_published(self) -> bool:
+        """True if the post is published and its publish date is in the past."""
+        return (
+            self.status == self.Status.PUBLISHED
+            and self.published_at is not None
+            and self.published_at <= timezone.now()
+        )
+
+    def get_reading_time_display(self) -> str:
+        """Human-friendly reading time, e.g. '1 min read' or '5 min read'."""
+        minutes = self.reading_time or 1
+        return f"{minutes} min read"
+
+    def can_be_edited_by(self, user) -> bool:
+        """True if *user* is the post author or a staff member."""
+        if not user or not getattr(user, "is_authenticated", False):
+            return False
+        return user == self.author or bool(getattr(user, "is_staff", False))
+
     def publish(self):
         self.status = self.Status.PUBLISHED
         self.published_at = timezone.now()

@@ -2,14 +2,15 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
+from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from tagulous.utils import split_tree_name
-
-from core.models import FeatureControlSettings
 
 DEFAULT_CATEGORY_MAX_DEPTH = 5
 MIN_CATEGORY_MAX_DEPTH = 1
 MAX_CATEGORY_MAX_DEPTH = 10
+_DEPTH_CACHE_KEY = "feature_ctrl_category_max_depth_v1"
+_DEPTH_CACHE_TTL = 300  # 5 minutes
 
 
 def clamp_category_max_depth(value: int | None) -> int:
@@ -23,11 +24,18 @@ def clamp_category_max_depth(value: int | None) -> int:
 
 
 def get_category_max_depth() -> int:
+    cached = cache.get(_DEPTH_CACHE_KEY)
+    if cached is not None:
+        return int(cached)
     try:
+        from core.models import FeatureControlSettings
+
         controls = FeatureControlSettings.get_solo()
+        depth = clamp_category_max_depth(getattr(controls, "category_max_depth", None))
     except Exception:
-        return DEFAULT_CATEGORY_MAX_DEPTH
-    return clamp_category_max_depth(getattr(controls, "category_max_depth", None))
+        depth = DEFAULT_CATEGORY_MAX_DEPTH
+    cache.set(_DEPTH_CACHE_KEY, depth, _DEPTH_CACHE_TTL)
+    return depth
 
 
 def category_depth_help_text(max_depth: int | None = None) -> str:

@@ -7,6 +7,9 @@ from .base import *  # noqa: F403
 DEBUG = True
 ALLOWED_HOSTS = ["127.0.0.1", "localhost", "*.local"]
 
+# Internal IPs — required by debug toolbar and INTERNAL_IPS-gated features
+INTERNAL_IPS = ["127.0.0.1", "::1"]
+
 # Database configuration from base.py - respects environment variables
 # No fallback values here - must be set in .env file
 

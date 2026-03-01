@@ -39,8 +39,13 @@ SECURE_HSTS_SECONDS = 31536000  # 1 year
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
 
-# Static files configuration for production
-STATICFILES_STORAGE = "django.contrib.staticfiles.storage.ManifestStaticFilesStorage"
+# Use cache-backed sessions in production for performance.
+# Requires a configured CACHES backend (Redis configured below).
+SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+
+# Static files — whitenoise serves compressed, fingerprinted assets from collectstatic output.
+# Add 'whitenoise.middleware.WhiteNoiseMiddleware' to MIDDLEWARE after SecurityMiddleware.
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 # Email backend for production
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"

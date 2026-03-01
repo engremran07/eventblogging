@@ -7,6 +7,10 @@ from blog import admin_views as blog_admin_views
 
 from . import views as config_views
 
+# Custom error handlers
+handler404 = "config.views.handler404_view"
+handler500 = "config.views.handler500_view"
+
 urlpatterns = [
     path(
         "admin/seo/",

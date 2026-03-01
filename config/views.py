@@ -57,6 +57,25 @@ def sitemap_section(request, section):
     )
 
 
+def handler404_view(request, exception=None):
+    """Custom 404 page — search box helps visitors recover."""
+    return render(request, "errors/404.html", {"page_title": "Page Not Found"}, status=404)
+
+
+def handler500_view(request):
+    """
+    Custom 500 page.
+    Deliberately avoids context processors (which may themselves be broken)
+    by using a standalone template that does not extend base.html.
+    """
+    from django.template import loader
+
+    html = loader.render_to_string("errors/500.html")
+    from django.http import HttpResponseServerError
+
+    return HttpResponseServerError(html)
+
+
 @require_GET
 def robots_txt(request):
     controls = FeatureControlSettings.get_solo()

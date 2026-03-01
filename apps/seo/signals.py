@@ -23,6 +23,9 @@ from .synonyms import clear_synonym_cache
 logger = logging.getLogger(__name__)
 _last_change_scan_queued_at = None
 
+# Cache key prefix used by SeoRedirectMiddleware — must stay in sync with middleware.
+_REDIRECT_CACHE_PREFIX = "seo_redirect_rule_v1"
+
 
 def _should_skip(instance, raw: bool):
     return raw or bool(getattr(instance, "_seo_skip_signal", False)) or not getattr(instance, "pk", None)
@@ -208,3 +211,28 @@ def create_page_redirect_suggestion(sender, instance: Page, **kwargs):
 @receiver(post_delete, sender=TaxonomySynonymTerm)
 def invalidate_synonym_cache(**kwargs):
     clear_synonym_cache()
+
+
+# ---------------------------------------------------------------------------
+# Redirect rule signals — keep the SeoRedirectMiddleware cache consistent
+# ---------------------------------------------------------------------------
+
+from .models import SeoRedirectRule  # noqa: E402 — imported after module-level setup
+
+
+@receiver(post_save, sender=SeoRedirectRule)
+@receiver(post_delete, sender=SeoRedirectRule)
+def invalidate_redirect_cache(sender, instance, **kwargs) -> None:
+    """
+    Purge the per-path redirect cache entry whenever a redirect rule is
+    created, updated, or deleted.  The middleware sets keys as:
+    ``{_REDIRECT_CACHE_PREFIX}:{old_path}``
+    """
+    from django.core.cache import cache
+
+    old_path = getattr(instance, "old_path", None)
+    if old_path:
+        cache.delete(f"{_REDIRECT_CACHE_PREFIX}:{old_path}")
+        logger.debug(
+            "seo.signals: redirect cache purged for path=%s", old_path
+        )

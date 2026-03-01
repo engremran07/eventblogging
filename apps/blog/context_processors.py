@@ -33,7 +33,9 @@ SITE_STATS_CACHE_KEY = "blog_site_stats_v1"
 ADMIN_OVERVIEW_CACHE_KEY = "blog_admin_overview_v2"
 ADMIN_REPO_OVERVIEW_CACHE_KEY = "blog_admin_repo_overview_v1"
 ADMIN_NAV_BADGES_CACHE_KEY = "blog_admin_nav_badges_v1"
+SITE_APPEARANCE_CACHE_KEY = "blog_site_appearance_ctx_v1"
 EXCLUDED_PATH_PARTS = {".venv", "__pycache__", ".git", "media", "staticfiles"}
+_APPEARANCE_CTX_TTL = 300  # 5 minutes
 
 
 def _iter_project_files(root: Path):
@@ -394,30 +396,18 @@ def admin_nav_badges(request):
     return {"admin_nav_badges": get_admin_nav_badges_payload()}
 
 
-def site_appearance(request):
+def _build_appearance_ctx() -> dict:
+    """
+    Build the static (non-user) portion of the site_appearance context.
+    All data comes from singleton models, so this is safe to cache for
+    _APPEARANCE_CTX_TTL seconds.
+    """
     appearance = SiteAppearanceSettings.get_solo()
     identity = SiteIdentitySettings.get_solo()
     seo_defaults = SeoSettings.get_solo()
     integrations = IntegrationSettings.get_solo()
     controls = FeatureControlSettings.get_solo()
     css_variables = appearance.css_variables
-    current_user_profile = {}
-    if request.user.is_authenticated:
-        try:
-            profile = UserProfile.get_for_user(request.user)
-            current_user_profile = {
-                "display_name": profile.display_name,
-                "effective_name": profile.effective_name,
-                "bio": profile.bio,
-                "avatar_url": profile.avatar_url,
-                "location": profile.location,
-                "website_url": profile.website_url,
-                "timezone": profile.timezone,
-            }
-        except Exception:
-            logger.warning("Failed to load UserProfile for user pk=%s", request.user.pk, exc_info=True)
-            current_user_profile = {}
-
     return {
         "site_appearance": {
             "mode": appearance.mode,
@@ -487,5 +477,38 @@ def site_appearance(request):
             "maintenance_mode": controls.maintenance_mode,
             "read_only_mode": controls.read_only_mode,
         },
-        "current_user_profile": current_user_profile,
     }
+
+
+def site_appearance(request):
+    # Cache the singleton-derived (static) portion for _APPEARANCE_CTX_TTL seconds.
+    # The per-user profile is appended after the cache lookup.
+    ctx = cache.get(SITE_APPEARANCE_CACHE_KEY)
+    if ctx is None:
+        try:
+            ctx = _build_appearance_ctx()
+        except Exception:
+            logger.warning("site_appearance: failed to build context", exc_info=True)
+            ctx = {}
+        cache.set(SITE_APPEARANCE_CACHE_KEY, ctx, _APPEARANCE_CTX_TTL)
+
+    # Per-user profile — never cached (user-specific)
+    current_user_profile: dict = {}
+    if request.user.is_authenticated:
+        try:
+            profile = UserProfile.get_for_user(request.user)
+            current_user_profile = {
+                "display_name": profile.display_name,
+                "effective_name": profile.effective_name,
+                "bio": profile.bio,
+                "avatar_url": profile.avatar_url,
+                "location": profile.location,
+                "website_url": profile.website_url,
+                "timezone": profile.timezone,
+            }
+        except Exception:
+            logger.warning("Failed to load UserProfile for user pk=%s", request.user.pk, exc_info=True)
+            current_user_profile = {}
+
+    return {**ctx, "current_user_profile": current_user_profile}
+

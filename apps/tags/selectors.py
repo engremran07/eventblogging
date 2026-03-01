@@ -18,6 +18,11 @@ def get_all_tags() -> QuerySet[TagModel]:
     ).order_by('-usage_count')
 
 
+def get_all_tags_with_counts() -> QuerySet[TagModel]:
+    """Get all tags with post counts, ordered by count desc.  Canonical alias."""
+    return get_all_tags()
+
+
 def get_popular_tags(limit: int = 20) -> QuerySet[TagModel]:
     """Get most popular tags."""
     return get_all_tags()[:limit]

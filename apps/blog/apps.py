@@ -17,3 +17,6 @@ class BlogConfig(AppConfig):
         for model, singular, plural in model_labels:
             model._meta.verbose_name = singular
             model._meta.verbose_name_plural = plural
+
+        # Register blog-level signal handlers (publish webhook, comment moderation)
+        import blog.signals  # noqa: F401

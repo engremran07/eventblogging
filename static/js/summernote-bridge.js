@@ -182,8 +182,11 @@
         if (toolbar) {
             toolbar.style.setProperty("display", "flex", "important");
             toolbar.style.setProperty("flex-wrap", "wrap", "important");
+            toolbar.style.setProperty("justify-content", "flex-start", "important");
             toolbar.style.setProperty("align-items", "center", "important");
-            toolbar.style.setProperty("gap", "0.35rem", "important");
+            toolbar.style.setProperty("gap", "0.5rem 0.35rem", "important");
+            toolbar.style.setProperty("width", "100%", "important");
+            toolbar.style.setProperty("box-sizing", "border-box", "important");
             toolbar.style.setProperty("padding", "0.5rem", "important");
             toolbar.style.setProperty("margin", "0", "important");
             toolbar.style.setProperty("margin-bottom", "0", "important");

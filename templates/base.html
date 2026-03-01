@@ -210,6 +210,19 @@
             </ul>
 
             <div class="d-flex gap-2 align-items-center flex-wrap">
+                {# ── Theme toggle for readers ── #}
+                <button
+                    type="button"
+                    class="theme-toggle-btn"
+                    id="public-theme-toggle"
+                    title="Switch to dark/light mode"
+                    aria-label="Toggle dark mode"
+                >
+                    <i class="bi bi-sun-fill theme-icon-light" aria-hidden="true"></i>
+                    <i class="bi bi-moon-fill theme-icon-dark" aria-hidden="true"></i>
+                    <span class="theme-toggle-label" aria-hidden="true"></span>
+                </button>
+
                 {% if site_identity.homepage_cta_label and site_identity.homepage_cta_url %}
                     <a class="btn btn-sm btn-outline-primary" href="{{ site_identity.homepage_cta_url }}">{{ site_identity.homepage_cta_label }}</a>
                 {% endif %}

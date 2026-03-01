@@ -56,24 +56,154 @@
                 </div>
                 {% endif %}
 
-                {% for field in form %}
-                    {% if field.field.widget.input_type == "checkbox" %}
-                        <div class="form-check">
-                            {{ field }}
-                            <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
-                            {% if field.help_text %}<small class="d-block text-body-secondary">{{ field.help_text }}</small>{% endif %}
-                            {% if field.errors %}<small class="text-danger">{{ field.errors|join:', ' }}</small>{% endif %}
-                        </div>
-                    {% else %}
-                        <div>
-                            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
-                            {{ field }}
-                            {% if field.help_text %}<small class="d-block text-body-secondary">{{ field.help_text }}</small>{% endif %}
-                            {% if field.errors %}<small class="text-danger">{{ field.errors|join:', ' }}</small>{% endif %}
-                        </div>
-                    {% endif %}
-                {% endfor %}
+                {# ── Title ── #}
+                <div>
+                    <label class="form-label" for="{{ form.title.id_for_label }}">Post Title *</label>
+                    {{ form.title }}
+                    {% if form.title.help_text %}<small class="d-block text-body-secondary">{{ form.title.help_text }}</small>{% endif %}
+                    {% if form.title.errors %}<small class="text-danger">{{ form.title.errors|join:', ' }}</small>{% endif %}
+                </div>
 
+                {# ── Slug ── #}
+                <div>
+                    <label class="form-label" for="{{ form.slug.id_for_label }}">Slug</label>
+                    <div class="input-group">
+                        {{ form.slug }}
+                        <button type="button" class="btn btn-outline-secondary" id="slug-lock">
+                            <i class="bi bi-lock"></i>
+                        </button>
+                    </div>
+                    {% if form.slug.help_text %}<small class="d-block text-body-secondary">{{ form.slug.help_text }}</small>{% endif %}
+                    {% if form.slug.errors %}<small class="text-danger">{{ form.slug.errors|join:', ' }}</small>{% endif %}
+                </div>
+
+                {# ── Excerpt ── #}
+                <div>
+                    <label class="form-label" for="{{ form.excerpt.id_for_label }}">Excerpt</label>
+                    {{ form.excerpt }}
+                    {% if form.excerpt.help_text %}<small class="d-block text-body-secondary">{{ form.excerpt.help_text }}</small>{% endif %}
+                    {% if form.excerpt.errors %}<small class="text-danger">{{ form.excerpt.errors|join:', ' }}</small>{% endif %}
+                </div>
+
+                {# ── Cover Image ── #}
+                <div>
+                    <label class="form-label" for="{{ form.cover_image.id_for_label }}">Cover Image</label>
+                    {{ form.cover_image }}
+                    {% if form.cover_image.help_text %}<small class="d-block text-body-secondary">{{ form.cover_image.help_text }}</small>{% endif %}
+                    {% if form.cover_image.errors %}<small class="text-danger">{{ form.cover_image.errors|join:', ' }}</small>{% endif %}
+                </div>
+
+                {# ── Primary Topic ── #}
+                <div>
+                    <label class="form-label" for="{{ form.primary_topic.id_for_label }}">Primary Topic</label>
+                    {{ form.primary_topic }}
+                    {% if form.primary_topic.help_text %}<small class="d-block text-body-secondary">{{ form.primary_topic.help_text }}</small>{% endif %}
+                    {% if form.primary_topic.errors %}<small class="text-danger">{{ form.primary_topic.errors|join:', ' }}</small>{% endif %}
+                </div>
+
+                {# ── Tags ── #}
+                <div>
+                    <label class="form-label" for="{{ form.tags.id_for_label }}">Tags</label>
+                    {{ form.tags }}
+                    {% if form.tags.help_text %}<small class="d-block text-body-secondary">{{ form.tags.help_text }}</small>{% endif %}
+                    {% if form.tags.errors %}<small class="text-danger">{{ form.tags.errors|join:', ' }}</small>{% endif %}
+                </div>
+
+                {# ── Categories ── #}
+                <div>
+                    <label class="form-label" for="{{ form.categories.id_for_label }}">Categories</label>
+                    {{ form.categories }}
+                    {% if form.categories.help_text %}<small class="d-block text-body-secondary">{{ form.categories.help_text }}</small>{% endif %}
+                    {% if form.categories.errors %}<small class="text-danger">{{ form.categories.errors|join:', ' }}</small>{% endif %}
+                </div>
+
+                {# ── Body (Summernote + Markdown) ── #}
+                <div>
+                    <label class="form-label" for="{{ form.body_markdown.id_for_label }}">Post Body (Markdown) *</label>
+                    {{ form.body_markdown }}
+                    <small class="d-block text-body-secondary" id="word-count">0 words</small>
+                    {% if form.body_markdown.errors %}<small class="text-danger">{{ form.body_markdown.errors|join:', ' }}</small>{% endif %}
+                </div>
+
+                {# ── Meta Overrides (collapsible) ── #}
+                <details class="border rounded p-3">
+                    <summary class="fw-semibold">
+                        Meta Overrides
+                        <small class="text-body-secondary ms-2" id="meta-auto-badge">Auto-synced from title &amp; excerpt</small>
+                    </summary>
+                    <div class="vstack gap-3 mt-3">
+                        <div>
+                            <label class="form-label" for="{{ form.meta_title.id_for_label }}">Meta Title</label>
+                            {{ form.meta_title }}
+                            <small class="d-block text-body-secondary">
+                                <span id="meta-title-count">0</span>/70 characters
+                                <span id="meta-title-sync-hint" class="text-success"></span>
+                                {% if form.meta_title.help_text %} &mdash; {{ form.meta_title.help_text }}{% endif %}
+                            </small>
+                            {% if form.meta_title.errors %}<small class="text-danger">{{ form.meta_title.errors|join:', ' }}</small>{% endif %}
+                        </div>
+                        <div>
+                            <label class="form-label" for="{{ form.meta_description.id_for_label }}">Meta Description</label>
+                            {{ form.meta_description }}
+                            <small class="d-block text-body-secondary">
+                                <span id="meta-desc-count">0</span>/170 characters
+                                <span id="meta-desc-sync-hint" class="text-success"></span>
+                                {% if form.meta_description.help_text %} &mdash; {{ form.meta_description.help_text }}{% endif %}
+                            </small>
+                            {% if form.meta_description.errors %}<small class="text-danger">{{ form.meta_description.errors|join:', ' }}</small>{% endif %}
+                        </div>
+                        <div>
+                            <label class="form-label" for="{{ form.canonical_url.id_for_label }}">Canonical URL</label>
+                            {{ form.canonical_url }}
+                            <small class="d-block text-body-secondary" id="canonical-hint">
+                                {% if form.canonical_url.help_text %}{{ form.canonical_url.help_text }}{% else %}Leave blank for auto-generated canonical.{% endif %}
+                            </small>
+                            {% if form.canonical_url.errors %}<small class="text-danger">{{ form.canonical_url.errors|join:', ' }}</small>{% endif %}
+                        </div>
+                    </div>
+                </details>
+
+                {# ── Publishing Controls ── #}
+                <div class="border rounded p-3">
+                    <h6 class="fw-semibold mb-3">Publishing</h6>
+
+                    <div class="mb-3">
+                        <label class="form-label" for="{{ form.published_at.id_for_label }}">Publish Schedule</label>
+                        {{ form.published_at }}
+                        {% if form.published_at.help_text %}<small class="d-block text-body-secondary">{{ form.published_at.help_text }}</small>{% endif %}
+                        {% if form.published_at.errors %}<small class="text-danger">{{ form.published_at.errors|join:', ' }}</small>{% endif %}
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-sm-6">
+                            <div class="form-check">
+                                {{ form.is_featured }}
+                                <label class="form-check-label" for="{{ form.is_featured.id_for_label }}">{{ form.is_featured.label }}</label>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="form-check">
+                                {{ form.is_editors_pick }}
+                                <label class="form-check-label" for="{{ form.is_editors_pick.id_for_label }}">{{ form.is_editors_pick.label }}</label>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="form-check">
+                                {{ form.allow_comments }}
+                                <label class="form-check-label" for="{{ form.allow_comments.id_for_label }}">{{ form.allow_comments.label }}</label>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="form-check">
+                                {{ form.allow_reactions }}
+                                <label class="form-check-label" for="{{ form.allow_reactions.id_for_label }}">{{ form.allow_reactions.label }}</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {# ── Hidden status field + Submit buttons ── #}
+                {{ form.status.as_hidden }}
                 <div class="d-flex gap-2 flex-wrap">
                     <button class="btn btn-secondary" type="submit" data-post-status-submit="draft">
                         <i class="bi bi-file-earmark me-1"></i>Save Draft
@@ -134,36 +264,76 @@
 
 {% block extra_js %}
 <script>
-(() => {
-    const titleInput = document.getElementById("id_title");
-    const slugInput = document.getElementById("id_slug");
-    const excerptInput = document.getElementById("id_excerpt");
-    const metaTitleInput = document.getElementById("id_meta_title");
-    const metaDescriptionInput = document.getElementById("id_meta_description");
-    const canonicalInput = document.getElementById("id_canonical_url");
+(function () {
+    "use strict";
 
-    if (!(titleInput && excerptInput && metaTitleInput && metaDescriptionInput)) {
-        return;
+    /* ─── DOM References ─── */
+    var titleInput         = document.getElementById("id_title");
+    var slugInput          = document.getElementById("id_slug");
+    var slugLockBtn        = document.getElementById("slug-lock");
+    var excerptInput       = document.getElementById("id_excerpt");
+    var metaTitleInput     = document.getElementById("id_meta_title");
+    var metaDescInput      = document.getElementById("id_meta_description");
+    var canonicalInput     = document.getElementById("id_canonical_url");
+    var bodyTextarea       = document.getElementById("id_body_markdown");
+    var wordCountEl        = document.getElementById("word-count");
+    var metaTitleCount     = document.getElementById("meta-title-count");
+    var metaDescCount      = document.getElementById("meta-desc-count");
+    var metaTitleHint      = document.getElementById("meta-title-sync-hint");
+    var metaDescHint       = document.getElementById("meta-desc-sync-hint");
+    var canonicalHint      = document.getElementById("canonical-hint");
+
+    if (!(titleInput && metaTitleInput && metaDescInput)) return;
+
+    var normalize = function (v) { return (v || "").replace(/\s+/g, " ").trim(); };
+    var clamp     = function (v, max) { return normalize(v).slice(0, max); };
+
+    /* ─── Slug auto-generation ─── */
+    var slugLocked = Boolean(slugInput && slugInput.value && slugInput.value.trim());
+
+    function updateLockIcon() {
+        if (!slugLockBtn) return;
+        slugLockBtn.innerHTML = slugLocked
+            ? '<i class="bi bi-lock-fill"></i>'
+            : '<i class="bi bi-lock"></i>';
+        slugLockBtn.classList.toggle("btn-primary", slugLocked);
+        slugLockBtn.classList.toggle("btn-outline-secondary", !slugLocked);
+    }
+    updateLockIcon();
+
+    if (slugLockBtn) {
+        slugLockBtn.addEventListener("click", function (e) {
+            e.preventDefault();
+            slugLocked = !slugLocked;
+            updateLockIcon();
+        });
     }
 
-    const normalize = (value) => (value || "").replace(/\s+/g, " ").trim();
-    const clamp = (value, maxLength) => normalize(value).slice(0, maxLength);
+    function autoSlug() {
+        if (slugLocked || !slugInput) return;
+        slugInput.value = titleInput.value
+            .toLowerCase()
+            .replace(/[^\w\s-]/g, "")
+            .replace(/\s+/g, "-")
+            .replace(/-+/g, "-")
+            .substring(0, 240);
+    }
 
-    let metaTitleManual = false;
-    let metaDescriptionManual = false;
-    let canonicalManual = canonicalInput ? Boolean(canonicalInput.value.trim()) : false;
+    /* ─── Auto-sync tracking ─── */
+    var metaTitleManual = Boolean(metaTitleInput.value.trim());
+    var metaDescManual  = Boolean(metaDescInput.value.trim());
+    var canonicalManual = canonicalInput ? Boolean(canonicalInput.value.trim()) : false;
 
-    /* If existing meta matches auto-sync output, keep auto mode */
-    if (metaTitleInput.value.trim() && normalize(metaTitleInput.value) === clamp(titleInput.value, 70)) {
+    if (metaTitleManual && normalize(metaTitleInput.value) === clamp(titleInput.value, 70)) {
         metaTitleManual = false;
     }
-    if (metaDescriptionInput.value.trim() && normalize(metaDescriptionInput.value) === clamp(excerptInput.value, 170)) {
-        metaDescriptionManual = false;
+    if (excerptInput && metaDescManual && normalize(metaDescInput.value) === clamp(excerptInput.value, 170)) {
+        metaDescManual = false;
     }
 
     function buildCanonicalUrl() {
         if (!slugInput) return "";
-        const slug = (slugInput.value || "").trim();
+        var slug = (slugInput.value || "").trim();
         if (!slug) return "";
         return window.location.origin + "/" + encodeURIComponent(slug) + "/";
     }
@@ -172,108 +342,130 @@
         canonicalManual = false;
     }
 
-    const syncMetaTitle = () => {
-        if (!metaTitleManual) {
-            metaTitleInput.value = clamp(titleInput.value, 70);
-        }
-    };
+    /* ─── Sync functions ─── */
+    function syncMetaTitle() {
+        if (metaTitleManual) return;
+        metaTitleInput.value = clamp(titleInput.value, 70);
+        updateMetaCounts();
+    }
 
-    const syncMetaDescription = () => {
-        if (!metaDescriptionManual) {
-            metaDescriptionInput.value = clamp(excerptInput.value, 170);
-        }
-    };
+    function syncMetaDescription() {
+        if (metaDescManual || !excerptInput) return;
+        metaDescInput.value = clamp(excerptInput.value, 170);
+        updateMetaCounts();
+    }
 
-    const syncCanonical = () => {
+    function syncCanonical() {
         if (canonicalManual || !canonicalInput) return;
         canonicalInput.value = buildCanonicalUrl();
-    };
+        updateCanonicalHint();
+    }
 
-    metaTitleInput.addEventListener("input", () => {
-        const current = normalize(metaTitleInput.value);
-        const autoValue = clamp(titleInput.value, 70);
-        metaTitleManual = current !== "" && current !== autoValue;
+    /* ─── Character counters ─── */
+    function updateMetaCounts() {
+        if (metaTitleCount) metaTitleCount.textContent = metaTitleInput.value.length;
+        if (metaDescCount) metaDescCount.textContent = metaDescInput.value.length;
+    }
+
+    function updateCanonicalHint() {
+        if (!canonicalHint) return;
+        if (canonicalManual) {
+            canonicalHint.textContent = "Custom canonical URL set.";
+        } else if (canonicalInput && canonicalInput.value) {
+            canonicalHint.textContent = "Auto: " + canonicalInput.value;
+        } else {
+            canonicalHint.textContent = "Leave blank for auto-generated canonical.";
+        }
+    }
+
+    /* ─── Word count ─── */
+    function getEditableText() {
+        var editable = document.querySelector(".summernote-bridge-host .note-editable");
+        if (editable) return (editable.textContent || "").trim();
+        return (bodyTextarea ? bodyTextarea.value : "").trim();
+    }
+
+    function updateWordCount() {
+        var text = getEditableText();
+        var words = text.split(/\s+/).filter(Boolean).length;
+        if (wordCountEl) wordCountEl.textContent = words + " words";
+    }
+
+    /* ─── Detect manual edits ─── */
+    metaTitleInput.addEventListener("input", function () {
+        var current = normalize(metaTitleInput.value);
+        var autoVal = clamp(titleInput.value, 70);
+        metaTitleManual = current !== "" && current !== autoVal;
+        if (metaTitleHint) metaTitleHint.textContent = metaTitleManual ? "(manually set)" : "(auto from title)";
+        updateMetaCounts();
     });
 
-    metaDescriptionInput.addEventListener("input", () => {
-        const current = normalize(metaDescriptionInput.value);
-        const autoValue = clamp(excerptInput.value, 170);
-        metaDescriptionManual = current !== "" && current !== autoValue;
+    metaDescInput.addEventListener("input", function () {
+        var current = normalize(metaDescInput.value);
+        var autoVal = excerptInput ? clamp(excerptInput.value, 170) : "";
+        metaDescManual = current !== "" && current !== autoVal;
+        if (metaDescHint) metaDescHint.textContent = metaDescManual ? "(manually set)" : "(auto from excerpt)";
+        updateMetaCounts();
     });
 
     if (canonicalInput) {
-        canonicalInput.addEventListener("input", () => {
+        canonicalInput.addEventListener("input", function () {
             canonicalManual = canonicalInput.value.trim() !== "" && canonicalInput.value.trim() !== buildCanonicalUrl();
+            updateCanonicalHint();
         });
     }
 
-    titleInput.addEventListener("input", () => {
+    /* ─── Wiring ─── */
+    titleInput.addEventListener("input", function () {
+        autoSlug();
         syncMetaTitle();
         syncCanonical();
+        updateWordCount();
     });
-    excerptInput.addEventListener("input", syncMetaDescription);
 
-    if (slugInput) {
-        slugInput.addEventListener("input", syncCanonical);
+    if (excerptInput) {
+        excerptInput.addEventListener("input", syncMetaDescription);
     }
 
-    const statusField = document.getElementById("id_status");
-    document.querySelectorAll("[data-post-status-submit]").forEach((button) => {
-        button.addEventListener("click", () => {
+    if (slugInput) {
+        slugInput.addEventListener("input", function () {
+            slugLocked = true;
+            updateLockIcon();
+            syncCanonical();
+        });
+    }
+
+    if (bodyTextarea) {
+        bodyTextarea.addEventListener("input", updateWordCount);
+    }
+
+    /* ─── Summernote live word count ─── */
+    var snHost = document.querySelector(".summernote-bridge-host");
+    if (snHost) {
+        var observer = new MutationObserver(updateWordCount);
+        observer.observe(snHost, { childList: true, subtree: true, characterData: true });
+    }
+
+    /* ─── Status button handling ─── */
+    var statusField = document.getElementById("id_status");
+    document.querySelectorAll("[data-post-status-submit]").forEach(function (button) {
+        button.addEventListener("click", function () {
             if (!statusField) {
-                console.error("[PostForm] #id_status field not found! Form will submit without status.");
+                console.error("[PostForm] #id_status field not found!");
                 return;
             }
-            const targetStatus = button.dataset.postStatusSubmit || "";
-            if (targetStatus) {
-                statusField.value = targetStatus;
-                console.log("[PostForm] Status set to:", targetStatus);
-            }
+            statusField.value = button.dataset.postStatusSubmit || "";
         });
     });
 
+    /* ─── Initial sync ─── */
     syncMetaTitle();
     syncMetaDescription();
     syncCanonical();
-})();
-
-/* ── Form Submit Debug Monitor ── */
-(function() {
-    var form = document.getElementById("post-create-form");
-    if (!form) { console.warn("[PostForm] Form #post-create-form not found"); return; }
-
-    console.log("[PostForm] Form monitor attached. Action:", form.action || window.location.href);
-
-    form.addEventListener("submit", function(e) {
-        var status = document.getElementById("id_status");
-        var title = document.getElementById("id_title");
-        var body = document.getElementById("id_body_markdown");
-        console.log("[PostForm] Form submit fired!", {
-            defaultPrevented: e.defaultPrevented,
-            status: status ? status.value : "MISSING",
-            title: title ? title.value.substring(0, 50) : "MISSING",
-            bodyLength: body ? body.value.length : 0,
-            formAction: form.action,
-        });
-
-        /* Detect if something blocks the submit */
-        setTimeout(function() {
-            if (e.defaultPrevented) {
-                console.error("[PostForm] SUBMIT WAS BLOCKED by event.preventDefault()!");
-                var banner = document.createElement("div");
-                banner.className = "alert alert-danger mt-2";
-                banner.innerHTML = "<strong>Debug:</strong> Form submission was blocked by JavaScript. Check console (F12) for details.";
-                form.prepend(banner);
-            }
-        }, 0);
-    });
-
-    /* Monitor all submit buttons */
-    form.querySelectorAll('button[type="submit"]').forEach(function(btn) {
-        btn.addEventListener("click", function() {
-            console.log("[PostForm] Button clicked:", btn.textContent.trim(), "data-post-status-submit:", btn.dataset.postStatusSubmit || "none");
-        });
-    });
+    updateMetaCounts();
+    updateWordCount();
+    if (metaTitleHint) metaTitleHint.textContent = metaTitleManual ? "(manually set)" : "(auto from title)";
+    if (metaDescHint) metaDescHint.textContent = metaDescManual ? "(manually set)" : "(auto from excerpt)";
 })();
 </script>
 {% endblock %}

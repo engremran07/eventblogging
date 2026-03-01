@@ -686,6 +686,55 @@
     });
   }
 
+  /**
+   * bindPublicThemeToggle — Wire click handler for #public-theme-toggle button.
+   * Toggles between dark/light mode using ThemeCore API.
+   * Persists to localStorage and syncs across tabs automatically.
+   */
+  function bindPublicThemeToggle() {
+    var btn = document.getElementById("public-theme-toggle");
+    if (!btn) { return; }
+
+    btn.addEventListener("click", function (event) {
+      event.preventDefault();
+      var nextMode = TC.getThemeMode() === "dark" ? "light" : "dark";
+
+      // Optional server-side toggle (if URL available on body)
+      var toggleUrl = document.body && document.body.dataset
+        ? document.body.dataset.adminThemeToggleUrl || ""
+        : "";
+
+      btn.disabled = true;
+      var done = function () { btn.disabled = false; };
+
+      if (toggleUrl) {
+        fetch(toggleUrl, {
+          method: "POST",
+          credentials: "same-origin",
+          headers: {
+            "X-CSRFToken": TC.getCookie("csrftoken") || "",
+            "X-Requested-With": "XMLHttpRequest",
+          },
+        })
+        .then(function (r) { return r.ok ? r.json() : Promise.reject(); })
+        .then(function (payload) {
+          TC.applyTheme(
+            payload.mode || nextMode,
+            payload.preset || TC.getThemePreset(),
+            payload.css_variables || null
+          );
+        })
+        .catch(function () {
+          TC.applyTheme(nextMode, TC.getThemePreset());
+        })
+        .finally(done);
+      } else {
+        TC.applyTheme(nextMode, TC.getThemePreset());
+        done();
+      }
+    });
+  }
+
   document.addEventListener("alpine:init", initUiStore);
   document.addEventListener("DOMContentLoaded", function () {
     initUiStore();
@@ -693,6 +742,7 @@
     TC.bindThemeStateSync();
     TC.bindThemeStorageSync();
     bindDashboardLiveSync();
+    bindPublicThemeToggle();
   });
 
   document.body.addEventListener("htmx:configRequest", function (event) {

@@ -101,7 +101,7 @@
 
 .btn-danger:hover {
   background-color: var(--danger);
-  color: white;
+  color: var(--text-inverse);
   border-color: var(--danger);
 }
 
@@ -235,14 +235,17 @@ select:focus {
 .summernote-bridge-host .note-toolbar {
   display: flex !important;
   flex-wrap: wrap !important;
+  justify-content: flex-start !important;
   align-items: center !important;
-  gap: 0.35rem !important;
+  gap: 0.5rem 0.35rem !important;
   padding: 0.5rem !important;
   margin: 0 !important;
   margin-bottom: 0 !important;
   font-weight: normal !important;
   font-size: inherit !important;
   overflow: visible !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
   background: var(--surface-2);
   border-bottom: var(--border-width) solid var(--border);
   color: inherit;
@@ -847,7 +850,7 @@ input[type="radio"] {
   position: fixed;
   bottom: var(--space-6);
   right: var(--space-6);
-  color: white;
+  color: var(--text-inverse);
   padding: var(--p-md, var(--space-4));
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
@@ -863,7 +866,7 @@ input[type="radio"] {
 
 .toast-close-btn {
   background: none;
-  color: white;
+  color: var(--text-inverse);
   border: none;
   cursor: pointer;
   font-size: var(--text-lg);
@@ -1476,7 +1479,7 @@ Keyframes are imported from animations.css (loaded before this file).
   width: 16px;
   height: 16px;
   border-radius: var(--radius-full);
-  background: #ffffff;
+  background: var(--text-inverse, #ffffff);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
   transition: transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1);
   transform: translateX(2px);

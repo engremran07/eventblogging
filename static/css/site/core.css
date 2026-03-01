@@ -28,21 +28,12 @@
     --nav-bg: color-mix(in srgb, var(--color-bg) 94%, transparent);
     --footer-bg: color-mix(in srgb, var(--color-bg) 94%, transparent);
 
-    /* Bridge appearance variables into shared semantic tokens used by base/components/layout */
-    --accent: var(--brand);
-    --accent-hover: var(--brand-dark);
-    --accent-muted: color-mix(in srgb, var(--brand) 14%, transparent);
-    --accent-border: color-mix(in srgb, var(--brand) 34%, transparent);
-    --bg: var(--bg-main);
-    --surface-1: var(--panel-strong);
-    --surface-2: color-mix(in srgb, var(--panel) 80%, var(--bg-main) 20%);
-    --surface-3: color-mix(in srgb, var(--panel) 62%, var(--bg-main) 38%);
-    --border: var(--line);
-    --border-focus: color-mix(in srgb, var(--brand) 44%, var(--line) 56%);
-    --text-primary: var(--ink);
-    --text-secondary: var(--ink-soft);
-    --text-muted: color-mix(in srgb, var(--ink-soft) 62%, transparent);
-    --text-inverse: var(--brand-contrast);
+    /* NOTE: Do NOT re-define base tokens (--bg, --accent, --surface-*, --text-*, --border*)
+       here. They are owned by foundation.css and themed via [data-bs-theme] selectors.
+       Re-defining them from legacy aliases creates circular references:
+         --bg → --bg-main → --color-bg → --bg → CYCLE → guaranteed-invalid per CSS spec.
+       Site components should use --bg-main, --ink, --brand etc. directly.
+       If presets need to customize base tokens, set them in the <style id="site-appearance-vars"> block. */
 }
 
 html[data-bs-theme="light"] {
@@ -52,6 +43,90 @@ html[data-bs-theme="light"] {
 html[data-bs-theme="dark"] {
     color-scheme: dark;
 }
+
+/* ========================================================================
+   PUBLIC THEME TOGGLE BUTTON
+   ======================================================================== */
+
+.theme-toggle-btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border: 1.5px solid var(--line);
+    border-radius: var(--radius-full, 9999px);
+    background: var(--panel-strong);
+    color: var(--ink);
+    cursor: pointer;
+    padding: 0;
+    transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+    flex-shrink: 0;
+}
+
+.theme-toggle-btn:hover {
+    border-color: var(--brand);
+    background: color-mix(in srgb, var(--brand) 12%, var(--panel-strong));
+    transform: scale(1.08);
+}
+
+.theme-toggle-btn:focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 2px;
+}
+
+.theme-toggle-btn:active {
+    transform: scale(0.94);
+}
+
+/* Sun icon — visible in dark mode (click to go light) */
+.theme-icon-light {
+    font-size: 1rem;
+    line-height: 1;
+    display: none;
+}
+
+/* Moon icon — visible in light mode (click to go dark) */
+.theme-icon-dark {
+    font-size: 0.92rem;
+    line-height: 1;
+    display: inline-block;
+}
+
+/* Dark mode: show sun, hide moon */
+html[data-bs-theme="dark"] .theme-icon-light {
+    display: inline-block;
+    color: #f59e0b;
+    animation: theme-icon-spin 0.35s ease;
+}
+
+html[data-bs-theme="dark"] .theme-icon-dark {
+    display: none;
+}
+
+/* Light mode: show moon, hide sun */
+html[data-bs-theme="light"] .theme-icon-dark {
+    display: inline-block;
+    color: var(--ink-soft);
+    animation: theme-icon-spin 0.35s ease;
+}
+
+html[data-bs-theme="light"] .theme-icon-light {
+    display: none;
+}
+
+/* Label hidden by default, shown on wider screens */
+.theme-toggle-label {
+    display: none;
+}
+
+@keyframes theme-icon-spin {
+    from { transform: rotate(-90deg) scale(0.5); opacity: 0; }
+    to   { transform: rotate(0)      scale(1);  opacity: 1; }
+}
+
+/* ======================================================================== */
 
 * {
     box-sizing: border-box;
@@ -182,7 +257,11 @@ a.quick-link:hover,
 }
 
 .hero-stage {
-    box-shadow: 0 18px 45px rgba(22, 36, 89, 0.08);
+    box-shadow: 0 18px 45px rgba(0, 0, 0, 0.08);
+}
+
+html[data-bs-theme="dark"] .hero-stage {
+    box-shadow: 0 18px 45px rgba(0, 0, 0, 0.25);
 }
 
 .kicker {
@@ -226,7 +305,8 @@ a.quick-link:hover,
 }
 
 .metric-card--dark span {
-    color: rgba(255, 255, 255, 0.72);
+    color: var(--text-inverse, rgba(255, 255, 255, 0.72));
+    opacity: 0.82;
 }
 
 .dashboard-live-shell .workspace-hero {
@@ -372,7 +452,11 @@ a.quick-link:hover,
 
 .post-card:hover {
     transform: translateY(-4px);
-    box-shadow: 0 18px 30px rgba(36, 44, 79, 0.14);
+    box-shadow: 0 18px 30px rgba(0, 0, 0, 0.12);
+}
+
+html[data-bs-theme="dark"] .post-card:hover {
+    box-shadow: 0 18px 30px rgba(0, 0, 0, 0.35);
 }
 
 .post-card-meta {
@@ -437,7 +521,7 @@ a.quick-link:hover,
     border: 1px solid var(--line);
     border-radius: 0.48rem;
     padding: 0.2rem 0.45rem;
-    box-shadow: 0 8px 20px rgba(17, 28, 54, 0.18);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
     transition: opacity 0.16s ease, transform 0.16s ease;
     z-index: 5;
 }
@@ -702,7 +786,7 @@ a.quick-link:hover,
     background: var(--panel-strong);
     border-radius: 0.85rem;
     padding: 0.75rem;
-    box-shadow: 0 18px 34px rgba(21, 37, 82, 0.12);
+    box-shadow: 0 18px 34px rgba(0, 0, 0, 0.12);
     max-height: 420px;
     overflow-y: auto;
 }
@@ -820,7 +904,7 @@ a.quick-link:hover,
     border-left-width: 4px;
     border-radius: 0.9rem;
     background: var(--panel-strong);
-    box-shadow: 0 14px 28px rgba(15, 29, 67, 0.16);
+    box-shadow: 0 14px 28px rgba(0, 0, 0, 0.14);
     padding: 0.75rem 0.8rem 0.75rem 0.7rem;
 }
 

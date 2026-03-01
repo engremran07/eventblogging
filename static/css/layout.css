@@ -230,7 +230,7 @@
 
 .nav-badge {
   background-color: var(--danger);
-  color: white;
+  color: var(--text-inverse);
   font-size: var(--text-xs);
   padding: 2px 6px;
   border-radius: var(--radius-full);

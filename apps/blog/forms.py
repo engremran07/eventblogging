@@ -67,6 +67,7 @@ class PostForm(BootstrapFormMixin, forms.ModelForm):
         model = Post
         fields = [
             "title",
+            "slug",
             "excerpt",
             "cover_image",
             "body_markdown",
@@ -84,6 +85,9 @@ class PostForm(BootstrapFormMixin, forms.ModelForm):
             "allow_reactions",
         ]
         widgets = {
+            "slug": forms.TextInput(
+                attrs={"placeholder": "auto-generated-from-title"}
+            ),
             "excerpt": forms.Textarea(attrs={"rows": 2}),
             "body_markdown": forms.Textarea(
                 attrs={
@@ -96,6 +100,7 @@ class PostForm(BootstrapFormMixin, forms.ModelForm):
             "meta_description": forms.Textarea(attrs={"rows": 2}),
         }
         help_texts = {
+            "slug": "Leave blank to auto-generate from title. Edit only if you need a custom URL.",
             "meta_title": "Recommended length: up to 60-70 chars.",
             "meta_description": "Recommended length: up to 160-170 chars.",
             "canonical_url": "Optional canonical URL for syndicated content.",

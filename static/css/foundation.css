@@ -48,8 +48,8 @@
   
   --accent: #4f9cf9;                /* Primary action color */
   --accent-hover: #3b82f6;          /* Hover state - slightly deeper blue */
-  --accent-muted: rgba(79, 156, 249, 0.12);   /* Subtle backgrounds */
-  --accent-border: rgba(79, 156, 249, 0.30);  /* Accent borders */
+  --accent-muted: color-mix(in srgb, var(--accent) 12%, transparent);   /* Subtle backgrounds — auto-derives from --accent */
+  --accent-border: color-mix(in srgb, var(--accent) 30%, transparent);  /* Accent borders — auto-derives from --accent */
   
   /* =========================================================================
      SEMANTIC COLORS - Status indicators (enterprise palette)
@@ -693,7 +693,7 @@ p, li, td, blockquote, code {
 
 /* Mark/highlight */
 mark {
-  background-color: rgba(245, 158, 11, 0.2);
+  background-color: var(--warning-muted);
   color: inherit;
   padding: 0 var(--space-1);
   border-radius: var(--radius-sm);

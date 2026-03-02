@@ -809,13 +809,6 @@
         monitoredJobId = null;
     }
 
-    function setActiveSection(section) {
-        document.querySelectorAll("#seo-control-tabs .nav-link").forEach(function (link) {
-            const isActive = (link.getAttribute("data-control-section") || "") === section;
-            link.classList.toggle("active", isActive);
-        });
-    }
-
     function monitorScanCard(card) {
         const progressUrl = card.getAttribute("data-progress-url");
         const jobId = card.getAttribute("data-job-id");
@@ -880,46 +873,32 @@
         }, 2000);
     }
 
-    function bindSectionSwapHandlers() {
-        document.body.addEventListener("htmx:beforeRequest", function (event) {
-            const source = event.detail && event.detail.elt ? event.detail.elt : null;
-            if (!source) {
-                return;
-            }
-            const section = source.getAttribute("data-control-section");
-            if (section) {
-                setActiveSection(section);
-            }
-        });
-
-        document.body.addEventListener("htmx:afterSwap", function (event) {
-            const target = event.detail && event.detail.target ? event.detail.target : null;
-            if (!target || target.id !== "seo-control-section") {
-                return;
-            }
-            const requestPath = event.detail.pathInfo && event.detail.pathInfo.requestPath
-                ? event.detail.pathInfo.requestPath
-                : "";
-            const sectionMatch = requestPath.match(/\/section\/([a-z-]+)\//);
-            if (sectionMatch) {
-                const activeSection = sectionMatch[1];
-                setActiveSection(activeSection);
-            }
-            const scanCard = target.querySelector("[data-seo-scan-monitor='true']");
+    // SEO control tab activation — sync nav pills with HTMX tab loads
+    document.addEventListener('htmx:afterSwap', function(e) {
+        if (e.detail.target && e.detail.target.id === 'seo-tab-content') {
+            var nav = document.querySelector('.admin-control-nav');
+            if (!nav) return;
+            var pills = nav.querySelectorAll('.admin-control-nav-item');
+            pills.forEach(function(pill) {
+                pill.classList.remove('active');
+                // Match active pill based on the hx-get URL containing the section name
+                var url = e.detail.requestConfig && e.detail.requestConfig.path;
+                if (url && pill.getAttribute('hx-get') && pill.getAttribute('hx-get').indexOf(url.split('/').slice(-2, -1)[0]) !== -1) {
+                    pill.classList.add('active');
+                }
+            });
+        }
+        // Re-attach scan monitor on any swap containing a scan card
+        var target = e.detail && e.detail.target ? e.detail.target : null;
+        if (target) {
+            var scanCard = target.querySelector("[data-seo-scan-monitor='true']");
             if (scanCard) {
                 monitorScanCard(scanCard);
-            } else {
-                stopMonitoring();
             }
-        });
-    }
+        }
+    });
 
     document.addEventListener("DOMContentLoaded", function () {
-        bindSectionSwapHandlers();
-        const activeLink = document.querySelector("#seo-control-tabs .nav-link.active");
-        if (activeLink) {
-            setActiveSection(activeLink.getAttribute("data-control-section") || "");
-        }
         const scanCard = document.querySelector("[data-seo-scan-monitor='true']");
         if (scanCard) {
             monitorScanCard(scanCard);

@@ -280,10 +280,8 @@ def hx_list(request):
        "dark":  { "--bg-main": "...", "--brand": "...", ... },
    }
    ```
-3. Run `python manage.py migrate` (no migration needed — data-only change)
-4. In Django admin, go to Site Appearance Settings, choose the new preset
-5. Verify both light and dark modes render correctly via the theme toggle
-6. Update `THEME_STYLE_INVENTORY.md` in docs/
+3. In Django admin, go to Site Appearance Settings, choose the new preset
+4. Verify both light and dark modes render correctly via the theme toggle
 
 ---
 
@@ -299,10 +297,6 @@ pytest apps/blog/tests/ -v
 # With coverage
 pytest --cov=apps --cov-report=html
 
-# Test database: Django creates a test DB from migrations each run.
-# Default: test_djangoblog on same Postgres host as POSTGRES_HOST.
-# Override in settings: TEST = {'NAME': 'custom_test_db'}
-
 # Factories (model-bakery pattern):
 from model_bakery import baker
 
@@ -313,110 +307,58 @@ def post(db):
 
 ---
 
-## 🧑‍💻 AGENT 1: BACKEND CORE
+## 🧑‍💻 AGENT STATUS — CURRENT STATE (Mar 3, 2026)
 
-**Owns:** Data layer — all models, migrations, BaseModel, custom managers, signals, services, selectors, taxonomy
+### Agent 1: Backend Core
+**Owns:** Data layer — models, migrations, BaseModel, managers, signals, services, selectors, taxonomy
 
-**Current State (Mar 1, 2026):**
-- `Post.objects: ClassVar[PostQuerySet]` — ✅
-- `Post.is_published` property — ✅ Added
-- `Post.get_reading_time_display()` — ✅ Added
-- `Post.can_be_edited_by(user)` — ✅ Added
-- `apps/blog/signals.py` — ✅ Created (publish webhook + comment moderation backstop)
-- `blog/apps.py` ready() wires signals — ✅
-- `taxonomy_rules.get_category_max_depth()` caches result 5 min — ✅
-- `context_processors.site_appearance` caches 5 singletons 5 min — ✅
-- BaseModel inheritance for all new models — ✅ (core models)
-- Post model does NOT inherit BaseModel (integer PK by design) — intentional
+- All typing complete: `Post.objects: ClassVar[PostQuerySet]`, signal handlers, services
+- `Post.is_published`, `get_reading_time_display()`, `can_be_edited_by()` — implemented
+- `apps/blog/signals.py` — publish webhook + comment moderation backstop
+- `taxonomy_rules.get_category_max_depth()` — cached 5 min
+- `context_processors.site_appearance` — caches 5 singletons 5 min
+- Post model intentionally uses integer PK (does NOT inherit BaseModel)
 
----
+### Agent 2: Admin Workspace
+**Owns:** Custom admin views, templates, bulk actions, admin settings
 
-## 🖥️ AGENT 2: ADMIN WORKSPACE
+- 36 view functions annotated with `request: HttpRequest` + return types
+- All inline styles eliminated from dashboard.html + editor.html
+- `workspace.css` (~400 lines), Ctrl+S shortcut, `.is-removing` animation
 
-**Owns:** Custom admin views, admin templates, admin bulk actions, admin settings
+### Agent 3: Public Frontend
+**Owns:** Public views, HTMX partials, Alpine components, public templates
 
-**Current State (Mar 2, 2026):**
-- 36 request parameters annotated with `HttpRequest` — ✅
-- Return types on all 36 public view functions — ✅
-- Inline styles in `dashboard.html` (20) — ✅ ELIMINATED
-- Inline styles in `editor.html` (32) — ✅ ELIMINATED
-- Embedded `<style>` blocks removed from both files — ✅
-- CSS classes added to `workspace.css` (~400 new lines) — ✅
-- Ctrl+S draft save shortcut in `workspace.js` — ✅
-- Row remove `.is-removing` animation wired — ✅
+- 32 view functions annotated with `request: HttpRequest`
+- HeadlessUI 3/13 MVP: modal, toast_stack, drawer (CSS + JS + HTML)
+- `static/js/app.js` — 16 Alpine components; `static/css/headless.css` — full component styles
+- Theme dedup via `theme-core.js`; meta auto-sync on editor/post_form/page_form
+- Summernote isolation: `:not()` CSS exclusions + JS class stripping
 
-**Critical Pattern:**
-```python
-@staff_member_required
-def admin_posts_list(request: HttpRequest) -> HttpResponse:
-    ...
-```
+### Agent 4: SEO Engine
+**Owns:** SEO audits, metadata, interlinking, redirects, Celery tasks
 
----
+- SEO engine v2 complete: content signals pipeline, autonomous metadata, TF-IDF interlinking
+- 4-tab admin dashboard (Discrepancies / Interlinking / Metadata / Redirects)
+- Views split into 4 modules (was 1725-line monolith)
+- `seo_backfill` management command + Celery tasks for orphan repair / graph verification
+- All `except Exception` blocks log via `logger.warning(...)`
+- `SeoRedirectRule` save/delete → cache invalidation signal
 
-## 🌐 AGENT 3: PUBLIC FRONTEND
-
-**Owns:** Public views, HTMX partials, Alpine components, templates for public site
-
-**Current State (Mar 2, 2026):**
-- 32 request parameters annotated with `HttpRequest` — ✅
-- SSE WSGI-blocking stream replaced with polling endpoint — ✅
-- HeadlessUI components — ✅ 3/13 MVP (modal, toast_stack, drawer): CSS + JS + HTML templates
-- Custom 404 template (`templates/errors/404.html`) — ✅ Added
-- `static/js/app.js` — ✅ CREATED: 16 Alpine.data components registered
-- `static/css/animations.css` — ✅ CREATED: 28 keyframes
-- `static/css/headless.css` — ✅ CREATED: Full HeadlessUI CSS
-- `templates/partials/_modal.html` — ✅ CREATED
-- `templates/partials/_toast_stack.html` — ✅ CREATED
-- `templates/partials/_drawer.html` — ✅ CREATED
-- Public micro-interactions in `site/core.css` — ✅: image zoom, progress glow, comment stagger, reaction spring
-- Topbar glassmorphism elevation (`layout.css`) — ✅
-- `bindTopbarScrollElevation()` in `admin/core.js` — ✅
-- JS theme dedup: `theme-core.js` consolidates dark mode from 3 files — ✅
-- Meta auto-sync: editor.html, post_form.html, page_form.html — ✅
-- Summernote root cause fix: `:not()` CSS exclusions + JS class stripping — ✅
-- `.btn-xs` specificity fix in `control.css` — ✅
-
----
-
-## 🔍 AGENT 4: SEO ENGINE
-
-**Owns:** SEO audits, metadata resolution, interlinking, redirects, scan jobs
-
-**Current State (Mar 1, 2026):**
-- All silent `except Exception: pass` blocks log via `logger.warning(...)` — ✅
-- PERF401 list comprehension violations — ✅ Fixed
-- `SeoRedirectMiddleware` caches redirect table — ✅ (was already present)
-- `SeoRedirectRule` save/delete → cache invalidation signal — ✅ Added
-
----
-
-## 💬 AGENT 5: COMMENTS/TAGS/PAGES
-
+### Agent 5: Comments/Tags/Pages
 **Owns:** Comment moderation, newsletter, tag management, static pages, policies
 
-**Current State (Mar 1, 2026):**
-- `comments/selectors.py` — ✅ Full selectors present
-- `tags/selectors.py` — ✅ Full selectors + `get_all_tags_with_counts()` added
-- `pages/selectors.py` — ✅ Present
-- `selectors.py` pattern fully applied in comments/tags — ✅
+- `selectors.py` pattern fully applied: comments, tags, pages all have selectors
+- `get_all_tags_with_counts()` in tags/selectors.py
 
----
-
-## ⚙️ AGENT 6: CONFIG/DEVX/DOCS
-
+### Agent 6: Config/DevX/Docs
 **Owns:** Settings, deployment config, developer tooling, documentation, CI
 
-**Current State (Mar 1, 2026):**
-- ruff rules: `E,F,I,B,UP,C4,SIM,PERF,RUF` + `target-version = "py311"` — ✅
-- pyrightconfig: `venvPath`, `venv`, `useLibraryCodeForTypes`, `include: ["apps","config"]` — ✅
-- migrations excluded from ruff — ✅
-- `.env.example` with full comments — ✅ Updated
-- `handler404` and `handler500` registered in `config/urls.py` — ✅ Added
-- `templates/errors/404.html` and `templates/errors/500.html` — ✅ Added
-- `INTERNAL_IPS` in `development.py` — ✅ Added
-- `SESSION_ENGINE = cache` in `production.py` — ✅ Added
-- `STATICFILES_STORAGE = whitenoise` in `production.py` — ✅ Added
+- Ruff: 9 rule categories (`E,F,I,B,UP,C4,SIM,PERF,RUF`), 0 violations
+- pyrightconfig: `venvPath`, `venv`, `useLibraryCodeForTypes`, `include: ["apps","config"]`
+- `DJANGO_ENV`-based settings routing, `CONN_HEALTH_CHECKS`, `STORAGES` dict
+- Error handlers (404/500) registered + templates created
+- `.env.example` comprehensive, deduplicated
 
 ---
 
@@ -437,16 +379,11 @@ def admin_posts_list(request: HttpRequest) -> HttpResponse:
 
 | # | Item | Owner | Priority | Status |
 |---|---|---|---|---|
-| 1 | Admin dashboard.html: eliminate 20 inline styles | Agent 2 | HIGH | ✅ Done |
-| 2 | Admin posts/editor.html: eliminate 32 inline styles | Agent 2 | HIGH | ✅ Done |
-| 3 | HeadlessUI components 3/13 MVP (_modal, _toast_stack, _drawer) | Agent 3 | MEDIUM | 3/13 done |
-| 4 | Add whitenoise to MIDDLEWARE in production.py | Agent 6 | MEDIUM | ✅ Done |
-| 5 | Add SEO audit `checks.py` count verification (must equal 25) | Agent 4 | MEDIUM | Not started |
-| 6 | Add `django-debug-toolbar` to development.py INSTALLED_APPS | Agent 6 | LOW | ✅ Done |
-| 7 | BaseModel inheritance migration for remaining models | Agent 1 | HIGH | Not started |
-| 8 | HeadlessUI components 4-13 (Disclosure, Listbox, Combobox, etc.) | Agent 3 | MEDIUM | Not started |
-| 9 | Summernote root cause CSS isolation (:not() + class stripping) | Agent 3 | HIGH | ✅ Done |
-| 10 | JS theme dedup (theme-core.js) + meta auto-sync | Agent 3 | MEDIUM | ✅ Done |
+| 1 | Media Manager (`apps/media/`) — django-filer integration | Agent 1+2+3 | HIGH | Not started |
+| 2 | HeadlessUI components 4-13 (Disclosure, Listbox, Combobox, etc.) | Agent 3 | MEDIUM | Not started |
+| 3 | BaseModel migration for remaining models | Agent 1 | HIGH | Not started |
+| 4 | Test suite expansion | Agent 6 | MEDIUM | Not started |
+| 5 | SEO selector optimization (cache + DB pagination) | Agent 4 | MEDIUM | Not started |
 
 ---
 

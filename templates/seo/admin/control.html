@@ -1,81 +1,62 @@
 {% extends "seo/admin/base.html" %}
+{% load static %}
 
 {% block admin_control_body %}
-{# ── KPI Cards ──────────────────────────────────────────────────────────── #}
-<section class="workspace-kpis">
-    <article class="workspace-kpi">
-        <small>Latest Score</small>
-        <strong>{{ seo_overview.latest_score|default:"-" }}</strong>
-        <span>Aggregate audit score</span>
-    </article>
-    <article class="workspace-kpi">
-        <small>Pending Queue</small>
-        <strong>{{ queue_counts.pending }}</strong>
-        <span>Items awaiting review</span>
-    </article>
-    <article class="workspace-kpi">
-        <small>Needs Correction</small>
-        <strong>{{ queue_counts.needs_correction }}</strong>
-        <span>Requires manual fix</span>
-    </article>
-    <article class="workspace-kpi">
-        <small>Interlink Coverage</small>
-        <strong>{{ interlink_metrics.coverage_percent }}%</strong>
-        <span>Internal graph linkage</span>
-    </article>
-</section>
-
-{# ── 4-Tab Navigation ──────────────────────────────────────────────────── #}
-<section class="card workspace-filter-card">
-    <div class="d-flex align-items-center">
-        <ul class="nav nav-pills admin-control-tabs mb-0 gap-2 flex-grow-1" id="seo-control-tabs">
-            <li class="nav-item">
-                <a class="nav-link {% if active_section == 'discrepancies' %}active{% endif %}"
-                   data-control-section="discrepancies"
-                   href="{% url 'admin_config:seo_control_canonical_section' 'discrepancies' %}"
-                   hx-get="{% url 'admin_config:seo_control_section' 'discrepancies' %}"
-                   hx-target="#seo-control-section" hx-swap="innerHTML" hx-push-url="true"
-                >Discrepancies</a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link {% if active_section == 'interlinking' %}active{% endif %}"
-                   data-control-section="interlinking"
-                   href="{% url 'admin_config:seo_control_canonical_section' 'interlinking' %}"
-                   hx-get="{% url 'admin_config:seo_control_section' 'interlinking' %}"
-                   hx-target="#seo-control-section" hx-swap="innerHTML" hx-push-url="true"
-                >Interlinking</a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link {% if active_section == 'metadata' %}active{% endif %}"
-                   data-control-section="metadata"
-                   href="{% url 'admin_config:seo_control_canonical_section' 'metadata' %}"
-                   hx-get="{% url 'admin_config:seo_control_section' 'metadata' %}"
-                   hx-target="#seo-control-section" hx-swap="innerHTML" hx-push-url="true"
-                >Metadata</a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link {% if active_section == 'redirects' %}active{% endif %}"
-                   data-control-section="redirects"
-                   href="{% url 'admin_config:seo_control_canonical_section' 'redirects' %}"
-                   hx-get="{% url 'admin_config:seo_control_section' 'redirects' %}"
-                   hx-target="#seo-control-section" hx-swap="innerHTML" hx-push-url="true"
-                >Redirects</a>
-            </li>
-        </ul>
-        <a class="btn btn-sm btn-outline-secondary ms-2{% if active_section == 'settings' %} active{% endif %}"
-           href="{% url 'admin_config:seo_control_canonical_section' 'settings' %}"
-           hx-get="{% url 'admin_config:seo_control_section' 'settings' %}"
-           hx-target="#seo-control-section" hx-swap="innerHTML" hx-push-url="true"
-           title="SEO Settings">
-            <i class="bi bi-gear"></i>
-        </a>
+<div class="admin-control-shell">
+  {# ── Summary Bar (3 compact KPIs) ── #}
+  <div class="seo-summary-bar mb-3">
+    <div class="seo-summary-item">
+      <span class="label">SEO Score</span>
+      <strong>{{ seo_overview.latest_score|default:"—" }}</strong>
     </div>
-</section>
+    <div class="seo-summary-item">
+      <span class="label">Pending Queue</span>
+      <strong>{{ queue_counts.pending|default:0 }}</strong>
+    </div>
+    <div class="seo-summary-item">
+      <span class="label">Interlink Coverage</span>
+      <strong>{{ interlink_metrics.coverage_percent|default:0 }}%</strong>
+    </div>
+  </div>
 
-{# ── Tab Content (HTMX lazy-loaded) ────────────────────────────────────── #}
-<div id="seo-control-section"
-     hx-get="{% url 'admin_config:seo_control_section' active_section %}{% if control_querystring %}?{{ control_querystring }}{% endif %}"
-     hx-trigger="load" hx-swap="innerHTML">
-    <div class="text-muted p-3">Loading section...</div>
+  {# ── Tab Navigation ── #}
+  <nav class="admin-control-nav mb-3" role="tablist">
+    <a class="admin-control-nav-item {% if active_section == 'discrepancies' %}active{% endif %}"
+       hx-get="{% url 'admin_config:seo_control_section' 'discrepancies' %}"
+       hx-target="#seo-tab-content" hx-swap="innerHTML"
+       hx-push-url="{% url 'admin_config:seo_control_canonical_section' 'discrepancies' %}"
+       role="tab">Discrepancies</a>
+    <a class="admin-control-nav-item {% if active_section == 'interlinking' %}active{% endif %}"
+       hx-get="{% url 'admin_config:seo_control_section' 'interlinking' %}"
+       hx-target="#seo-tab-content" hx-swap="innerHTML"
+       hx-push-url="{% url 'admin_config:seo_control_canonical_section' 'interlinking' %}"
+       role="tab">Interlinking</a>
+    <a class="admin-control-nav-item {% if active_section == 'metadata' %}active{% endif %}"
+       hx-get="{% url 'admin_config:seo_control_section' 'metadata' %}"
+       hx-target="#seo-tab-content" hx-swap="innerHTML"
+       hx-push-url="{% url 'admin_config:seo_control_canonical_section' 'metadata' %}"
+       role="tab">Metadata</a>
+    <a class="admin-control-nav-item {% if active_section == 'redirects' %}active{% endif %}"
+       hx-get="{% url 'admin_config:seo_control_section' 'redirects' %}"
+       hx-target="#seo-tab-content" hx-swap="innerHTML"
+       hx-push-url="{% url 'admin_config:seo_control_canonical_section' 'redirects' %}"
+       role="tab">Redirects</a>
+    <a class="admin-control-nav-item {% if active_section == 'settings' %}active{% endif %}"
+       hx-get="{% url 'admin_config:seo_control_section' 'settings' %}"
+       hx-target="#seo-tab-content" hx-swap="innerHTML"
+       hx-push-url="{% url 'admin_config:seo_control_canonical_section' 'settings' %}"
+       role="tab"><i class="bi bi-gear"></i></a>
+  </nav>
+
+  {# ── Tab Content (HTMX lazy-loaded) ── #}
+  <div id="seo-tab-content"
+       hx-get="{% url 'admin_config:seo_control_section' active_section %}{% if control_querystring %}?{{ control_querystring }}{% endif %}"
+       hx-trigger="load" hx-swap="innerHTML">
+    <div class="d-flex justify-content-center py-5">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+    </div>
+  </div>
 </div>
 {% endblock %}

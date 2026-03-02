@@ -1,341 +1,196 @@
-{# Discrepancies tab — scan runner + issue feed + on-site SEO backlog #}
+{# Discrepancies tab — scan runner + issue feed + task backlog #}
 
-{# ── Quick KPIs ──────────────────────────────────────────────────────── #}
-<section class="workspace-kpis mb-3">
-    <article class="workspace-kpi">
-        <small>Open Issues</small>
-        <strong>{{ seo_issue_rows|length }}</strong>
-        <span>Across all content</span>
-    </article>
-    <article class="workspace-kpi">
-        <small>Pending Suggestions</small>
-        <strong>{{ onsite_queue_counts.pending }}</strong>
-        <span>Awaiting action</span>
-    </article>
-    <article class="workspace-kpi">
-        <small>Needs Correction</small>
-        <strong>{{ onsite_queue_counts.needs_correction }}</strong>
-        <span>Manual fix required</span>
-    </article>
-    <article class="workspace-kpi">
-        <small>High Priority</small>
-        <strong>{{ pending_seo_task_summary.high }}</strong>
-        <span>Out of {{ pending_seo_task_summary.total }} tasks</span>
-    </article>
-</section>
+{# ── Summary Bar ─────────────────────────────────────────────────────── #}
+<div class="seo-summary-bar mb-3">
+  <div class="seo-summary-item text-danger">
+    <span class="label">Critical</span>
+    <strong>{{ pending_seo_task_summary.high|default:0 }}</strong>
+  </div>
+  <div class="seo-summary-item">
+    <span class="label">Total Issues</span>
+    <strong>{{ seo_issue_rows|length }}</strong>
+  </div>
+  <div class="seo-summary-item">
+    <span class="label">Open Tasks</span>
+    <strong>{{ pending_seo_task_summary.total|default:0 }}</strong>
+  </div>
+</div>
 
-<div class="row g-3">
-    {# ── Left Column: Scan Runner + History ──────────────────────────── #}
-    <div class="col-lg-7">
-        <div class="card">
-            <div class="card-header">Run SEO Scan</div>
-            <div class="card-body">
-                <form method="post" action="{% url 'admin_config:seo_control_run' %}" class="mb-3">
-                    {% csrf_token %}
-                    <label class="form-label">Scan note</label>
-                    <div class="input-group">
-                        <input type="text" name="notes" class="form-control" placeholder="Optional note for this run">
-                        <button class="btn btn-primary" type="submit">Run Full SEO Scan</button>
-                    </div>
+{# ── Scan Runner ─────────────────────────────────────────────────────── #}
+<div class="card mb-3">
+  <div class="card-header py-2">Run SEO Scan</div>
+  <div class="card-body py-2">
+    <form method="post" action="{% url 'admin_config:seo_scan_start' %}" class="d-flex gap-2 align-items-end flex-wrap">
+      {% csrf_token %}
+      <select name="job_type" class="form-select form-select-sm" aria-label="Scan target">
+        {% for value, label in job_types %}
+          <option value="{{ value }}">{{ label }}</option>
+        {% endfor %}
+      </select>
+      <input type="text" class="form-control form-control-sm flex-grow-1" name="notes" placeholder="Optional note">
+      <button type="submit" class="btn btn-sm btn-primary text-nowrap">
+        <i class="bi bi-play-fill me-1"></i>Run Scan
+      </button>
+    </form>
+  </div>
+  {% if selected_scan_job %}
+  <div class="card-footer py-2" data-seo-scan-monitor="true"
+       data-job-id="{{ selected_scan_job.id }}"
+       data-progress-url="{% url 'admin_config:seo_control_job_progress' selected_scan_job.id %}">
+    <div class="d-flex align-items-center gap-2">
+      <span class="small text-muted">Job #{{ selected_scan_job.id }} &middot; <span data-job-status>{{ selected_scan_job.status }}</span></span>
+      <div class="progress flex-grow-1" role="progressbar" aria-label="Scan progress">
+        <div class="progress-bar progress-bar-striped progress-bar-animated" data-job-progress-bar
+             role="progressbar" aria-valuenow="{{ selected_scan_job_progress.progress_percent|default:0 }}"
+             aria-valuemin="0" aria-valuemax="100">
+          <span data-job-progress-text>{{ selected_scan_job_progress.progress_percent|default:0 }}%</span>
+        </div>
+      </div>
+      {% if selected_scan_job.status == "queued" or selected_scan_job.status == "running" %}
+      <form method="post" action="{% url 'admin_config:seo_scan_job_cancel' selected_scan_job.id %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-1" title="Cancel">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+{# ── Issue Feed Table ────────────────────────────────────────────────── #}
+<div class="card mb-3">
+  <div class="card-header py-2">Issue Feed</div>
+  <div class="card-body p-0">
+    <table class="table table-sm table-hover mb-0">
+      <thead>
+        <tr><th>Severity</th><th>Content</th><th>Issue</th><th>Date</th></tr>
+      </thead>
+      <tbody>
+        {% for issue in latest_issues %}
+        <tr>
+          <td>
+            <span class="badge {% if issue.severity == 'critical' %}bg-danger{% elif issue.severity == 'warning' %}bg-warning text-dark{% else %}bg-info{% endif %}">
+              {{ issue.severity }}
+            </span>
+          </td>
+          <td>
+            <a href="{{ issue.target_admin_url|default:'#' }}" title="{{ issue.target_title }}">
+              {{ issue.target_title|truncatechars:40 }}
+            </a>
+          </td>
+          <td class="small">{{ issue.message|truncatechars:80 }}</td>
+          <td class="small text-muted text-nowrap">{{ issue.created_at|date:"M d, H:i" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4" class="text-muted text-center py-3">No open issues — all content passes checks.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{# ── Task Backlog Table ──────────────────────────────────────────────── #}
+{% if pending_seo_task_rows %}
+<div class="card">
+  <div class="card-header py-2 d-flex justify-content-between align-items-center">
+    <span>Task Backlog</span>
+    <span class="small text-muted">{{ pending_seo_task_summary.total }} total &middot; {{ pending_seo_task_summary.high }} high</span>
+  </div>
+  <div class="card-body p-0">
+    <form method="post" action="{% url 'admin_config:seo_control_suggestion_bulk' %}">
+      {% csrf_token %}
+      <input type="hidden" name="return_section" value="discrepancies">
+      <div class="d-flex px-2 py-1 gap-2 align-items-center border-bottom bg-light">
+        <input type="checkbox" class="form-check-input" id="disc-select-all"
+               onchange="document.querySelectorAll('input[name=selected_suggestions]').forEach(c=>c.checked=this.checked)">
+        <select name="bulk_action" class="form-select form-select-sm" aria-label="Bulk action">
+          <option value="">Bulk action…</option>
+          <option value="approve">Approve selected</option>
+          <option value="reject">Reject selected</option>
+        </select>
+        <button class="btn btn-sm btn-outline-primary" type="submit">Apply</button>
+      </div>
+      <table class="table table-sm table-hover mb-0">
+        <thead>
+          <tr>
+            <th></th>
+            <th>Ref</th>
+            <th>Priority</th>
+            <th>Content</th>
+            <th>Description</th>
+            <th class="text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for task in pending_seo_task_rows %}
+          <tr>
+            <td>
+              {% if task.task_kind == "suggestion" %}
+              <input type="checkbox" class="form-check-input" name="selected_suggestions" value="{{ task.suggestion_id }}">
+              {% endif %}
+            </td>
+            <td class="text-nowrap">
+              <strong>{{ task.task_ref }}</strong>
+              <div class="small text-muted">{{ task.type_label }}</div>
+            </td>
+            <td>
+              <span class="badge {% if task.priority == 'high' %}bg-danger{% elif task.priority == 'medium' %}bg-warning text-dark{% else %}bg-light text-dark{% endif %}">
+                {{ task.priority }}
+              </span>
+            </td>
+            <td>
+              <a href="{{ task.target_admin_url|default:'#' }}" title="{{ task.target_title }}">
+                {{ task.target_title|truncatechars:36 }}
+              </a>
+            </td>
+            <td class="small">{{ task.description|truncatechars:100 }}</td>
+            <td class="text-end text-nowrap">
+              {% if task.task_kind == "suggestion" %}
+              <div class="d-inline-flex gap-1">
+                <form method="post" action="{% url 'admin_config:seo_control_suggestion_action' task.suggestion_id 'approve' %}">
+                  {% csrf_token %}<input type="hidden" name="return_section" value="discrepancies">
+                  <button class="btn btn-xs btn-success" title="Approve"><i class="bi bi-check-lg"></i></button>
                 </form>
-                <form method="post" action="{% url 'admin_config:seo_scan_start' %}" class="row g-2 align-items-end">
-                    {% csrf_token %}
-                    <div class="col-md-3">
-                        <label class="form-label">Target</label>
-                        <select name="job_type" class="form-select">
-                            {% for value, label in job_types %}
-                                <option value="{{ value }}">{{ label }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="col-md-7">
-                        <label class="form-label">Notes</label>
-                        <input type="text" class="form-control" name="notes" placeholder="Optional targeted run note">
-                    </div>
-                    <div class="col-md-2 d-grid">
-                        <button type="submit" class="btn btn-outline-primary">Run Targeted</button>
-                    </div>
+                <form method="post" action="{% url 'admin_config:seo_control_suggestion_action' task.suggestion_id 'reject' %}">
+                  {% csrf_token %}<input type="hidden" name="return_section" value="discrepancies">
+                  <button class="btn btn-xs btn-outline-danger" title="Reject"><i class="bi bi-x-lg"></i></button>
                 </form>
-            </div>
-        </div>
-
-        {# ── Issue Feed ──────────────────────────────────────────────── #}
-        <div class="card mt-3">
-            <div class="card-header">Issue Feed</div>
-            <div class="card-body p-0">
-                <table class="table table-sm mb-0">
-                    <thead>
-                        <tr><th>Severity</th><th>Check</th><th>Target</th><th>Message</th><th>Created</th></tr>
-                    </thead>
-                    <tbody>
-                        {% for issue in latest_issues %}
-                            <tr>
-                                <td>
-                                    <span class="badge {% if issue.severity == 'critical' %}bg-danger{% elif issue.severity == 'warning' %}bg-warning text-dark{% else %}bg-info{% endif %}">
-                                        {{ issue.severity }}
-                                    </span>
-                                </td>
-                                <td>{{ issue.check_key }}</td>
-                                <td>
-                                    <div class="d-flex align-items-center gap-1">
-                                        {% if issue.target_admin_url %}
-                                            <a href="{{ issue.target_admin_url }}" title="Edit in admin"><i class="bi bi-pencil-square"></i></a>
-                                        {% endif %}
-                                        {% if issue.target_public_url %}
-                                            <a href="{{ issue.target_public_url }}" target="_blank" rel="noopener" title="Verify on site"><i class="bi bi-box-arrow-up-right"></i></a>
-                                        {% endif %}
-                                        <span class="small">{{ issue.target_title|truncatechars:30 }}</span>
-                                    </div>
-                                </td>
-                                <td>{{ issue.message }}</td>
-                                <td>{{ issue.created_at|date:"Y-m-d H:i" }}</td>
-                            </tr>
-                        {% empty %}
-                            <tr><td colspan="5" class="text-muted">No open issues — all content passes checks.</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        {# ── Scan History ────────────────────────────────────────────── #}
-        <div class="card mt-3">
-            <div class="card-header">SEO Scan History</div>
-            <div class="card-body p-0">
-                <table class="table table-sm mb-0">
-                    <thead>
-                        <tr><th>ID</th><th>Type</th><th>Status</th><th>Progress</th><th>Started</th></tr>
-                    </thead>
-                    <tbody>
-                        {% for job in scan_jobs %}
-                            <tr{% if selected_scan_job and selected_scan_job.id == job.id %} class="table-active"{% endif %}>
-                                <td><a href="?job_id={{ job.id }}"
-                                       hx-get="{% url 'admin_config:seo_control_section' 'discrepancies' %}?job_id={{ job.id }}"
-                                       hx-target="#seo-control-section" hx-swap="innerHTML">#{{ job.id }}</a></td>
-                                <td>{{ job.job_type }}</td>
-                                <td>{{ job.status }}</td>
-                                <td>{{ job.processed_items }}/{{ job.total_items }}</td>
-                                <td>{{ job.started_at|date:"Y-m-d H:i" }}</td>
-                            </tr>
-                        {% empty %}
-                            <tr><td colspan="5" class="text-muted">No SEO scan jobs yet.</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
+                <a class="btn btn-xs btn-outline-secondary" href="{% url 'admin_config:seo_control_suggestion_edit' task.suggestion_id %}?section=discrepancies" title="Edit">
+                  <i class="bi bi-pencil"></i>
+                </a>
+              </div>
+              {% else %}
+              <span class="badge bg-secondary">Issue</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </form>
+  </div>
+  {% if pending_seo_task_page_obj.paginator.num_pages > 1 %}
+  <div class="card-footer py-2 d-flex justify-content-between align-items-center">
+    <span class="small text-muted">Page {{ pending_seo_task_page_obj.number }} of {{ pending_seo_task_page_obj.paginator.num_pages }}</span>
+    <div class="btn-group btn-group-sm">
+      {% if pending_seo_task_page_obj.has_previous %}
+      <a class="btn btn-outline-secondary"
+         hx-get="{% url 'admin_config:seo_control_section' 'discrepancies' %}?{% if onsite_page_query %}{{ onsite_page_query }}&{% endif %}onsite_page={{ pending_seo_task_page_obj.previous_page_number }}"
+         hx-target="#seo-tab-content" hx-swap="innerHTML">
+        <i class="bi bi-chevron-left"></i>
+      </a>
+      {% endif %}
+      {% if pending_seo_task_page_obj.has_next %}
+      <a class="btn btn-outline-secondary"
+         hx-get="{% url 'admin_config:seo_control_section' 'discrepancies' %}?{% if onsite_page_query %}{{ onsite_page_query }}&{% endif %}onsite_page={{ pending_seo_task_page_obj.next_page_number }}"
+         hx-target="#seo-tab-content" hx-swap="innerHTML">
+        <i class="bi bi-chevron-right"></i>
+      </a>
+      {% endif %}
     </div>
-
-    {# ── Right Column: Job Monitor + Queue ───────────────────────────── #}
-    <div class="col-lg-5">
-        {% if selected_scan_job %}
-            <div class="card"
-                 data-seo-scan-monitor="true"
-                 data-job-id="{{ selected_scan_job.id }}"
-                 data-progress-url="{% url 'admin_config:seo_control_job_progress' selected_scan_job.id %}">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <span>SEO Job #{{ selected_scan_job.id }}</span>
-                    {% if selected_scan_job.status == "queued" or selected_scan_job.status == "running" %}
-                        <form method="post" action="{% url 'admin_config:seo_scan_job_cancel' selected_scan_job.id %}">
-                            {% csrf_token %}
-                            <button type="submit" class="btn btn-sm btn-outline-danger">Cancel</button>
-                        </form>
-                    {% endif %}
-                </div>
-                <div class="card-body">
-                    <div class="mb-2"><strong>Status:</strong> <span data-job-status>{{ selected_scan_job.status }}</span></div>
-                    <div class="progress mb-2" role="progressbar" aria-label="Progress">
-                        <div class="progress-bar" data-job-progress-bar style="width: {{ selected_scan_job_progress.progress_percent|default:0 }}%">
-                            <span data-job-progress-text>{{ selected_scan_job_progress.progress_percent|default:0 }}%</span>
-                        </div>
-                    </div>
-                    <div class="small text-muted" data-job-counts>
-                        {{ selected_scan_job_progress.processed_items|default:0 }}/{{ selected_scan_job_progress.total_items|default:0 }} processed
-                    </div>
-                </div>
-            </div>
-        {% else %}
-            <div class="card">
-                <div class="card-body text-muted">Run a scan or select a job to monitor progress.</div>
-            </div>
-        {% endif %}
-
-        <div class="card mt-3">
-            <div class="card-header">Queue Snapshot</div>
-            <div class="card-body">
-                <dl class="row mb-0">
-                    <dt class="col-8">Pending suggestions</dt><dd class="col-4 text-end">{{ onsite_queue_counts.pending }}</dd>
-                    <dt class="col-8">Needs correction</dt><dd class="col-4 text-end">{{ onsite_queue_counts.needs_correction }}</dd>
-                    <dt class="col-8">Open issues</dt><dd class="col-4 text-end">{{ seo_issue_rows|length }}</dd>
-                </dl>
-            </div>
-        </div>
-    </div>
+  </div>
+  {% endif %}
 </div>
-
-{# ── On-site SEO Backlog (merged from old "suggestions" tab) ────────── #}
-<div class="card mt-3">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <span>SEO Backlog (Posts + Pages)</span>
-        <div class="small text-muted">
-            Total: {{ pending_seo_task_summary.total }} |
-            High Priority: {{ pending_seo_task_summary.high }} |
-            Open Issues: {{ seo_issue_rows|length }}
-        </div>
-    </div>
-    <div class="card-body p-0">
-        <table class="table table-sm mb-0">
-            <thead>
-                <tr>
-                    <th>Task</th>
-                    <th>Priority</th>
-                    <th>Target</th>
-                    <th>Description</th>
-                    <th>Recommended Fix</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for task in pending_seo_task_rows %}
-                    <tr>
-                        <td>
-                            <div><strong>{{ task.task_ref }}</strong></div>
-                            <div class="small text-muted">{{ task.type_label }}</div>
-                            {% if task.confidence != None %}
-                                <div class="small text-muted">conf {{ task.confidence|floatformat:3 }}</div>
-                            {% endif %}
-                        </td>
-                        <td>
-                            <span class="badge {% if task.priority == 'high' %}bg-danger{% elif task.priority == 'medium' %}bg-warning text-dark{% else %}bg-light text-dark{% endif %}">
-                                {{ task.priority }}
-                            </span>
-                        </td>
-                        <td>
-                            <div class="d-flex align-items-center gap-1">
-                                {% if task.target_admin_url %}
-                                    <a href="{{ task.target_admin_url }}" title="Edit in admin"><i class="bi bi-pencil-square"></i></a>
-                                {% endif %}
-                                {% if task.target_public_url %}
-                                    <a href="{{ task.target_public_url }}" target="_blank" rel="noopener" title="Verify on site"><i class="bi bi-box-arrow-up-right"></i></a>
-                                {% endif %}
-                                <span>{{ task.target_title|truncatechars:42 }}</span>
-                            </div>
-                        </td>
-                        <td>{{ task.description|truncatechars:180 }}</td>
-                        <td>{{ task.recommendation|truncatechars:180 }}</td>
-                        <td>
-                            {% if task.task_kind == "suggestion" %}
-                                <div class="d-flex gap-1 flex-wrap">
-                                    <a class="btn btn-xs btn-outline-primary" href="{% url 'admin_config:seo_control_suggestion_edit' task.suggestion_id %}?section=discrepancies">Edit</a>
-                                    <form method="post" action="{% url 'admin_config:seo_control_suggestion_action' task.suggestion_id 'approve' %}">
-                                        {% csrf_token %}
-                                        <input type="hidden" name="return_section" value="discrepancies">
-                                        <button class="btn btn-xs btn-success">Approve</button>
-                                    </form>
-                                    <form method="post" action="{% url 'admin_config:seo_control_suggestion_action' task.suggestion_id 'reject' %}">
-                                        {% csrf_token %}
-                                        <input type="hidden" name="return_section" value="discrepancies">
-                                        <button class="btn btn-xs btn-outline-danger">Reject</button>
-                                    </form>
-                                </div>
-                            {% else %}
-                                <span class="badge bg-secondary">Issue</span>
-                            {% endif %}
-                        </td>
-                    </tr>
-                {% empty %}
-                    <tr><td colspan="6" class="text-muted">No SEO discrepancies found — all content looks good!</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-    {% if pending_seo_task_page_obj.paginator.num_pages > 1 %}
-        <div class="card-footer d-flex justify-content-between align-items-center">
-            <span class="small text-muted">Page {{ pending_seo_task_page_obj.number }} of {{ pending_seo_task_page_obj.paginator.num_pages }}</span>
-            <div class="btn-group btn-group-sm" role="group" aria-label="Backlog pagination">
-                {% if pending_seo_task_page_obj.has_previous %}
-                    <a class="btn btn-outline-secondary"
-                       hx-get="{% url 'admin_config:seo_control_section' 'discrepancies' %}?{% if onsite_page_query %}{{ onsite_page_query }}&{% endif %}onsite_page=1"
-                       hx-target="#seo-control-section" hx-swap="innerHTML">First</a>
-                    <a class="btn btn-outline-secondary"
-                       hx-get="{% url 'admin_config:seo_control_section' 'discrepancies' %}?{% if onsite_page_query %}{{ onsite_page_query }}&{% endif %}onsite_page={{ pending_seo_task_page_obj.previous_page_number }}"
-                       hx-target="#seo-control-section" hx-swap="innerHTML">Previous</a>
-                {% endif %}
-                {% if pending_seo_task_page_obj.has_next %}
-                    <a class="btn btn-outline-secondary"
-                       hx-get="{% url 'admin_config:seo_control_section' 'discrepancies' %}?{% if onsite_page_query %}{{ onsite_page_query }}&{% endif %}onsite_page={{ pending_seo_task_page_obj.next_page_number }}"
-                       hx-target="#seo-control-section" hx-swap="innerHTML">Next</a>
-                    <a class="btn btn-outline-secondary"
-                       hx-get="{% url 'admin_config:seo_control_section' 'discrepancies' %}?{% if onsite_page_query %}{{ onsite_page_query }}&{% endif %}onsite_page={{ pending_seo_task_page_obj.paginator.num_pages }}"
-                       hx-target="#seo-control-section" hx-swap="innerHTML">Last</a>
-                {% endif %}
-            </div>
-        </div>
-    {% endif %}
-</div>
-
-{# ── Suggestion Bulk Actions ────────────────────────────────────────── #}
-<div class="card mt-3">
-    <div class="card-header">Bulk Actions</div>
-    <div class="card-body p-0">
-        <form method="post" action="{% url 'admin_config:seo_control_suggestion_bulk' %}">
-            {% csrf_token %}
-            <input type="hidden" name="return_section" value="discrepancies">
-            <div class="d-flex p-2 gap-2 align-items-center border-bottom">
-                <select name="bulk_action" class="form-select form-select-sm bulk-action-select">
-                    <option value="">Bulk Action</option>
-                    <option value="approve">Approve</option>
-                    <option value="reject">Reject</option>
-                </select>
-                <button class="btn btn-sm btn-primary" type="submit">Apply</button>
-            </div>
-            <table class="table table-sm mb-0">
-                <thead>
-                    <tr><th></th><th>ID</th><th>Status</th><th>Type</th><th>Target</th><th>Confidence</th><th>Actions</th></tr>
-                </thead>
-                <tbody>
-                    {% for item in onsite_suggestion_rows %}
-                        <tr>
-                            <td><input type="checkbox" name="selected_suggestions" value="{{ item.id }}"></td>
-                            <td>#{{ item.id }}</td>
-                            <td>{{ item.status }}</td>
-                            <td>{{ item.type }}</td>
-                            <td>{{ item.target_title|truncatechars:56 }}</td>
-                            <td>{{ item.confidence|floatformat:3 }}</td>
-                            <td class="d-flex gap-1">
-                                <a class="btn btn-xs btn-outline-primary" href="{% url 'admin_config:seo_control_suggestion_edit' item.id %}?section=discrepancies">Edit</a>
-                                <form method="post" action="{% url 'admin_config:seo_control_suggestion_action' item.id 'approve' %}">{% csrf_token %}<input type="hidden" name="return_section" value="discrepancies"><button class="btn btn-xs btn-success">Approve</button></form>
-                                <form method="post" action="{% url 'admin_config:seo_control_suggestion_action' item.id 'reject' %}">{% csrf_token %}<input type="hidden" name="return_section" value="discrepancies"><button class="btn btn-xs btn-outline-danger">Reject</button></form>
-                            </td>
-                        </tr>
-                    {% empty %}
-                        <tr><td colspan="7" class="text-muted">No SEO suggestions found.</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </form>
-    </div>
-    {% if onsite_suggestion_page_obj.paginator.num_pages > 1 %}
-        <div class="card-footer d-flex justify-content-between align-items-center">
-            <span class="small text-muted">Page {{ onsite_suggestion_page_obj.number }} of {{ onsite_suggestion_page_obj.paginator.num_pages }}</span>
-            <div class="btn-group btn-group-sm" role="group" aria-label="Suggestion pagination">
-                {% if onsite_suggestion_page_obj.has_previous %}
-                    <a class="btn btn-outline-secondary"
-                       hx-get="{% url 'admin_config:seo_control_section' 'discrepancies' %}?{% if onsite_suggestion_page_query %}{{ onsite_suggestion_page_query }}&{% endif %}onsite_suggestion_page=1"
-                       hx-target="#seo-control-section" hx-swap="innerHTML">First</a>
-                    <a class="btn btn-outline-secondary"
-                       hx-get="{% url 'admin_config:seo_control_section' 'discrepancies' %}?{% if onsite_suggestion_page_query %}{{ onsite_suggestion_page_query }}&{% endif %}onsite_suggestion_page={{ onsite_suggestion_page_obj.previous_page_number }}"
-                       hx-target="#seo-control-section" hx-swap="innerHTML">Previous</a>
-                {% endif %}
-                {% if onsite_suggestion_page_obj.has_next %}
-                    <a class="btn btn-outline-secondary"
-                       hx-get="{% url 'admin_config:seo_control_section' 'discrepancies' %}?{% if onsite_suggestion_page_query %}{{ onsite_suggestion_page_query }}&{% endif %}onsite_suggestion_page={{ onsite_suggestion_page_obj.next_page_number }}"
-                       hx-target="#seo-control-section" hx-swap="innerHTML">Next</a>
-                    <a class="btn btn-outline-secondary"
-                       hx-get="{% url 'admin_config:seo_control_section' 'discrepancies' %}?{% if onsite_suggestion_page_query %}{{ onsite_suggestion_page_query }}&{% endif %}onsite_suggestion_page={{ onsite_suggestion_page_obj.paginator.num_pages }}"
-                       hx-target="#seo-control-section" hx-swap="innerHTML">Last</a>
-                {% endif %}
-            </div>
-        </div>
-    {% endif %}
-</div>
+{% endif %}

@@ -1,7 +1,7 @@
 <div class="row g-3">
     <div class="col-xl-6">
         <div class="card" id="seo-global">
-            <div class="card-header">Global SEO + Verification Settings</div>
+            <div class="card-header py-2">Global SEO + Verification Settings</div>
             <div class="card-body">
                 <form method="post" action="{% url 'admin_config:seo_control_settings_save' %}">
                     {% csrf_token %}
@@ -176,7 +176,7 @@
 
     <div class="col-xl-6">
         <div class="card" id="seo-engine">
-            <div class="card-header">Engine + Autopilot Settings</div>
+            <div class="card-header py-2">Engine + Autopilot Settings</div>
             <div class="card-body">
                 <form method="post" action="{% url 'admin_config:seo_control_settings_save' %}">
                     {% csrf_token %}
@@ -307,7 +307,7 @@
 </div>
 
 <div class="card mt-3" id="seo-synonyms">
-    <div class="card-header d-flex justify-content-between align-items-center">
+    <div class="card-header py-2 d-flex justify-content-between align-items-center">
         <span>Synonym Dictionary</span>
         <a class="btn btn-sm btn-outline-secondary" href="{% url 'admin_config:taxonomy_synonym_export' %}">Export JSON</a>
     </div>
@@ -345,7 +345,7 @@
 </div>
 
 <div class="card mt-3">
-    <div class="card-header">Existing Synonym Groups</div>
+    <div class="card-header py-2">Existing Synonym Groups</div>
     <div class="card-body p-0">
         <table class="table table-sm mb-0">
             <thead>

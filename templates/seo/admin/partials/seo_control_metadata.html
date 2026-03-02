@@ -1,184 +1,185 @@
-<div class="row g-3 mb-3">
-    <div class="col-md-3 col-6"><div class="admin-control-metric"><span class="label">Pending Metadata</span><strong>{{ metadata_queue_counts.pending }}</strong></div></div>
-    <div class="col-md-3 col-6"><div class="admin-control-metric"><span class="label">Needs Correction</span><strong>{{ metadata_queue_counts.needs_correction }}</strong></div></div>
-    <div class="col-md-3 col-6"><div class="admin-control-metric"><span class="label">Applied</span><strong>{{ metadata_queue_counts.approved }}</strong></div></div>
-    <div class="col-md-3 col-6"><div class="admin-control-metric"><span class="label">Rejected</span><strong>{{ metadata_queue_counts.rejected }}</strong></div></div>
+{# Metadata tab — queue table + injection status #}
+
+{# ── Summary Bar ─────────────────────────────────────────────────────── #}
+<div class="seo-summary-bar mb-3">
+  <div class="seo-summary-item">
+    <span class="label">Pending</span>
+    <strong>{{ metadata_queue_counts.pending|default:0 }}</strong>
+  </div>
+  <div class="seo-summary-item text-warning">
+    <span class="label">Needs Fix</span>
+    <strong>{{ metadata_queue_counts.needs_correction|default:0 }}</strong>
+  </div>
+  <div class="seo-summary-item text-success">
+    <span class="label">Applied</span>
+    <strong>{{ metadata_queue_counts.approved|default:0 }}</strong>
+  </div>
+  <div class="seo-summary-item">
+    <span class="label">Rejected</span>
+    <strong>{{ metadata_queue_counts.rejected|default:0 }}</strong>
+  </div>
 </div>
 
-<div class="row g-3 mb-3">
-    <div class="col-lg-7">
-        <div class="card h-100">
-            <div class="card-header">Metadata Queue (Template Injection Ready)</div>
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-sm mb-0 admin-control-table--wide">
-                        <thead>
-                            <tr>
-                                <th>Task</th>
-                                <th>Target</th>
-                                <th>Description</th>
-                                <th>Recommended Fix</th>
-                                <th>Evidence</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for task in pending_metadata_task_rows %}
-                                <tr>
-                                    <td>
-                                        <div><strong>{{ task.task_ref }}</strong></div>
-                                        <div class="small text-muted">{{ task.type_label }}</div>
-                                        {% if task.confidence != None %}
-                                            <div class="small text-muted">conf {{ task.confidence|floatformat:3 }}</div>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        <div class="d-flex align-items-center gap-1">
-                                            {% if task.target_admin_url %}<a href="{{ task.target_admin_url }}" title="Edit"><i class="bi bi-pencil-square"></i></a>{% endif %}
-                                            {% if task.target_public_url %}<a href="{{ task.target_public_url }}" target="_blank" rel="noopener" title="Verify"><i class="bi bi-box-arrow-up-right"></i></a>{% endif %}
-                                            <span>{{ task.target_title|truncatechars:42 }}</span>
-                                        </div>
-                                    </td>
-                                    <td>{{ task.description|truncatechars:180 }}</td>
-                                    <td>{{ task.recommendation|truncatechars:180 }}</td>
-                                    <td>{{ task.evidence|truncatechars:140 }}</td>
-                                    <td>
-                                        <div class="d-flex gap-1 flex-wrap">
-                                            <a class="btn btn-xs btn-outline-primary" href="{% url 'admin_config:seo_control_suggestion_edit' task.suggestion_id %}?section=metadata">Edit</a>
-                                            <form method="post" action="{% url 'admin_config:seo_control_suggestion_action' task.suggestion_id 'approve' %}">{% csrf_token %}<input type="hidden" name="return_section" value="metadata"><button class="btn btn-xs btn-success">Approve</button></form>
-                                            <form method="post" action="{% url 'admin_config:seo_control_suggestion_action' task.suggestion_id 'reject' %}">{% csrf_token %}<input type="hidden" name="return_section" value="metadata"><button class="btn btn-xs btn-outline-danger">Reject</button></form>
-                                        </div>
-                                    </td>
-                                </tr>
-                            {% empty %}
-                                <tr><td colspan="6" class="text-muted">No metadata tasks pending.</td></tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-lg-5">
-        <div class="card h-100">
-            <div class="card-header">Metadata Injection Status</div>
-            <div class="card-body">
-                <dl class="row mb-0">
-                    <dt class="col-8">Canonical Base URL</dt><dd class="col-4 text-end">{% if metadata_template_injection.canonical %}Ready{% else %}Missing{% endif %}</dd>
-                    <dt class="col-8">Open Graph Output</dt><dd class="col-4 text-end">{% if metadata_template_injection.open_graph %}Enabled{% else %}Disabled{% endif %}</dd>
-                    <dt class="col-8">Twitter Cards Output</dt><dd class="col-4 text-end">{% if metadata_template_injection.twitter_cards %}Enabled{% else %}Disabled{% endif %}</dd>
-                    <dt class="col-8">Organization Schema</dt><dd class="col-4 text-end">{% if metadata_template_injection.organization_schema %}Ready{% else %}Missing{% endif %}</dd>
-                </dl>
-                <a class="btn btn-sm btn-outline-primary mt-3" href="{% url 'admin_config:seo_control_canonical_section' 'settings' %}#seo-global">Open Global SEO Settings</a>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="card mb-3">
-    <div class="card-header">Metadata Queue Board</div>
-    <div class="card-body">
-        <div class="admin-control-kanban">
-            <section class="lane">
-                <h6>Pending</h6>
-                {% for item in metadata_lane_rows.pending %}
-                    <article class="lane-card">
-                        <div class="lane-card-title">#{{ item.id }} {{ item.type }}</div>
-                        <div class="small text-muted">{{ item.target_title|truncatechars:50 }}</div>
-                        <div class="small">conf: {{ item.confidence|floatformat:2 }}</div>
-                        <div class="mt-2 d-flex gap-1 flex-wrap">
-                            <a class="btn btn-xs btn-outline-primary" href="{% url 'admin_config:seo_control_suggestion_edit' item.id %}?section=metadata">Edit</a>
-                            <form method="post" action="{% url 'admin_config:seo_control_suggestion_action' item.id 'approve' %}">{% csrf_token %}<input type="hidden" name="return_section" value="metadata"><button class="btn btn-xs btn-success">Approve</button></form>
-                            <form method="post" action="{% url 'admin_config:seo_control_suggestion_action' item.id 'reject' %}">{% csrf_token %}<input type="hidden" name="return_section" value="metadata"><button class="btn btn-xs btn-outline-danger">Reject</button></form>
-                        </div>
-                    </article>
-                {% empty %}
-                    <p class="small text-muted">No pending cards.</p>
-                {% endfor %}
-            </section>
-            <section class="lane">
-                <h6>Needs Correction</h6>
-                {% for item in metadata_lane_rows.needs_correction %}
-                    <article class="lane-card">
-                        <div class="lane-card-title">#{{ item.id }} {{ item.type }}</div>
-                        <div class="small text-muted">{{ item.target_title|truncatechars:50 }}</div>
-                        <div class="small">conf: {{ item.confidence|floatformat:2 }}</div>
-                        <div class="mt-2 d-flex gap-1 flex-wrap">
-                            <a class="btn btn-xs btn-outline-primary" href="{% url 'admin_config:seo_control_suggestion_edit' item.id %}?section=metadata">Edit</a>
-                            <form method="post" action="{% url 'admin_config:seo_control_suggestion_action' item.id 'approve' %}">{% csrf_token %}<input type="hidden" name="return_section" value="metadata"><button class="btn btn-xs btn-success">Approve</button></form>
-                            <form method="post" action="{% url 'admin_config:seo_control_suggestion_action' item.id 'reject' %}">{% csrf_token %}<input type="hidden" name="return_section" value="metadata"><button class="btn btn-xs btn-outline-danger">Reject</button></form>
-                        </div>
-                    </article>
-                {% empty %}
-                    <p class="small text-muted">No correction cards.</p>
-                {% endfor %}
-            </section>
-            <section class="lane">
-                <h6>Applied</h6>
-                {% for item in metadata_lane_rows.approved %}
-                    <article class="lane-card compact">
-                        <div class="lane-card-title">#{{ item.id }} {{ item.type }}</div>
-                        <div class="small text-muted">{{ item.target_title|truncatechars:50 }}</div>
-                    </article>
-                {% empty %}
-                    <p class="small text-muted">No applied cards.</p>
-                {% endfor %}
-            </section>
-            <section class="lane">
-                <h6>Rejected</h6>
-                {% for item in metadata_lane_rows.rejected %}
-                    <article class="lane-card compact">
-                        <div class="lane-card-title">#{{ item.id }} {{ item.type }}</div>
-                        <div class="small text-muted">{{ item.target_title|truncatechars:50 }}</div>
-                    </article>
-                {% empty %}
-                    <p class="small text-muted">No rejected cards.</p>
-                {% endfor %}
-            </section>
-        </div>
-    </div>
-</div>
-
-<div class="card">
-    <div class="card-header">Metadata Bulk Actions</div>
-    <div class="card-body p-0">
+<div class="row g-3">
+  {# ── Left: Metadata Queue Table ─────────────────────────────────── #}
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header py-2">Metadata Queue</div>
+      <div class="card-body p-0">
         <form method="post" action="{% url 'admin_config:seo_control_suggestion_bulk' %}">
-            {% csrf_token %}
-            <input type="hidden" name="return_section" value="metadata">
-            <div class="d-flex p-2 gap-2 align-items-center border-bottom">
-                <select name="bulk_action" class="form-select form-select-sm bulk-action-select">
-                    <option value="">Bulk Action</option>
-                    <option value="approve">Approve</option>
-                    <option value="reject">Reject</option>
-                </select>
-                <button class="btn btn-sm btn-primary" type="submit">Apply</button>
-            </div>
-            <div class="table-responsive">
-                <table class="table table-sm mb-0 admin-control-table--wide">
-                    <thead>
-                        <tr><th></th><th>ID</th><th>Status</th><th>Type</th><th>Target</th><th>Confidence</th><th>Actions</th></tr>
-                    </thead>
-                    <tbody>
-                        {% for item in metadata_suggestion_rows %}
-                            <tr>
-                                <td><input type="checkbox" name="selected_suggestions" value="{{ item.id }}"></td>
-                                <td>#{{ item.id }}</td>
-                                <td>{{ item.status }}</td>
-                                <td>{{ item.type }}</td>
-                                <td>{{ item.target_title|truncatechars:56 }}</td>
-                                <td>{{ item.confidence|floatformat:3 }}</td>
-                                <td class="d-flex gap-1">
-                                    <a class="btn btn-xs btn-outline-primary" href="{% url 'admin_config:seo_control_suggestion_edit' item.id %}?section=metadata">Edit</a>
-                                    <form method="post" action="{% url 'admin_config:seo_control_suggestion_action' item.id 'approve' %}">{% csrf_token %}<input type="hidden" name="return_section" value="metadata"><button class="btn btn-xs btn-success">Approve</button></form>
-                                    <form method="post" action="{% url 'admin_config:seo_control_suggestion_action' item.id 'reject' %}">{% csrf_token %}<input type="hidden" name="return_section" value="metadata"><button class="btn btn-xs btn-outline-danger">Reject</button></form>
-                                </td>
-                            </tr>
-                        {% empty %}
-                            <tr><td colspan="7" class="text-muted">No metadata suggestions found.</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+          {% csrf_token %}
+          <input type="hidden" name="return_section" value="metadata">
+          <div class="d-flex px-2 py-1 gap-2 align-items-center border-bottom bg-light">
+            <input type="checkbox" class="form-check-input" id="meta-select-all"
+                   onchange="document.querySelectorAll('#meta-queue input[name=selected_suggestions]').forEach(c=>c.checked=this.checked)">
+            <select name="bulk_action" class="form-select form-select-sm" aria-label="Bulk action">
+              <option value="">Bulk action…</option>
+              <option value="approve">Approve selected</option>
+              <option value="reject">Reject selected</option>
+            </select>
+            <button class="btn btn-sm btn-outline-primary" type="submit">Apply</button>
+          </div>
+          <div class="table-responsive" id="meta-queue">
+            <table class="table table-sm table-hover mb-0">
+              <thead>
+                <tr>
+                  <th></th>
+                  <th>ID</th>
+                  <th>Target</th>
+                  <th>Type</th>
+                  <th>Conf.</th>
+                  <th>Status</th>
+                  <th class="text-end">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for item in metadata_suggestion_rows %}
+                <tr>
+                  <td><input type="checkbox" class="form-check-input" name="selected_suggestions" value="{{ item.id }}"></td>
+                  <td class="text-nowrap">#{{ item.id }}</td>
+                  <td>
+                    <a href="{% url 'admin_config:seo_control_suggestion_edit' item.id %}?section=metadata" title="{{ item.target_title }}">
+                      {{ item.target_title|truncatechars:36 }}
+                    </a>
+                  </td>
+                  <td class="small">{{ item.type }}</td>
+                  <td>{{ item.confidence|floatformat:2 }}</td>
+                  <td>
+                    <span class="badge {% if item.status == 'pending' %}bg-warning text-dark{% elif item.status == 'approved' %}bg-success{% elif item.status == 'rejected' %}bg-secondary{% else %}bg-info{% endif %}">
+                      {{ item.status }}
+                    </span>
+                  </td>
+                  <td class="text-end text-nowrap">
+                    <div class="d-inline-flex gap-1">
+                      <form method="post" action="{% url 'admin_config:seo_control_suggestion_action' item.id 'approve' %}">
+                        {% csrf_token %}<input type="hidden" name="return_section" value="metadata">
+                        <button class="btn btn-xs btn-success" title="Approve"><i class="bi bi-check-lg"></i></button>
+                      </form>
+                      <form method="post" action="{% url 'admin_config:seo_control_suggestion_action' item.id 'reject' %}">
+                        {% csrf_token %}<input type="hidden" name="return_section" value="metadata">
+                        <button class="btn btn-xs btn-outline-danger" title="Reject"><i class="bi bi-x-lg"></i></button>
+                      </form>
+                      <a class="btn btn-xs btn-outline-secondary" href="{% url 'admin_config:seo_control_suggestion_edit' item.id %}?section=metadata" title="Edit">
+                        <i class="bi bi-pencil"></i>
+                      </a>
+                    </div>
+                  </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="7" class="text-muted text-center py-3">No metadata suggestions found.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
         </form>
+      </div>
     </div>
+  </div>
+
+  {# ── Right: Injection Status ────────────────────────────────────── #}
+  <div class="col-lg-4">
+    <div class="card">
+      <div class="card-header py-2">Injection Status</div>
+      <div class="card-body">
+        <dl class="row mb-0 small">
+          <dt class="col-8">Canonical Base URL</dt>
+          <dd class="col-4 text-end">
+            {% if metadata_template_injection.canonical %}
+            <span class="text-success"><i class="bi bi-check-circle-fill"></i> Ready</span>
+            {% else %}
+            <span class="text-danger"><i class="bi bi-x-circle-fill"></i> Missing</span>
+            {% endif %}
+          </dd>
+          <dt class="col-8">Open Graph</dt>
+          <dd class="col-4 text-end">
+            {% if metadata_template_injection.open_graph %}
+            <span class="text-success"><i class="bi bi-check-circle-fill"></i></span>
+            {% else %}
+            <span class="text-muted"><i class="bi bi-dash-circle"></i> Off</span>
+            {% endif %}
+          </dd>
+          <dt class="col-8">Twitter Cards</dt>
+          <dd class="col-4 text-end">
+            {% if metadata_template_injection.twitter_cards %}
+            <span class="text-success"><i class="bi bi-check-circle-fill"></i></span>
+            {% else %}
+            <span class="text-muted"><i class="bi bi-dash-circle"></i> Off</span>
+            {% endif %}
+          </dd>
+          <dt class="col-8">Org Schema</dt>
+          <dd class="col-4 text-end">
+            {% if metadata_template_injection.organization_schema %}
+            <span class="text-success"><i class="bi bi-check-circle-fill"></i> Ready</span>
+            {% else %}
+            <span class="text-danger"><i class="bi bi-x-circle-fill"></i> Missing</span>
+            {% endif %}
+          </dd>
+        </dl>
+        <a class="btn btn-sm btn-outline-primary mt-3 w-100"
+           hx-get="{% url 'admin_config:seo_control_section' 'settings' %}"
+           hx-target="#seo-tab-content" hx-swap="innerHTML"
+           hx-push-url="{% url 'admin_config:seo_control_canonical_section' 'settings' %}">
+          <i class="bi bi-gear me-1"></i>Open Settings
+        </a>
+      </div>
+    </div>
+
+    {# ── Pending Tasks (compact) ──────────────────────────────────── #}
+    {% if pending_metadata_task_rows %}
+    <div class="card mt-3">
+      <div class="card-header py-2">Pending Tasks</div>
+      <div class="card-body p-0">
+        <table class="table table-sm table-hover mb-0">
+          <thead>
+            <tr><th>Ref</th><th>Target</th><th class="text-end">Actions</th></tr>
+          </thead>
+          <tbody>
+            {% for task in pending_metadata_task_rows %}
+            <tr>
+              <td class="text-nowrap small"><strong>{{ task.task_ref }}</strong></td>
+              <td>
+                <a href="{{ task.target_admin_url|default:'#' }}" title="{{ task.target_title }}">
+                  {{ task.target_title|truncatechars:28 }}
+                </a>
+              </td>
+              <td class="text-end text-nowrap">
+                <div class="d-inline-flex gap-1">
+                  <form method="post" action="{% url 'admin_config:seo_control_suggestion_action' task.suggestion_id 'approve' %}">
+                    {% csrf_token %}<input type="hidden" name="return_section" value="metadata">
+                    <button class="btn btn-xs btn-success" title="Approve"><i class="bi bi-check-lg"></i></button>
+                  </form>
+                  <form method="post" action="{% url 'admin_config:seo_control_suggestion_action' task.suggestion_id 'reject' %}">
+                    {% csrf_token %}<input type="hidden" name="return_section" value="metadata">
+                    <button class="btn btn-xs btn-outline-danger" title="Reject"><i class="bi bi-x-lg"></i></button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+  </div>
 </div>

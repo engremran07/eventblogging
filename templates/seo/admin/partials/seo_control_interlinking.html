@@ -1,205 +1,140 @@
-<div class="row g-3 mb-3">
-    <div class="col-md-2 col-6"><div class="admin-control-metric"><span class="label">Coverage</span><strong>{{ interlink_metrics.coverage_percent }}%</strong></div></div>
-    <div class="col-md-2 col-6"><div class="admin-control-metric"><span class="label">Nodes</span><strong>{{ interlink_metrics.total_nodes }}</strong></div></div>
-    <div class="col-md-2 col-6"><div class="admin-control-metric"><span class="label">Edges</span><strong>{{ interlink_metrics.total_edges }}</strong></div></div>
-    <div class="col-md-2 col-6"><div class="admin-control-metric"><span class="label">Orphans</span><strong>{{ interlink_metrics.orphan_nodes }}</strong></div></div>
-    <div class="col-md-2 col-6"><div class="admin-control-metric"><span class="label">Avg In</span><strong>{{ interlink_metrics.avg_in_degree }}</strong></div></div>
-    <div class="col-md-2 col-6"><div class="admin-control-metric"><span class="label">Avg Out</span><strong>{{ interlink_metrics.avg_out_degree }}</strong></div></div>
+{# Interlinking tab — graph metrics, scan runner, edges + suggestions #}
+
+{# ── Summary Bar ─────────────────────────────────────────────────────── #}
+<div class="seo-summary-bar mb-3">
+  <div class="seo-summary-item">
+    <span class="label">Coverage</span>
+    <strong>{{ interlink_metrics.coverage_percent|default:0 }}%</strong>
+  </div>
+  <div class="seo-summary-item">
+    <span class="label">Nodes</span>
+    <strong>{{ interlink_metrics.total_nodes|default:0 }}</strong>
+  </div>
+  <div class="seo-summary-item">
+    <span class="label">Edges</span>
+    <strong>{{ interlink_metrics.total_edges|default:0 }}</strong>
+  </div>
+  <div class="seo-summary-item {% if interlink_metrics.orphan_nodes %}text-danger{% endif %}">
+    <span class="label">Orphans</span>
+    <strong>{{ interlink_metrics.orphan_nodes|default:0 }}</strong>
+  </div>
 </div>
 
-<div class="row g-3">
-    <div class="col-lg-7">
-        <div class="card">
-            <div class="card-header">Run Internal Linking Scan</div>
-            <div class="card-body">
-                <form method="post" action="{% url 'admin_config:seo_interlink_scan_start' %}" class="row g-2 align-items-end">
-                    {% csrf_token %}
-                    <div class="col-md-9">
-                        <label class="form-label">Notes</label>
-                        <input type="text" class="form-control" name="notes" placeholder="Optional interlink scan note">
-                    </div>
-                    <div class="col-md-3 d-grid">
-                        <button type="submit" class="btn btn-primary">Run Interlink Scan</button>
-                    </div>
-                </form>
-                <div class="small text-muted mt-2">
-                    Dedicated scan for internal-link graph quality, anchor coverage, and link opportunities.
-                </div>
-            </div>
+{# ── Scan Runner ─────────────────────────────────────────────────────── #}
+<div class="card mb-3">
+  <div class="card-header py-2">Run Interlink Scan</div>
+  <div class="card-body py-2">
+    <form method="post" action="{% url 'admin_config:seo_interlink_scan_start' %}" class="d-flex gap-2 align-items-end">
+      {% csrf_token %}
+      <input type="text" class="form-control form-control-sm flex-grow-1" name="notes" placeholder="Optional note">
+      <button type="submit" class="btn btn-sm btn-primary text-nowrap">
+        <i class="bi bi-diagram-3 me-1"></i>Run Scan
+      </button>
+    </form>
+  </div>
+  {% if selected_interlink_job %}
+  <div class="card-footer py-2" data-seo-scan-monitor="true"
+       data-job-id="{{ selected_interlink_job.id }}"
+       data-progress-url="{% url 'admin_config:seo_control_job_progress' selected_interlink_job.id %}">
+    <div class="d-flex align-items-center gap-2">
+      <span class="small text-muted">Job #{{ selected_interlink_job.id }} &middot; <span data-job-status>{{ selected_interlink_job.status }}</span></span>
+      <div class="progress flex-grow-1" role="progressbar" aria-label="Interlink scan progress">
+        <div class="progress-bar progress-bar-striped progress-bar-animated" data-job-progress-bar
+             role="progressbar" aria-valuenow="{{ selected_interlink_job_progress.progress_percent|default:0 }}"
+             aria-valuemin="0" aria-valuemax="100">
+          <span data-job-progress-text>{{ selected_interlink_job_progress.progress_percent|default:0 }}%</span>
         </div>
-
-        <div class="card mt-3">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <span>Internal Linking Scan History</span>
-                <a class="btn btn-sm btn-outline-primary" href="{% url 'admin_config:seo_control_canonical_section' 'onsite' %}">
-                    Open On-site SEO Queue
-                </a>
-            </div>
-            <div class="card-body p-0">
-                <table class="table table-sm mb-0">
-                    <thead>
-                        <tr><th>ID</th><th>Status</th><th>Progress</th><th>Warnings</th><th>Started</th></tr>
-                    </thead>
-                    <tbody>
-                        {% for job in interlink_jobs %}
-                            <tr{% if selected_interlink_job and selected_interlink_job.id == job.id %} class="table-active"{% endif %}>
-                                <td><a href="{% url 'admin_config:seo_control_canonical_section' 'interlinking' %}?job_id={{ job.id }}">#{{ job.id }}</a></td>
-                                <td>{{ job.status }}</td>
-                                <td>{{ job.processed_items }}/{{ job.total_items }}</td>
-                                <td>{{ job.warning_count }}</td>
-                                <td>{{ job.started_at|date:"Y-m-d H:i" }}</td>
-                            </tr>
-                        {% empty %}
-                            <tr><td colspan="5" class="text-muted">No internal linking scan jobs yet.</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
+      </div>
+      {% if selected_interlink_job.status == "queued" or selected_interlink_job.status == "running" %}
+      <form method="post" action="{% url 'admin_config:seo_scan_job_cancel' selected_interlink_job.id %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-1" title="Cancel">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </form>
+      {% endif %}
     </div>
-
-    <div class="col-lg-5">
-        {% if selected_interlink_job %}
-            <div
-                class="card"
-                data-seo-scan-monitor="true"
-                data-job-id="{{ selected_interlink_job.id }}"
-                data-progress-url="{% url 'admin_config:seo_control_job_progress' selected_interlink_job.id %}"
-            >
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <span>Interlink Job #{{ selected_interlink_job.id }}</span>
-                    {% if selected_interlink_job.status == "queued" or selected_interlink_job.status == "running" %}
-                        <form method="post" action="{% url 'admin_config:seo_scan_job_cancel' selected_interlink_job.id %}">
-                            {% csrf_token %}
-                            <button type="submit" class="btn btn-sm btn-outline-danger">Cancel</button>
-                        </form>
-                    {% endif %}
-                </div>
-                <div class="card-body">
-                    <div class="mb-2"><strong>Status:</strong> <span data-job-status>{{ selected_interlink_job.status }}</span></div>
-                    <div class="progress mb-2" role="progressbar" aria-label="Progress">
-                        <div class="progress-bar" data-job-progress-bar style="width: {{ selected_interlink_job_progress.progress_percent|default:0 }}%">
-                            <span data-job-progress-text>{{ selected_interlink_job_progress.progress_percent|default:0 }}%</span>
-                        </div>
-                    </div>
-                    <div class="small text-muted" data-job-counts>
-                        {{ selected_interlink_job_progress.processed_items|default:0 }}/{{ selected_interlink_job_progress.total_items|default:0 }} processed
-                    </div>
-                </div>
-            </div>
-        {% else %}
-            <div class="card">
-                <div class="card-body text-muted">Run an interlink scan to monitor progress and collect graph evidence.</div>
-            </div>
-        {% endif %}
-    </div>
+  </div>
+  {% endif %}
 </div>
 
-<div class="row g-3 mt-1">
-    <div class="col-xl-6">
-        <div class="card">
-            <div class="card-header">Interlink Scan Result Rows</div>
-            <div class="card-body p-0">
-                <table class="table table-sm mb-0">
-                    <thead>
-                        <tr><th>Content</th><th>Status</th><th>Score</th><th>Warnings</th><th>Duration</th></tr>
-                    </thead>
-                    <tbody>
-                        {% for item in selected_interlink_items %}
-                            <tr>
-                                <td><a href="{{ item.url }}" target="_blank" rel="noopener">{{ item.url|truncatechars:64 }}</a></td>
-                                <td>{{ item.status }}</td>
-                                <td>{{ item.score|floatformat:1 }}</td>
-                                <td>{{ item.warning_count }}</td>
-                                <td>{{ item.duration_ms }}ms</td>
-                            </tr>
-                        {% empty %}
-                            <tr><td colspan="5" class="text-muted">No result rows for selected internal linking job.</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-xl-6">
-        <div class="card">
-            <div class="card-header">Internal Link Edge Table</div>
-            <div class="card-body p-0">
-                <table class="table table-sm mb-0">
-                    <thead>
-                        <tr><th>Source</th><th>Linked Target</th><th>Anchor Text</th><th>Score</th><th>Status</th></tr>
-                    </thead>
-                    <tbody>
-                        {% for row in interlink_edge_rows %}
-                            <tr>
-                                <td>
-                                    <div class="d-flex align-items-center gap-1">
-                                        {% if row.source_admin_url %}<a href="{{ row.source_admin_url }}" title="Edit"><i class="bi bi-pencil-square"></i></a>{% endif %}
-                                        {% if row.source_public_url %}<a href="{{ row.source_public_url }}" target="_blank" rel="noopener" title="View"><i class="bi bi-box-arrow-up-right"></i></a>{% endif %}
-                                        <span>{{ row.source_title|truncatechars:34 }}</span>
-                                    </div>
-                                </td>
-                                <td>
-                                    <div class="d-flex align-items-center gap-1">
-                                        {% if row.target_admin_url %}<a href="{{ row.target_admin_url }}" title="Edit"><i class="bi bi-pencil-square"></i></a>{% endif %}
-                                        {% if row.target_public_url %}<a href="{{ row.target_public_url }}" target="_blank" rel="noopener" title="View"><i class="bi bi-box-arrow-up-right"></i></a>{% endif %}
-                                        <span>{{ row.target_title|truncatechars:34 }}</span>
-                                    </div>
-                                </td>
-                                <td>{{ row.anchor_text|truncatechars:42 }}</td>
-                                <td>{{ row.confidence|floatformat:3 }}</td>
-                                <td>{{ row.status }}</td>
-                            </tr>
-                        {% empty %}
-                            <tr><td colspan="5" class="text-muted">No internal link edges yet.</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
+{# ── Link Edge Table ─────────────────────────────────────────────────── #}
+<div class="card mb-3">
+  <div class="card-header py-2">Link Graph &mdash; Edges</div>
+  <div class="card-body p-0">
+    <table class="table table-sm table-hover mb-0">
+      <thead>
+        <tr><th>Source</th><th>Target</th><th>Anchor</th><th>Score</th><th>Status</th></tr>
+      </thead>
+      <tbody>
+        {% for row in interlink_edge_rows %}
+        <tr>
+          <td>
+            <a href="{{ row.source_admin_url|default:'#' }}" title="{{ row.source_title }}">
+              {{ row.source_title|truncatechars:30 }}
+            </a>
+          </td>
+          <td>
+            <a href="{{ row.target_admin_url|default:'#' }}" title="{{ row.target_title }}">
+              {{ row.target_title|truncatechars:30 }}
+            </a>
+          </td>
+          <td class="small">{{ row.anchor_text|truncatechars:36 }}</td>
+          <td>{{ row.confidence|floatformat:2 }}</td>
+          <td><span class="badge bg-secondary">{{ row.status }}</span></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" class="text-muted text-center py-3">No link edges recorded yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </div>
 
-<div class="card mt-3">
-    <div class="card-header">Pending Internal Linking Suggested Changes</div>
-    <div class="card-body p-0">
-        <table class="table table-sm mb-0">
-            <thead>
-                <tr><th>Source</th><th>Linked Target</th><th>Anchor Text</th><th>Score</th><th>Status</th><th>Action</th></tr>
-            </thead>
-            <tbody>
-                {% for row in interlink_suggestion_rows %}
-                    <tr>
-                        <td>
-                            <div class="d-flex align-items-center gap-1">
-                                {% if row.source_admin_url %}<a href="{{ row.source_admin_url }}" title="Edit"><i class="bi bi-pencil-square"></i></a>{% endif %}
-                                {% if row.source_public_url %}<a href="{{ row.source_public_url }}" target="_blank" rel="noopener" title="View"><i class="bi bi-box-arrow-up-right"></i></a>{% endif %}
-                                <span>{{ row.source_title|truncatechars:34 }}</span>
-                            </div>
-                        </td>
-                        <td>
-                            <div class="d-flex align-items-center gap-1">
-                                {% if row.target_admin_url %}<a href="{{ row.target_admin_url }}" title="Edit"><i class="bi bi-pencil-square"></i></a>{% endif %}
-                                {% if row.target_public_url %}<a href="{{ row.target_public_url }}" target="_blank" rel="noopener" title="View"><i class="bi bi-box-arrow-up-right"></i></a>{% endif %}
-                                <span>{{ row.target_title|truncatechars:34 }}</span>
-                            </div>
-                        </td>
-                        <td>{{ row.anchor_text|truncatechars:42 }}</td>
-                        <td>{{ row.score|floatformat:3 }}</td>
-                        <td>{{ row.status }}</td>
-                        <td>
-                            <div class="d-flex gap-1 flex-wrap">
-                                <a class="btn btn-xs btn-outline-primary" href="{% url 'admin_config:seo_control_suggestion_edit' row.id %}?section=interlinking">Edit</a>
-                                <form method="post" action="{% url 'admin_config:seo_control_suggestion_action' row.id 'approve' %}">{% csrf_token %}<input type="hidden" name="return_section" value="interlinking"><button class="btn btn-xs btn-success">Approve</button></form>
-                                <form method="post" action="{% url 'admin_config:seo_control_suggestion_action' row.id 'reject' %}">{% csrf_token %}<input type="hidden" name="return_section" value="interlinking"><button class="btn btn-xs btn-outline-danger">Reject</button></form>
-                            </div>
-                        </td>
-                    </tr>
-                {% empty %}
-                    <tr><td colspan="6" class="text-muted">No pending internal linking suggested changes.</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
+{# ── Suggestions Table ───────────────────────────────────────────────── #}
+{% if interlink_suggestion_rows %}
+<div class="card">
+  <div class="card-header py-2">Suggested Links</div>
+  <div class="card-body p-0">
+    <table class="table table-sm table-hover mb-0">
+      <thead>
+        <tr><th>Source</th><th>Target</th><th>Anchor</th><th>Score</th><th>Status</th><th class="text-end">Actions</th></tr>
+      </thead>
+      <tbody>
+        {% for row in interlink_suggestion_rows %}
+        <tr>
+          <td>
+            <a href="{{ row.source_admin_url|default:'#' }}" title="{{ row.source_title }}">
+              {{ row.source_title|truncatechars:30 }}
+            </a>
+          </td>
+          <td>
+            <a href="{{ row.target_admin_url|default:'#' }}" title="{{ row.target_title }}">
+              {{ row.target_title|truncatechars:30 }}
+            </a>
+          </td>
+          <td class="small">{{ row.anchor_text|truncatechars:36 }}</td>
+          <td>{{ row.score|floatformat:2 }}</td>
+          <td><span class="badge bg-light text-dark">{{ row.status }}</span></td>
+          <td class="text-end text-nowrap">
+            <div class="d-inline-flex gap-1">
+              <form method="post" action="{% url 'admin_config:seo_control_suggestion_action' row.id 'approve' %}">
+                {% csrf_token %}<input type="hidden" name="return_section" value="interlinking">
+                <button class="btn btn-xs btn-success" title="Approve"><i class="bi bi-check-lg"></i></button>
+              </form>
+              <form method="post" action="{% url 'admin_config:seo_control_suggestion_action' row.id 'reject' %}">
+                {% csrf_token %}<input type="hidden" name="return_section" value="interlinking">
+                <button class="btn btn-xs btn-outline-danger" title="Reject"><i class="bi bi-x-lg"></i></button>
+              </form>
+              <a class="btn btn-xs btn-outline-secondary" href="{% url 'admin_config:seo_control_suggestion_edit' row.id %}?section=interlinking" title="Edit">
+                <i class="bi bi-pencil"></i>
+              </a>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </div>
+{% endif %}

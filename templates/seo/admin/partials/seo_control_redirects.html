@@ -1,212 +1,121 @@
-<div class="row g-3 mb-3">
-    <div class="col-md-3 col-6"><div class="admin-control-metric"><span class="label">Pending Redirects</span><strong>{{ redirect_queue_counts.pending }}</strong></div></div>
-    <div class="col-md-3 col-6"><div class="admin-control-metric"><span class="label">Needs Correction</span><strong>{{ redirect_queue_counts.needs_correction }}</strong></div></div>
-    <div class="col-md-3 col-6"><div class="admin-control-metric"><span class="label">Applied</span><strong>{{ redirect_queue_counts.approved }}</strong></div></div>
-    <div class="col-md-3 col-6"><div class="admin-control-metric"><span class="label">Rejected</span><strong>{{ redirect_queue_counts.rejected }}</strong></div></div>
+{# Redirects tab — single backlog table with pagination #}
+
+{# ── Summary Bar ─────────────────────────────────────────────────────── #}
+<div class="seo-summary-bar mb-3">
+  <div class="seo-summary-item">
+    <span class="label">Pending</span>
+    <strong>{{ redirect_queue_counts.pending|default:0 }}</strong>
+  </div>
+  <div class="seo-summary-item text-warning">
+    <span class="label">Needs Fix</span>
+    <strong>{{ redirect_queue_counts.needs_correction|default:0 }}</strong>
+  </div>
+  <div class="seo-summary-item text-success">
+    <span class="label">Applied</span>
+    <strong>{{ redirect_queue_counts.approved|default:0 }}</strong>
+  </div>
+  <div class="seo-summary-item">
+    <span class="label">Rejected</span>
+    <strong>{{ redirect_queue_counts.rejected|default:0 }}</strong>
+  </div>
 </div>
 
-<div class="card mb-3">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <span>Redirect Task Backlog</span>
-        <div class="small text-muted">
-            Total: {{ pending_redirect_task_summary.total }} |
-            High Priority: {{ pending_redirect_task_summary.high }}
-        </div>
-    </div>
-    <div class="card-body p-0">
-        <table class="table table-sm mb-0">
-            <thead>
-                <tr>
-                    <th>Task</th>
-                    <th>Priority</th>
-                    <th>Target</th>
-                    <th>Description</th>
-                    <th>Recommended Fix</th>
-                    <th>Evidence</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for task in pending_redirect_task_rows %}
-                    <tr>
-                        <td>
-                            <div><strong>{{ task.task_ref }}</strong></div>
-                            <div class="small text-muted">{{ task.type_label }}</div>
-                            {% if task.confidence != None %}
-                                <div class="small text-muted">conf {{ task.confidence|floatformat:3 }}</div>
-                            {% endif %}
-                        </td>
-                        <td>
-                            <span class="badge {% if task.priority == 'high' %}bg-danger{% elif task.priority == 'medium' %}bg-warning text-dark{% else %}bg-light text-dark{% endif %}">
-                                {{ task.priority }}
-                            </span>
-                        </td>
-                        <td>
-                            <div class="d-flex align-items-center gap-1">
-                                {% if task.target_admin_url %}<a href="{{ task.target_admin_url }}" title="Edit"><i class="bi bi-pencil-square"></i></a>{% endif %}
-                                {% if task.target_public_url %}<a href="{{ task.target_public_url }}" target="_blank" rel="noopener" title="Verify"><i class="bi bi-box-arrow-up-right"></i></a>{% endif %}
-                                <span>{{ task.target_title|truncatechars:42 }}</span>
-                            </div>
-                        </td>
-                        <td>{{ task.description|truncatechars:180 }}</td>
-                        <td>{{ task.recommendation|truncatechars:180 }}</td>
-                        <td>{{ task.evidence|truncatechars:140 }}</td>
-                        <td>
-                            <div class="d-flex gap-1 flex-wrap">
-                                <a class="btn btn-xs btn-outline-primary" href="{% url 'admin_config:seo_control_suggestion_edit' task.suggestion_id %}?section=redirects">Edit</a>
-                                <form method="post" action="{% url 'admin_config:seo_control_suggestion_action' task.suggestion_id 'approve' %}">
-                                    {% csrf_token %}
-                                    <input type="hidden" name="return_section" value="redirects">
-                                    <button class="btn btn-xs btn-success">Approve</button>
-                                </form>
-                                <form method="post" action="{% url 'admin_config:seo_control_suggestion_action' task.suggestion_id 'reject' %}">
-                                    {% csrf_token %}
-                                    <input type="hidden" name="return_section" value="redirects">
-                                    <button class="btn btn-xs btn-outline-danger">Reject</button>
-                                </form>
-                            </div>
-                        </td>
-                    </tr>
-                {% empty %}
-                    <tr><td colspan="7" class="text-muted">No redirect tasks pending right now.</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-    {% if pending_redirect_task_page_obj.paginator.num_pages > 1 %}
-        <div class="card-footer d-flex justify-content-between align-items-center">
-            <span class="small text-muted">Page {{ pending_redirect_task_page_obj.number }} of {{ pending_redirect_task_page_obj.paginator.num_pages }}</span>
-            <div class="btn-group btn-group-sm" role="group" aria-label="Redirect task pagination">
-                {% if pending_redirect_task_page_obj.has_previous %}
-                    <a class="btn btn-outline-secondary" href="?{% if redirect_task_page_query %}{{ redirect_task_page_query }}&{% endif %}redirect_task_page=1">First</a>
-                    <a class="btn btn-outline-secondary" href="?{% if redirect_task_page_query %}{{ redirect_task_page_query }}&{% endif %}redirect_task_page={{ pending_redirect_task_page_obj.previous_page_number }}">Previous</a>
-                {% endif %}
-                {% if pending_redirect_task_page_obj.has_next %}
-                    <a class="btn btn-outline-secondary" href="?{% if redirect_task_page_query %}{{ redirect_task_page_query }}&{% endif %}redirect_task_page={{ pending_redirect_task_page_obj.next_page_number }}">Next</a>
-                    <a class="btn btn-outline-secondary" href="?{% if redirect_task_page_query %}{{ redirect_task_page_query }}&{% endif %}redirect_task_page={{ pending_redirect_task_page_obj.paginator.num_pages }}">Last</a>
-                {% endif %}
-            </div>
-        </div>
-    {% endif %}
-</div>
-
-<div class="card mb-3">
-    <div class="card-header">Redirect Queue Board</div>
-    <div class="card-body">
-        <div class="admin-control-kanban">
-            <section class="lane">
-                <h6>Pending</h6>
-                {% for item in redirect_lane_rows.pending %}
-                    <article class="lane-card">
-                        <div class="lane-card-title">#{{ item.id }} {{ item.type }}</div>
-                        <div class="small text-muted">{{ item.target_title|truncatechars:50 }}</div>
-                        <div class="small">conf: {{ item.confidence|floatformat:2 }}</div>
-                        <div class="mt-2 d-flex gap-1 flex-wrap">
-                            <a class="btn btn-xs btn-outline-primary" href="{% url 'admin_config:seo_control_suggestion_edit' item.id %}?section=redirects">Edit</a>
-                            <form method="post" action="{% url 'admin_config:seo_control_suggestion_action' item.id 'approve' %}">{% csrf_token %}<input type="hidden" name="return_section" value="redirects"><button class="btn btn-xs btn-success">Approve</button></form>
-                            <form method="post" action="{% url 'admin_config:seo_control_suggestion_action' item.id 'reject' %}">{% csrf_token %}<input type="hidden" name="return_section" value="redirects"><button class="btn btn-xs btn-outline-danger">Reject</button></form>
-                        </div>
-                    </article>
-                {% empty %}
-                    <p class="small text-muted">No pending cards.</p>
-                {% endfor %}
-            </section>
-            <section class="lane">
-                <h6>Needs Correction</h6>
-                {% for item in redirect_lane_rows.needs_correction %}
-                    <article class="lane-card">
-                        <div class="lane-card-title">#{{ item.id }} {{ item.type }}</div>
-                        <div class="small text-muted">{{ item.target_title|truncatechars:50 }}</div>
-                        <div class="small">conf: {{ item.confidence|floatformat:2 }}</div>
-                        <div class="mt-2 d-flex gap-1 flex-wrap">
-                            <a class="btn btn-xs btn-outline-primary" href="{% url 'admin_config:seo_control_suggestion_edit' item.id %}?section=redirects">Edit</a>
-                            <form method="post" action="{% url 'admin_config:seo_control_suggestion_action' item.id 'approve' %}">{% csrf_token %}<input type="hidden" name="return_section" value="redirects"><button class="btn btn-xs btn-success">Approve</button></form>
-                            <form method="post" action="{% url 'admin_config:seo_control_suggestion_action' item.id 'reject' %}">{% csrf_token %}<input type="hidden" name="return_section" value="redirects"><button class="btn btn-xs btn-outline-danger">Reject</button></form>
-                        </div>
-                    </article>
-                {% empty %}
-                    <p class="small text-muted">No correction cards.</p>
-                {% endfor %}
-            </section>
-            <section class="lane">
-                <h6>Applied</h6>
-                {% for item in redirect_lane_rows.approved %}
-                    <article class="lane-card compact">
-                        <div class="lane-card-title">#{{ item.id }} {{ item.type }}</div>
-                        <div class="small text-muted">{{ item.target_title|truncatechars:50 }}</div>
-                    </article>
-                {% empty %}
-                    <p class="small text-muted">No applied cards.</p>
-                {% endfor %}
-            </section>
-            <section class="lane">
-                <h6>Rejected</h6>
-                {% for item in redirect_lane_rows.rejected %}
-                    <article class="lane-card compact">
-                        <div class="lane-card-title">#{{ item.id }} {{ item.type }}</div>
-                        <div class="small text-muted">{{ item.target_title|truncatechars:50 }}</div>
-                    </article>
-                {% empty %}
-                    <p class="small text-muted">No rejected cards.</p>
-                {% endfor %}
-            </section>
-        </div>
-    </div>
-</div>
-
+{# ── Redirect Backlog ────────────────────────────────────────────────── #}
 <div class="card">
-    <div class="card-header">Redirect Bulk Actions</div>
-    <div class="card-body p-0">
-        <form method="post" action="{% url 'admin_config:seo_control_suggestion_bulk' %}">
-            {% csrf_token %}
-            <input type="hidden" name="return_section" value="redirects">
-            <div class="d-flex p-2 gap-2 align-items-center border-bottom">
-                <select name="bulk_action" class="form-select form-select-sm bulk-action-select">
-                    <option value="">Bulk Action</option>
-                    <option value="approve">Approve</option>
-                    <option value="reject">Reject</option>
-                </select>
-                <button class="btn btn-sm btn-primary" type="submit">Apply</button>
-            </div>
-            <table class="table table-sm mb-0">
-                <thead>
-                    <tr><th></th><th>ID</th><th>Status</th><th>Type</th><th>Target</th><th>Confidence</th><th>Actions</th></tr>
-                </thead>
-                <tbody>
-                    {% for item in redirect_suggestion_rows %}
-                        <tr>
-                            <td><input type="checkbox" name="selected_suggestions" value="{{ item.id }}"></td>
-                            <td>#{{ item.id }}</td>
-                            <td>{{ item.status }}</td>
-                            <td>{{ item.type }}</td>
-                            <td>{{ item.target_title|truncatechars:56 }}</td>
-                            <td>{{ item.confidence|floatformat:3 }}</td>
-                            <td class="d-flex gap-1">
-                                <a class="btn btn-xs btn-outline-primary" href="{% url 'admin_config:seo_control_suggestion_edit' item.id %}?section=redirects">Edit</a>
-                                <form method="post" action="{% url 'admin_config:seo_control_suggestion_action' item.id 'approve' %}">{% csrf_token %}<input type="hidden" name="return_section" value="redirects"><button class="btn btn-xs btn-success">Approve</button></form>
-                                <form method="post" action="{% url 'admin_config:seo_control_suggestion_action' item.id 'reject' %}">{% csrf_token %}<input type="hidden" name="return_section" value="redirects"><button class="btn btn-xs btn-outline-danger">Reject</button></form>
-                            </td>
-                        </tr>
-                    {% empty %}
-                        <tr><td colspan="7" class="text-muted">No redirect suggestions found.</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </form>
+  <div class="card-header py-2 d-flex justify-content-between align-items-center">
+    <span>Redirect Backlog</span>
+    <span class="small text-muted">{{ pending_redirect_task_summary.total|default:0 }} total &middot; {{ pending_redirect_task_summary.high|default:0 }} high</span>
+  </div>
+  <div class="card-body p-0">
+    <form method="post" action="{% url 'admin_config:seo_control_suggestion_bulk' %}">
+      {% csrf_token %}
+      <input type="hidden" name="return_section" value="redirects">
+      <div class="d-flex px-2 py-1 gap-2 align-items-center border-bottom bg-light">
+        <input type="checkbox" class="form-check-input" id="redir-select-all"
+               onchange="document.querySelectorAll('#redir-table input[name=selected_suggestions]').forEach(c=>c.checked=this.checked)">
+        <select name="bulk_action" class="form-select form-select-sm" aria-label="Bulk action">
+          <option value="">Bulk action…</option>
+          <option value="approve">Approve selected</option>
+          <option value="reject">Reject selected</option>
+        </select>
+        <button class="btn btn-sm btn-outline-primary" type="submit">Apply</button>
+      </div>
+      <div class="table-responsive" id="redir-table">
+        <table class="table table-sm table-hover mb-0">
+          <thead>
+            <tr>
+              <th></th>
+              <th>Ref</th>
+              <th>Priority</th>
+              <th>Target</th>
+              <th>Description</th>
+              <th>Fix</th>
+              <th class="text-end">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for task in pending_redirect_task_rows %}
+            <tr>
+              <td><input type="checkbox" class="form-check-input" name="selected_suggestions" value="{{ task.suggestion_id }}"></td>
+              <td class="text-nowrap">
+                <strong>{{ task.task_ref }}</strong>
+                <div class="small text-muted">{{ task.type_label }}</div>
+              </td>
+              <td>
+                <span class="badge {% if task.priority == 'high' %}bg-danger{% elif task.priority == 'medium' %}bg-warning text-dark{% else %}bg-light text-dark{% endif %}">
+                  {{ task.priority }}
+                </span>
+              </td>
+              <td>
+                <a href="{{ task.target_admin_url|default:'#' }}" title="{{ task.target_title }}">
+                  {{ task.target_title|truncatechars:32 }}
+                </a>
+              </td>
+              <td class="small">{{ task.description|truncatechars:80 }}</td>
+              <td class="small">{{ task.recommendation|truncatechars:60 }}</td>
+              <td class="text-end text-nowrap">
+                <div class="d-inline-flex gap-1">
+                  <form method="post" action="{% url 'admin_config:seo_control_suggestion_action' task.suggestion_id 'approve' %}">
+                    {% csrf_token %}<input type="hidden" name="return_section" value="redirects">
+                    <button class="btn btn-xs btn-success" title="Approve"><i class="bi bi-check-lg"></i></button>
+                  </form>
+                  <form method="post" action="{% url 'admin_config:seo_control_suggestion_action' task.suggestion_id 'reject' %}">
+                    {% csrf_token %}<input type="hidden" name="return_section" value="redirects">
+                    <button class="btn btn-xs btn-outline-danger" title="Reject"><i class="bi bi-x-lg"></i></button>
+                  </form>
+                  <a class="btn btn-xs btn-outline-secondary" href="{% url 'admin_config:seo_control_suggestion_edit' task.suggestion_id %}?section=redirects" title="Edit">
+                    <i class="bi bi-pencil"></i>
+                  </a>
+                </div>
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7" class="text-muted text-center py-3">No redirect tasks pending.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </form>
+  </div>
+  {% if pending_redirect_task_page_obj.paginator.num_pages > 1 %}
+  <div class="card-footer py-2 d-flex justify-content-between align-items-center">
+    <span class="small text-muted">Page {{ pending_redirect_task_page_obj.number }} of {{ pending_redirect_task_page_obj.paginator.num_pages }}</span>
+    <div class="btn-group btn-group-sm">
+      {% if pending_redirect_task_page_obj.has_previous %}
+      <a class="btn btn-outline-secondary"
+         hx-get="{% url 'admin_config:seo_control_section' 'redirects' %}?{% if redirect_task_page_query %}{{ redirect_task_page_query }}&{% endif %}redirect_task_page={{ pending_redirect_task_page_obj.previous_page_number }}"
+         hx-target="#seo-tab-content" hx-swap="innerHTML">
+        <i class="bi bi-chevron-left"></i>
+      </a>
+      {% endif %}
+      {% if pending_redirect_task_page_obj.has_next %}
+      <a class="btn btn-outline-secondary"
+         hx-get="{% url 'admin_config:seo_control_section' 'redirects' %}?{% if redirect_task_page_query %}{{ redirect_task_page_query }}&{% endif %}redirect_task_page={{ pending_redirect_task_page_obj.next_page_number }}"
+         hx-target="#seo-tab-content" hx-swap="innerHTML">
+        <i class="bi bi-chevron-right"></i>
+      </a>
+      {% endif %}
     </div>
-    {% if redirect_suggestion_page_obj.paginator.num_pages > 1 %}
-        <div class="card-footer d-flex justify-content-between align-items-center">
-            <span class="small text-muted">Page {{ redirect_suggestion_page_obj.number }} of {{ redirect_suggestion_page_obj.paginator.num_pages }}</span>
-            <div class="btn-group btn-group-sm" role="group" aria-label="Redirect suggestions pagination">
-                {% if redirect_suggestion_page_obj.has_previous %}
-                    <a class="btn btn-outline-secondary" href="?{% if redirect_page_query %}{{ redirect_page_query }}&{% endif %}redirect_page=1">First</a>
-                    <a class="btn btn-outline-secondary" href="?{% if redirect_page_query %}{{ redirect_page_query }}&{% endif %}redirect_page={{ redirect_suggestion_page_obj.previous_page_number }}">Previous</a>
-                {% endif %}
-                {% if redirect_suggestion_page_obj.has_next %}
-                    <a class="btn btn-outline-secondary" href="?{% if redirect_page_query %}{{ redirect_page_query }}&{% endif %}redirect_page={{ redirect_suggestion_page_obj.next_page_number }}">Next</a>
-                    <a class="btn btn-outline-secondary" href="?{% if redirect_page_query %}{{ redirect_page_query }}&{% endif %}redirect_page={{ redirect_suggestion_page_obj.paginator.num_pages }}">Last</a>
-                {% endif %}
-            </div>
-        </div>
-    {% endif %}
+  </div>
+  {% endif %}
 </div>

@@ -1,5 +1,5 @@
 # CLAUDE.md — Enterprise Copilot · Self-Learning · Living Knowledge Base
-# Stack: Django · HTMX · Alpine.js · Bootstrap 5 · PostgreSQL · HeadlessUI-inspired Components
+# Stack: Django · HTMX · Alpine.js · Bootstrap 5 · PostgreSQL · Celery · HeadlessUI-inspired Components
 # Law: Single Source of Truth · Zero Tolerance · Self-Contained Apps · Enterprise Grade
 # Works with: Claude Sonnet (daily dev) · Claude Opus (architecture) · Claude Haiku (quick edits)
 
@@ -84,74 +84,19 @@ At session end, if tasks are not complete:
 
 ---
 
-## 🔍 INITIAL REPO AUDIT — RUN THIS ON FIRST SESSION
-
-On first session in any repo, perform a full audit before writing any code. Update every section of this file with findings. Audit checklist:
-
-```
-STRUCTURE AUDIT
-[ ] Map every app in apps/ — name, purpose, models, views, urls
-[ ] Identify any apps NOT in apps/ directory — consolidate
-[ ] Find all urls.py files — check app_name defined, check included in config/urls.py
-[ ] Find all base templates — should be exactly ONE base.html
-[ ] Find all static asset references — identify any duplicated CDN imports
-[ ] Find all settings files — map the inheritance chain
-
-PATTERN AUDIT
-[ ] Find all views with business logic — needs extraction to services.py
-[ ] Find all views with ORM queries — needs extraction to selectors.py
-[ ] Find all models NOT inheriting BaseModel — needs migration
-[ ] Find all hardcoded URLs in templates — needs {% url %} replacement
-[ ] Find all inline Alpine x-data with more than 2 props — needs extraction to app.js
-[ ] Find all N+1 queries (ORM calls inside loops) — needs select_related/prefetch_related
-[ ] Find all duplicate utility functions across apps — consolidate to core/
-
-FRONTEND AUDIT
-[ ] Find all Bootstrap CDN links — should appear ONLY in base.html
-[ ] Find all Alpine CDN links — should appear ONLY in base.html
-[ ] Find all HTMX CDN links — should appear ONLY in base.html
-[ ] Find all <script> tags outside {% block extra_js %} — fix immediately
-[ ] Find all <style> tags outside {% block extra_css %} — fix immediately
-[ ] Map all HTMX partial views — verify request.htmx check exists
-[ ] Map all HeadlessUI-style components needed — log in Component Registry below
-
-SECURITY AUDIT
-[ ] Find any secrets in settings files — move to .env
-[ ] Find any views missing LoginRequiredMixin or @login_required
-[ ] Find any forms using fields = '__all__' — list fields explicitly
-[ ] Verify CSRF is configured for HTMX globally
-
-DATABASE AUDIT
-[ ] Find all ORM queries without select_related/prefetch_related — fix N+1s
-[ ] Verify all migrations committed
-[ ] Check for missing db_index on frequently queried fields
-[ ] Verify PostgreSQL-specific features enabled (django.contrib.postgres in INSTALLED_APPS)
-
-POST-AUDIT — UPDATE THESE SECTIONS:
-→ Project Overview (actual stack versions, app list)
-→ Project Structure (actual directory tree)
-→ Learned Patterns (patterns discovered in existing code)
-→ Common Pitfalls (anti-patterns found and fixed)
-→ Decision Log (decisions implied by existing code)
-→ Active Context (current state after audit)
-→ HeadlessUI Component Registry (components needed)
-```
-
----
-
 ## 🏗️ PROJECT OVERVIEW
 
 ```
-Project:        DjangoBlog - Full-stack blog with Django, HTMX, Alpine, Bootstrap
+Project:        DjangoBlog — Full-stack blog/CMS with Django + HTMX + Alpine + Bootstrap
 Django:         6.0.2
-Python:         3.x (inferred)
+Python:         3.14
 HTMX:           2.0.8
-Alpine.js:      3.15.0
+Alpine.js:      3.15.8
 Bootstrap:      5.3.8
-PostgreSQL:     12+ (configured)
-Deployment:     Not configured (development setup)
-Apps:           blog, comments, core, pages, seo, tags (6 total)
-Status:         In-progress; Pattern violations found requiring fixes
+PostgreSQL:     16+
+Celery:         5.x (Redis broker)
+Apps:           blog, comments, core, pages, seo, tags (6 apps)
+Status:         Production-ready, SEO engine v2 operational
 ```
 
 ---
@@ -166,7 +111,7 @@ project_root/
 │   ├── settings/
 │   │   ├── base.py                   ← Shared settings, no secrets
 │   │   ├── development.py            ← Dev overrides
-│   │   └── production.py            ← Prod overrides
+│   │   └── production.py             ← Prod overrides
 │   ├── urls.py                       ← ROOT url registry — includes all app urls
 │   ├── wsgi.py
 │   └── asgi.py
@@ -175,7 +120,7 @@ project_root/
 │   │   ├── models.py                 ← BaseModel (every model inherits this)
 │   │   ├── mixins.py                 ← Shared view mixins
 │   │   ├── middleware.py             ← Custom middleware
-│   │   ├── context_processors.py    ← Global template context
+│   │   ├── context_processors.py     ← Global template context
 │   │   ├── utils.py                  ← ALL shared utility functions
 │   │   ├── exceptions.py             ← Custom exceptions
 │   │   └── templatetags/
@@ -223,6 +168,7 @@ project_root/
 │   ├── base.txt
 │   ├── development.txt
 │   └── production.txt
+├── typings/                          ← Custom type stubs (e.g. tagulous/)
 ├── .env                              ← Secrets (gitignored)
 ├── .env.example                      ← Committed — all required vars documented
 └── docker-compose.yml
@@ -412,11 +358,13 @@ urlpatterns = [
 
 HeadlessUI provides accessible, unstyled components. We clone their behaviour and accessibility patterns, styled with Bootstrap 5 + custom CSS. Alpine.js drives the interactivity. Every component follows the 3-part contract below.
 
-### Component Status Board (Update as components are built):
+### Component Status Board
 
 | HeadlessUI Component | Alpine Function | Template Partial | CSS Class | Status |
 |---|---|---|---|---|
-| Dialog (Modal) | `modalManager()` | `partials/_modal.html` | `.hl-modal` | [ ] |
+| Dialog (Modal) | `modalManager()` | `partials/_modal.html` | `.hl-modal` | ✅ |
+| Notification (Toast) | `toastManager()` | `partials/_toast_stack.html` | `.hl-toast` | ✅ |
+| Drawer/SlideOver | `drawerManager()` | `partials/_drawer.html` | `.hl-drawer` | ✅ |
 | Disclosure (Accordion) | `disclosure()` | inline | `.hl-disclosure` | [ ] |
 | Listbox (Select) | `listbox()` | inline | `.hl-options` | [ ] |
 | Combobox (Autocomplete) | `combobox()` | `partials/_combobox.html` | `.hl-combobox` | [ ] |
@@ -427,8 +375,6 @@ HeadlessUI provides accessible, unstyled components. We clone their behaviour an
 | Tabs | `tabs()` | inline | `.hl-tabs` | [ ] |
 | Transition | `x-transition` directives | inline | `.hl-enter` | [ ] |
 | Command Palette | `commandPalette()` | `partials/_command.html` | `.hl-command` | [ ] |
-| Notification (Toast) | `toastManager()` | `partials/_messages.html` | `.hl-toast` | [ ] |
-| Drawer/SlideOver | `drawerManager()` | `partials/_drawer.html` | `.hl-drawer` | [ ] |
 
 ### 3-Part Component Contract — Follow For Every HeadlessUI Component:
 - **Part 1** — Alpine function in `static/js/app.js` (behaviour + state + keyboard nav)
@@ -520,22 +466,12 @@ document.addEventListener('htmx:afterRequest', (e) => {
 // ─── LISTBOX — HeadlessUI Select clone ──────────────────────────────────────
 function listbox(config = {}) {
     return {
-        open: false,
-        selected: config.initial || null,
-        activeIndex: 0,
-        options: config.options || [],
-        labelKey: config.labelKey || 'label',
-        valueKey: config.valueKey || 'value',
+        open: false, selected: config.initial || null, activeIndex: 0,
+        options: config.options || [], labelKey: config.labelKey || 'label', valueKey: config.valueKey || 'value',
         toggle() { this.open = !this.open; },
         close() { this.open = false; },
-        select(option) {
-            this.selected = option;
-            this.close();
-            this.$dispatch('listbox-change', { value: option[this.valueKey] });
-        },
-        isSelected(option) {
-            return this.selected && this.selected[this.valueKey] === option[this.valueKey];
-        },
+        select(option) { this.selected = option; this.close(); this.$dispatch('listbox-change', { value: option[this.valueKey] }); },
+        isSelected(option) { return this.selected && this.selected[this.valueKey] === option[this.valueKey]; },
         handleKeydown(e) {
             if (!this.open && ['Enter', ' ', 'ArrowDown'].includes(e.key)) { e.preventDefault(); this.open = true; return; }
             if (e.key === 'Escape') { this.close(); return; }
@@ -560,10 +496,7 @@ function combobox(config = {}) {
 function switchToggle(initialValue = false) {
     return {
         checked: initialValue,
-        toggle() {
-            this.checked = !this.checked;
-            this.$dispatch('switch-change', { checked: this.checked });
-        }
+        toggle() { this.checked = !this.checked; this.$dispatch('switch-change', { checked: this.checked }); }
     }
 }
 
@@ -578,10 +511,7 @@ function tabs(config = {}) {
 
 // ─── DISCLOSURE — HeadlessUI Disclosure clone ────────────────────────────────
 function disclosure(initialOpen = false) {
-    return {
-        open: initialOpen,
-        toggle() { this.open = !this.open; }
-    }
+    return { open: initialOpen, toggle() { this.open = !this.open; } }
 }
 
 // ─── DROPDOWN MENU — HeadlessUI Menu clone ───────────────────────────────────
@@ -624,19 +554,13 @@ function commandPalette() {
 // ─── DATA TABLE ──────────────────────────────────────────────────────────────
 function dataTable(config = {}) {
     return {
-        sortField: config.defaultSort || '',
-        sortDir: 'asc',
-        selected: new Set(),
-        selectAll: false,
+        sortField: config.defaultSort || '', sortDir: 'asc', selected: new Set(), selectAll: false,
         sort(field) {
             this.sortDir = this.sortField === field ? (this.sortDir === 'asc' ? 'desc' : 'asc') : 'asc';
             this.sortField = field;
             this.$dispatch('table-sort', { field: this.sortField, dir: this.sortDir });
         },
-        toggleSelectAll(ids) {
-            this.selectAll = !this.selectAll;
-            this.selected = this.selectAll ? new Set(ids) : new Set();
-        },
+        toggleSelectAll(ids) { this.selectAll = !this.selectAll; this.selected = this.selectAll ? new Set(ids) : new Set(); },
         toggleSelect(id) { this.selected.has(id) ? this.selected.delete(id) : this.selected.add(id); }
     }
 }
@@ -651,19 +575,30 @@ function formState() {
             this.loading = true; this.clearErrors();
             try {
                 const res = await fetch(url, {
-                    method,
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
-                    },
+                    method, headers: { 'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content },
                     body: JSON.stringify(data)
                 });
                 const json = await res.json();
                 if (!res.ok) { this.errors = json.errors || {}; return json; }
-                this.dirty = false;
-                return json;
+                this.dirty = false; return json;
             } finally { this.loading = false; }
         }
+    }
+}
+
+// ─── READING PROGRESS ────────────────────────────────────────────────────────
+function readingProgress() {
+    return {
+        progress: 0,
+        _handler: null,
+        init() {
+            this._handler = () => {
+                const el = document.documentElement;
+                this.progress = Math.min(100, Math.round((el.scrollTop / (el.scrollHeight - el.clientHeight)) * 100));
+            };
+            window.addEventListener('scroll', this._handler, { passive: true });
+        },
+        destroy() { if (this._handler) window.removeEventListener('scroll', this._handler); }
     }
 }
 ```
@@ -696,68 +631,49 @@ function formState() {
 .hl-backdrop {
     position: fixed; inset: 0; z-index: 1040;
     background: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(2px);
-    -webkit-backdrop-filter: blur(2px);
+    backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px);
 }
 
 /* ── LISTBOX / COMBOBOX OPTIONS PANEL ────────────────────────────────────── */
 .hl-options {
     position: absolute; z-index: 50; width: 100%;
-    background: var(--bs-body-bg);
-    border: 1px solid var(--bs-border-color);
-    border-radius: var(--bs-border-radius-lg);
-    box-shadow: var(--bs-box-shadow-lg);
-    max-height: 260px; overflow-y: auto;
-    padding: 4px 0; margin-top: 4px;
+    background: var(--bs-body-bg); border: 1px solid var(--bs-border-color);
+    border-radius: var(--bs-border-radius-lg); box-shadow: var(--bs-box-shadow-lg);
+    max-height: 260px; overflow-y: auto; padding: 4px 0; margin-top: 4px;
 }
 .hl-option {
-    padding: 8px 16px; cursor: pointer;
-    display: flex; align-items: center; gap: 8px;
-    font-size: 0.9rem; color: var(--bs-body-color);
-    transition: background 100ms ease;
+    padding: 8px 16px; cursor: pointer; display: flex; align-items: center; gap: 8px;
+    font-size: 0.9rem; color: var(--bs-body-color); transition: background 100ms ease;
 }
-.hl-option:hover,
-.hl-option[data-active="true"] { background: var(--bs-primary-bg-subtle); }
+.hl-option:hover, .hl-option[data-active="true"] { background: var(--bs-primary-bg-subtle); }
 .hl-option[data-selected="true"] { font-weight: 600; color: var(--bs-primary); }
-.hl-option[data-selected="true"]::after {
-    content: '\F633'; font-family: 'Bootstrap-Icons';
-    margin-left: auto; font-size: 0.85rem;
-}
+.hl-option[data-selected="true"]::after { content: '\F633'; font-family: 'Bootstrap-Icons'; margin-left: auto; font-size: 0.85rem; }
 .hl-option[data-disabled="true"] { opacity: 0.5; cursor: not-allowed; pointer-events: none; }
 
 /* ── SWITCH / TOGGLE ──────────────────────────────────────────────────────── */
 .hl-switch {
     position: relative; display: inline-flex; align-items: center;
-    width: 44px; height: 24px; border-radius: 9999px;
-    cursor: pointer; outline: none;
-    transition: background-color 200ms ease;
-    background: var(--bs-secondary-bg);
-    border: 2px solid transparent;
+    width: 44px; height: 24px; border-radius: 9999px; cursor: pointer; outline: none;
+    transition: background-color 200ms ease; background: var(--bs-secondary-bg); border: 2px solid transparent;
 }
 .hl-switch:focus-visible { box-shadow: 0 0 0 3px rgba(var(--bs-primary-rgb), 0.35); }
 .hl-switch[aria-checked="true"] { background: var(--bs-primary); }
 .hl-switch-thumb {
-    display: block; width: 16px; height: 16px; border-radius: 9999px;
-    background: white;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-    transition: transform 200ms ease;
-    transform: translateX(2px);
+    display: block; width: 16px; height: 16px; border-radius: 9999px; background: white;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3); transition: transform 200ms ease; transform: translateX(2px);
 }
 .hl-switch[aria-checked="true"] .hl-switch-thumb { transform: translateX(22px); }
 
 /* ── DRAWER / SLIDEOVER ──────────────────────────────────────────────────── */
 .hl-drawer {
     position: fixed; top: 0; right: 0; bottom: 0; z-index: 1050;
-    width: min(480px, 90vw);
-    background: var(--bs-body-bg);
-    box-shadow: var(--bs-box-shadow-lg);
+    width: min(480px, 90vw); background: var(--bs-body-bg); box-shadow: var(--bs-box-shadow-lg);
     overflow-y: auto; display: flex; flex-direction: column;
 }
 .hl-drawer-left { right: auto; left: 0; }
 .hl-drawer-header {
     display: flex; align-items: center; justify-content: space-between;
-    padding: 1.25rem 1.5rem;
-    border-bottom: 1px solid var(--bs-border-color);
+    padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--bs-border-color);
     position: sticky; top: 0; background: var(--bs-body-bg); z-index: 1;
 }
 .hl-drawer-body { padding: 1.5rem; flex: 1; }
@@ -765,64 +681,42 @@ function formState() {
 /* ── COMMAND PALETTE ──────────────────────────────────────────────────────── */
 .hl-command-palette {
     position: fixed; top: 20%; left: 50%; transform: translateX(-50%);
-    width: min(640px, 90vw); z-index: 1060;
-    background: var(--bs-body-bg);
-    border: 1px solid var(--bs-border-color);
-    border-radius: var(--bs-border-radius-xl);
-    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
-    overflow: hidden;
+    width: min(640px, 90vw); z-index: 1060; background: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color); border-radius: var(--bs-border-radius-xl);
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3); overflow: hidden;
 }
 .hl-command-input {
-    width: 100%; padding: 1rem 1.25rem;
-    border: none; border-bottom: 1px solid var(--bs-border-color);
-    background: transparent; color: var(--bs-body-color);
-    font-size: 1rem; outline: none;
+    width: 100%; padding: 1rem 1.25rem; border: none;
+    border-bottom: 1px solid var(--bs-border-color); background: transparent;
+    color: var(--bs-body-color); font-size: 1rem; outline: none;
 }
 .hl-command-results { max-height: 360px; overflow-y: auto; padding: 4px 0; }
-.hl-command-item {
-    display: flex; align-items: center; gap: 12px;
-    padding: 10px 16px; cursor: pointer;
-    transition: background 100ms ease;
-}
-.hl-command-item:hover,
-.hl-command-item[data-active="true"] { background: var(--bs-primary-bg-subtle); }
+.hl-command-item { display: flex; align-items: center; gap: 12px; padding: 10px 16px; cursor: pointer; transition: background 100ms ease; }
+.hl-command-item:hover, .hl-command-item[data-active="true"] { background: var(--bs-primary-bg-subtle); }
 .hl-command-empty { padding: 2rem; text-align: center; color: var(--bs-secondary-color); }
 
 /* ── RADIO GROUP ─────────────────────────────────────────────────────────── */
 .hl-radio-option {
-    display: flex; align-items: flex-start; gap: 12px;
-    padding: 12px 16px; cursor: pointer;
-    border: 2px solid var(--bs-border-color);
-    border-radius: var(--bs-border-radius-lg);
+    display: flex; align-items: flex-start; gap: 12px; padding: 12px 16px; cursor: pointer;
+    border: 2px solid var(--bs-border-color); border-radius: var(--bs-border-radius-lg);
     transition: border-color 150ms ease, background 150ms ease;
 }
 .hl-radio-option:hover { border-color: var(--bs-primary); background: var(--bs-primary-bg-subtle); }
-.hl-radio-option[data-checked="true"] {
-    border-color: var(--bs-primary);
-    background: var(--bs-primary-bg-subtle);
-}
+.hl-radio-option[data-checked="true"] { border-color: var(--bs-primary); background: var(--bs-primary-bg-subtle); }
 .hl-radio-dot {
-    width: 18px; height: 18px; border-radius: 9999px;
-    border: 2px solid var(--bs-border-color); flex-shrink: 0; margin-top: 2px;
-    display: flex; align-items: center; justify-content: center;
+    width: 18px; height: 18px; border-radius: 9999px; border: 2px solid var(--bs-border-color);
+    flex-shrink: 0; margin-top: 2px; display: flex; align-items: center; justify-content: center;
     transition: border-color 150ms ease;
 }
 .hl-radio-option[data-checked="true"] .hl-radio-dot { border-color: var(--bs-primary); }
-.hl-radio-dot::after {
-    content: ''; width: 8px; height: 8px; border-radius: 9999px;
-    background: var(--bs-primary); opacity: 0; transition: opacity 150ms ease;
-}
+.hl-radio-dot::after { content: ''; width: 8px; height: 8px; border-radius: 9999px; background: var(--bs-primary); opacity: 0; transition: opacity 150ms ease; }
 .hl-radio-option[data-checked="true"] .hl-radio-dot::after { opacity: 1; }
 
 /* ── TABS ────────────────────────────────────────────────────────────────── */
-.hl-tab-list {
-    display: flex; border-bottom: 2px solid var(--bs-border-color);
-    gap: 0; margin-bottom: 1.5rem;
-}
+.hl-tab-list { display: flex; border-bottom: 2px solid var(--bs-border-color); gap: 0; margin-bottom: 1.5rem; }
 .hl-tab {
-    padding: 10px 20px; cursor: pointer; font-weight: 500;
-    color: var(--bs-secondary-color); border: none; background: none;
-    border-bottom: 2px solid transparent; margin-bottom: -2px;
+    padding: 10px 20px; cursor: pointer; font-weight: 500; color: var(--bs-secondary-color);
+    border: none; background: none; border-bottom: 2px solid transparent; margin-bottom: -2px;
     transition: color 150ms ease, border-color 150ms ease;
 }
 .hl-tab:hover { color: var(--bs-primary); }
@@ -830,20 +724,13 @@ function formState() {
 
 /* ── POPOVER ─────────────────────────────────────────────────────────────── */
 .hl-popover {
-    position: absolute; z-index: 50;
-    background: var(--bs-body-bg);
-    border: 1px solid var(--bs-border-color);
-    border-radius: var(--bs-border-radius-lg);
-    box-shadow: var(--bs-box-shadow-lg);
-    padding: 1rem; min-width: 200px;
-    margin-top: 8px;
+    position: absolute; z-index: 50; background: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color); border-radius: var(--bs-border-radius-lg);
+    box-shadow: var(--bs-box-shadow-lg); padding: 1rem; min-width: 200px; margin-top: 8px;
 }
 
 /* ── EDITABLE (Inline edit trigger) ─────────────────────────────────────── */
-.editable {
-    cursor: pointer; border-radius: 4px;
-    padding: 2px 6px; transition: background 150ms ease;
-}
+.editable { cursor: pointer; border-radius: 4px; padding: 2px 6px; transition: background 150ms ease; }
 .editable:hover { background: var(--bs-primary-bg-subtle); }
 .editable::after { content: ' \F4CA'; font-family: 'Bootstrap-Icons'; font-size: 0.7em; opacity: 0.5; }
 
@@ -936,24 +823,6 @@ class HxCreateView(LoginRequiredMixin, View):
                 form.add_error(None, e)
         return render(request, 'items/partials/_create_form.html', {'form': form}, status=422)
 
-# Model — zero business logic, only properties
-class Item(BaseModel):
-    user = models.ForeignKey('auth.User', on_delete=models.CASCADE, related_name='items')
-    name = models.CharField(max_length=255, db_index=True)
-    slug = models.SlugField(unique=True, blank=True)
-    description = models.TextField(blank=True)
-    metadata = models.JSONField(default=dict, blank=True)
-
-    class Meta:
-        verbose_name = 'Item'
-        indexes = [models.Index(fields=['user', 'is_active', 'created_at'])]
-
-    def __str__(self): return self.name
-    def get_absolute_url(self): return reverse('items:detail', kwargs={'pk': self.pk})
-    def save(self, *args, **kwargs):
-        if not self.slug: self.slug = slugify(self.name)
-        super().save(*args, **kwargs)
-
 # Form — NEVER fields = '__all__'
 class ItemForm(forms.ModelForm):
     class Meta:
@@ -1037,6 +906,18 @@ class ItemForm(forms.ModelForm):
         <span x-text="loading ? 'Saving...' : 'Save'"></span>
     </button>
 </form>
+
+<!-- ── LAZY-LOADED TABS ──────────────────────────────────────────────────── -->
+<div x-data="tabs()" class="hl-tab-list" role="tablist">
+    <button class="hl-tab" :aria-selected="isActive(0)" @click="setTab(0)">Overview</button>
+    <button class="hl-tab" :aria-selected="isActive(1)" @click="setTab(1)">Details</button>
+</div>
+<div x-show="isActive(0)" hx-get="{% url 'items:hx_overview' %}" hx-trigger="intersect once">
+    <div class="htmx-indicator"><div class="spinner-border"></div></div>
+</div>
+<div x-show="isActive(1)" hx-get="{% url 'items:hx_details' %}" hx-trigger="intersect once">
+    <div class="htmx-indicator"><div class="spinner-border"></div></div>
+</div>
 ```
 
 ---
@@ -1086,6 +967,7 @@ DATABASES = {
         'HOST': env('DB_HOST', default='localhost'),
         'PORT': env('DB_PORT', default='5432'),
         'CONN_MAX_AGE': 60,
+        'CONN_HEALTH_CHECKS': True,
         'OPTIONS': {'connect_timeout': 10},
     }
 }
@@ -1118,6 +1000,7 @@ INSTALLED_APPS = [
     'django_extensions',
     'crispy_forms',
     'crispy_bootstrap5',
+    'django_celery_beat',
     # Project apps — ALWAYS 'apps.' prefixed
     'apps.core',
     # 'apps.accounts',
@@ -1168,6 +1051,14 @@ X_FRAME_OPTIONS = 'DENY'
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SESSION_COOKIE_HTTPONLY = True
 CSRF_COOKIE_HTTPONLY = True
+
+# config/settings.py — environment-based routing
+import os
+env = os.environ.get("DJANGO_ENV", "development")
+if env == "production":
+    from .settings.production import *
+else:
+    from .settings.development import *
 ```
 
 ---
@@ -1207,6 +1098,7 @@ CSRF_COOKIE_HTTPONLY = True
 django>=5.0
 psycopg2-binary
 django-environ
+django-solo
 
 # Frontend
 django-htmx
@@ -1225,6 +1117,9 @@ django-filter
 Pillow
 sorl-thumbnail
 
+# HTML Sanitization
+nh3
+
 # Dev
 django-extensions
 django-debug-toolbar
@@ -1238,7 +1133,7 @@ model-bakery
 djangorestframework
 drf-spectacular
 
-# Task queue (if needed)
+# Task queue
 celery[redis]
 django-celery-beat
 
@@ -1300,7 +1195,6 @@ class TestHxViews:
 # Dev
 python manage.py runserver
 python manage.py shell_plus --ipython
-python manage.py graph_models apps -o schema.png
 
 # DB
 python manage.py makemigrations --name=describe_what_changed
@@ -1310,7 +1204,6 @@ python manage.py dbshell
 # PostgreSQL extensions (run once in dbshell)
 # CREATE EXTENSION IF NOT EXISTS pg_trgm;
 # CREATE EXTENSION IF NOT EXISTS unaccent;
-# CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 # Static
 python manage.py collectstatic --noinput
@@ -1320,11 +1213,22 @@ pytest
 pytest apps/[app]/tests/ -v
 pytest --cov=apps --cov-report=html
 
+# SEO backfill
+python manage.py seo_backfill --batch-size=50
+python manage.py seo_backfill --repair-orphans --dry-run
+
 # New app (always under apps/)
 mkdir -p apps/[name]/tests
 touch apps/[name]/__init__.py apps/[name]/tests/__init__.py
 python manage.py startapp [name] apps/[name]
 # Then create manually: urls.py, services.py, selectors.py
+
+# Celery
+celery -A config.celery worker -l info
+celery -A config.celery beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+
+# Lint
+ruff check apps/ config/ --output-format=concise
 ```
 
 ---
@@ -1333,14 +1237,9 @@ python manage.py startapp [name] apps/[name]
 
 | Date | Decision | Reason | Alternatives Rejected |
 |---|---|---|---|
-| Feb 2025 | Found NO selectors.py pattern | Need to implement per-app selectors | Fat models, fat views |
-| Feb 2025 | Models don't inherit BaseModel | Need consistent PKs, timestamps | Current inconsistency |
-| Feb 2025 | DB creds hardcoded with defaults | CRITICAL SECURITY ISSUE | Proper .env management needed |
-| Feb 2025 | SECRET_KEY has "django-insecure" fallback | CRITICAL SECURITY ISSUE | Must fail in production |
-| Feb 2025 | Hardcoded URLs in templates | Maintenance & SEO issue | Must use {% url %} |
 | — | CBVs everywhere | Consistent, mixin-composable | FBVs |
 | — | services.py + selectors.py | Clean separation of concerns | Fat models / fat views |
-| — | UUID primary keys | Security, merge-safe | Integer PKs |
+| — | UUID primary keys (BaseModel) | Security, merge-safe | Integer PKs |
 | — | HTMX over React/Vue | Python-native, minimal JS | React, Vue |
 | — | Alpine.js for client state | HTML-first, plays well with HTMX | React, vanilla JS |
 | — | HeadlessUI cloned to Alpine | Best accessibility + UX patterns | Custom from scratch |
@@ -1348,130 +1247,51 @@ python manage.py startapp [name] apps/[name]
 | — | Soft deletes | Audit trail, recovery | Hard deletes |
 | — | Single app.js for Alpine | One source of truth | Per-component files |
 | — | Centralised templates root | Clear structure, no app-level base.html | Per-app templates dirs |
+| Feb 2025 | Adopted selectors.py pattern | ORM queries scattered across views | Fat models, fat views |
+| Feb 2025 | Moved secrets to .env | Hardcoded DB creds + insecure SECRET_KEY fallback | Leaving in settings |
+| Mar 2026 | `DJANGO_ENV`-based settings routing | Hardcoded dev import can't switch envs | Single settings file |
+| Mar 2026 | `STORAGES` dict over `STATICFILES_STORAGE` | Django 4.2+ deprecation | Legacy setting |
+| Mar 2026 | nh3 replaces bleach for HTML sanitization | bleach deprecated | bleach, manual regex |
+| Mar 2026 | SEO views split into 4 modules | 1725-line monolith unmaintainable | Single file |
+| Mar 2026 | HTMX lazy-loaded tabs for SEO dashboard | Full page loaded all tabs' data (15+ queries) | Server-side render all tabs |
+| Mar 2026 | SEO admin: kanban boards removed | Static HTML kanban without DnD wastes screen space | Status filter pills on tables |
+| Mar 2026 | Tagulous type stubs in `typings/` dir | No official stubs; scattered `cast(Any)` unmaintainable | cast() everywhere |
+| Mar 2026 | `readingProgress()` as Alpine component | Inline `x-data` with scroll listener caused memory leaks | Inline Alpine |
 
 ---
 
-## 🧠 LEARNED PATTERNS — GROWS EVERY SESSION
+## 🧠 LEARNED PATTERNS — TOP 30 ESSENTIALS
 
-> Claude appends here after every session. [HUMAN CORRECTED] marks human-fixed mistakes.
-
-**FROM AUDIT (Feb 26, 2025):**
-- ORM queries scatter across views and services — this project NEEDS selectors.py pattern
-- Models don't inherit BaseModel — UUID PKs, created_at/updated_at not standardized
-- Hard-coded URLs found in templates: `/admin/` and `/seo/audit/` in base.html — must use {% url 'namespace:name' %}
-- DB credentials (user "postgreswl", password "Aa1357") hardcoded with fallback values — MAJOR security issue
-- No .env.example provided — cannot run locally without modifying settings.py
-- HeadlessUI components (Modal, Tabs, etc.) NOT implemented — only basic Alpine stores
-- `hx-swap-oob="true"` required when updating multiple DOM targets from one response
-- Always add `[x-cloak] { display: none !important; }` to prevent Alpine flash
-- `request.htmx` is falsy for non-HTMX requests — guard with `if not request.htmx: return redirect(...)`
-- `HX-Trigger` response header is cleanest way to fire Alpine events (toasts, modal close) from Django
-- Bootstrap 5.3 `data-bs-theme` on `<html>` enables native dark mode — Alpine drives the toggle
-- `pg_trgm` must be created manually: `CREATE EXTENSION IF NOT EXISTS pg_trgm;`
-- `trigger_client_event` from `django_htmx.http` is correct import for HX-Trigger header
-**FROM TYPE-HARDENING SESSION (Mar 1, 2026):**
-- `Post.objects = PostQuerySet.as_manager()` must be `objects: ClassVar[PostQuerySet] = PostQuerySet.as_manager()  # type: ignore[assignment]` for Pylance to understand custom queryset methods
-- All Django view functions must type `request: HttpRequest` explicitly — failure cascades into hundreds of "unknown" errors per untyped parameter
-- `ClassVar` must be imported from `typing` even with `from __future__ import annotations`
-- `django-stubs` QuerySet methods use `_QS = TypeVar("_QS", bound=QuerySet)` so subclass methods propagate correctly when `objects` is typed as the subclass
-- Ruff config: `target-version = "py314"` is wrong if running Python 3.11 — use `"py311"`
-- Ruff: migrations should be in `exclude` list to avoid flagging auto-generated code
-- pyrightconfig `include` should NOT duplicate paths (`blog` AND `apps` → Pylance analysed blog twice); use only `["apps", "config"]`
-- pyrightconfig: `"useLibraryCodeForTypes": true` is crucial for proper Django/Tagulous type resolution
-- pyrightconfig: `venvPath` and `venv` settings must be set for Pylance to resolve installed packages
-- `"reportUnknownAttributeAccessIssue": false` is not a valid Pylance key — use `"reportAttributeAccessIssue": "warning"` instead
-- `SIM103`: `if condition: return False; return True` → `return not condition`; two checks → `return cond1 or cond2`
-- `B905`: `zip(a, b)` must have `strict=False` (lengths known different) or `strict=True` (lengths must match) to pass strict ruff
-- `PERF401`: Loop-with-append → list comprehension for creation; `list.extend(gen)` for additions to existing list
-- `RUF005`: `list1 + [item]` → `[*list1, item]` for unpacking style
-- Ruff `isort` (`I` rules) was missing— after adding, `known-first-party` must list all project module names to properly sort internal vs external imports
-**FROM PYLANCE SIGNAL SESSION (Mar 1, 2026 Session 2):**
-- Django signal handlers: always annotate `sender: type[Any]`, `instance: Any`, `**kwargs: Any` — unannotated triggers ~40 cascade errors per handler
-- `evaluate_comment_risk` returns `dict[str, object]` — access via `.get("score", 0)` not tuple unpack; always check return type before unpacking
-- `int(result.get("score", 0))  # type: ignore[arg-type]` pattern for `dict[str, object]` to `int` narrowing
-- `int(getattr(obj, "field", default))  # type: ignore[arg-type]` pattern to safely narrow `object`-typed getattr results
-- `type(instance).objects.filter(...)  # type: ignore[union-attr]` to suppress `type[Any]` ORM access in signal handlers
-- Bare `dict` in function signatures → `dict[str, Any]` in strict mode (bare dict = `dict[Unknown, Unknown]`)
-- Always add `-> bool` (or appropriate return type) when function has explicit `return True`/`return False` branches
-- `emit_platform_webhook` calling side: "partially unknown" error goes away after fixing the callee's parameter type from bare `dict` to `dict[str, Any]`
-**FROM TAGULOUS STUBS SESSION (Mar 1, 2026 Session 3):**
-- Tagulous has NO type stubs — systematic fix is `typings/tagulous/` directory with `.pyi` files, NOT scattered `cast(Any, ...)` everywhere
-- `pyrightconfig.json` key: `"typingsPath": "typings"` — without this, Pylance ignores your typings/ directory
-- Tagulous descriptor pattern: `__get__(None, type)` returns the FIELD ITSELF (with `.tag_model`); `__get__(Model, type)` returns the MANAGER (with `.all()`, `.set_tag_string()`)
-- Per-model `objects: ClassVar[Manager[SelfType]]` is required in each stub — django's Manager is invariant, so `BaseTagModelManager` (Manager[BaseTagModel]) cannot be assigned to a function returning `QuerySet[TagModel]`
-- `TagField(tree=True)` creates a `BaseTagTreeModel` at runtime but Pylance sees `type[BaseTagModel]` — one `# type: ignore[assignment]` narrow at the entry point with a doc comment is the correct pattern
-- `post.save()  # type: ignore[misc]` is NECESSARY when Tagulous monkey-patches a model's save() — this is a genuine library limitation unresolvable without stubs for the patched model
-- `type: ignore` count in admin_views.py: 20+ → 13, all remaining are genuine gaps (8 × FileField django-stubs, 2 × tree model narrowing, 2 × Tagulous-patched save(), 1 × TextChoices comparison)
-- "38,475 code lines" in admin dashboard is the repo stat (Python + HTML + CSS + JS + migrations); actual Python-only app source is ~20,541 lines — already within 15-20k target, no code reduction needed
-- *(Claude appends new entries here each session)*
-**FROM ENTERPRISE AUDIT SESSION (Mar 2, 2026 Session 11):**
-- DJANGO_ENV-based settings routing: `os.environ.get("DJANGO_ENV", "development")` in config/settings.py determines which sub-settings to import — never hardcode the import
-- `CONN_HEALTH_CHECKS = True` in DATABASES config enables Django 4.1+ connection health verification on persistent connections — prevents stale connection errors
-- `DATA_UPLOAD_MAX_MEMORY_SIZE` and `FILE_UPLOAD_MAX_MEMORY_SIZE` cap uploads at 10MB by default — essential for production to prevent memory abuse
-- `STORAGES` dict replaces deprecated `STATICFILES_STORAGE` and `DEFAULT_FILE_STORAGE` in Django 4.2+ — use `{"default": {"BACKEND": ...}, "staticfiles": {"BACKEND": ...}}`
-- Production redis cache: use `raise ImportError(...)` instead of silent LocMemCache fallback — fail loudly in production, never silently degrade caching
-- Admin store guard in app.js: `if (document.querySelector('.admin-shell'))` prevents registering admin-only Alpine stores on public pages — avoids console errors and wasted memory
-- Theme sync interval: 120s is sufficient for multi-tab sync (was 15s = unnecessary polling) — localStorage changes dispatch `storage` events for instant cross-tab sync anyway
-- `htmx:afterRequest` handlers should be consolidated into ONE listener in app.js — multiple listeners across files (app.js + site.js) cause double-processing of HX-Trigger headers
-- `readingProgress()` Alpine component pattern: register scroll listener in `init()`, remove in `destroy()` — prevents memory leaks on HTMX page transitions where elements are swapped out
-- CSS View Transitions: `::view-transition-old(root)` and `::view-transition-new(root)` with `animation: none` prevents default cross-fade on full-page navigations — useful when HTMX handles transitions
-- CSS `*:focus-visible` ring (2px solid var(--brand) + 2px offset) provides consistent a11y focus indicators — prefer `focus-visible` over `focus` to avoid showing ring on mouse clicks
-- CSS skeleton loaders (`.skeleton`, `.skeleton-text`, `.skeleton-avatar`, `.skeleton-card`) using `linear-gradient` animation provide loading states without JS — pair with HTMX `hx-indicator`
-- Dead dependencies in requirements should be actively removed, not just commented — `drf-yasg`, `python-decouple`, `django-db-connection-pool` were vestigial from abandoned features
-- When doing mass URL namespace changes, always verify ALL references across templates + Python files — `blog:admin_*` → `admin_*` required 83 fixes across 14 files
-- `app_name = "core"` in core/urls.py is essential — without it, `{% url 'core:login' %}` raises NoReverseMatch
-- Selector dedup rule: each queryset helper lives in exactly ONE app's selectors.py; cross-app usage imports from the canonical location; NEVER copy the function to avoid drift
-**FROM UI PHASE 0-4 SESSION (Mar 2, 2026 Session 4):**
-- `color-mix(in srgb, var(--surface-1) 85%, transparent)` enables glassmorphism with CSS variables without hardcoding any rgba values — works in all major browsers (Chrome 111+, Firefox 113+, Safari 16.2+)
-- `.admin-topbar.topbar-elevated` modifier + `transition: box-shadow 200ms, background-color 200ms` on base creates smooth scroll elevation without JS transition management
-- Bootstrap 5 `btn-close` + `<button class="modal-component-close-btn btn-close">` mixes framework + custom class safely — BS close icon is purely CSS, not JS
-- `display:contents` on Alpine wrapper element (`style="display:contents"`) allows the wrapper div to be invisible to layout while still being an Alpine scope — critical for modal/drawer portals
-- `pointer-events:none` on the modal-wrap + `pointer-events:auto` on the inner dialog prevents clicks outside the dialog being silently blocked, while still allowing backdrop click capture
-- `animation: comment-reveal 0.32s ease both` + `:nth-child(n+6) { animation-delay: 300ms }` caps stagger at 300ms max — prevents late-loading comments feeling laggy on long threads
-- `will-change: transform` on post card images prevents compositor rasterisation on every frame during zoom — only add to elements that actually animate
-- Inline styles in CSS templates should NEVER be used for anything that can be expressed as a CSS class EXCEPT: (1) server-calculated `style="width: {{ X }}%"` progress bars; (2) third-party embed requirements (GTM noscript); (3) runtime JS-set dimensions
-- `shimmer-slide` keyframe: `left: -100% → left: 200%` for button shimmer needs `overflow: hidden` and `position: relative` on the parent button
-- HeadlessUI partials use `x-cloak` + `style="display:contents"` on root to prevent FOUC (flash of unstyled content) — `[x-cloak] { display: none !important }` in headless.css hides the entire structure until Alpine initialises
-**FROM META AUTO-SYNC SESSION (Session 5):**
-- Meta field auto-sync pattern: use `metaTitleManual` / `metaDescManual` / `canonicalManual` boolean flags. Set `true` only when user manually types a value DIFFERENT from the auto-generated value. This allows clearing the field to re-enable auto-sync.
-- Canonical URL auto-generation: `window.location.origin + "/" + slug + "/"` — always use `encodeURIComponent(slug)` for safety. Admin editor uses `/{slug}/`, public post form uses `/{slug}/`, page form uses `/pages/{slug}/` to match URL patterns.
-- `maxlength` in HTML inputs MUST match model `max_length` (70 for meta_title, 170 for meta_description) — prior mismatch (60/155 in admin editor) silently truncated user input below model capacity.
-- Summernote-aware word counting: prefer reading from `.note-editable` textContent (immediate) over the hidden markdown textarea (delayed by bridge sync). Use `MutationObserver` on `.summernote-bridge-host` for real-time updates as user types in rich editor.
-- `.note-modal { z-index: 2050 }` must be higher than `.note-modal-content { z-index: 2000 }` — the overlay wrapper needs to be above the admin sidebar (z-index: 100).
-- `.note-statusbar` needs explicit theme styling (`background: var(--surface-2)`, `border-top`) — Summernote default is white which breaks dark mode.
-**FROM JS DEDUP + BUGFIX SESSION (Sessions 6-7):**
-- `{# ... #}` Django comments containing `{% url %}` tags STILL trigger `NoReverseMatch` — use `{% comment %}...{% endcomment %}` blocks instead
-- Alpine 3 CDN load order: the Alpine CDN script must be LAST after all stores/components; store registration must happen inside `document.addEventListener('alpine:init', ...)` NOT at top level
-- `style="display:contents"` on Alpine x-data wrapper divs is fragile — if Alpine hasn't initialized, the element is visible with wrong display; better to use `x-cloak` and `[x-cloak] { display: none !important }` which reliably hides until Alpine init
-- JS theme logic (dark mode toggle, system preference, localStorage) was duplicated across `admin/core.js`, `site/core.js`, and `alpine-store.js` — consolidated into single `theme-core.js` loaded before Alpine
-- `overflow-y: auto` on `.admin-content` wrapper clips ALL absolutely-positioned children (Summernote dropdowns, popovers, tooltips) — NEVER set overflow on a container that holds third-party widgets with dropdown menus
-- Summernote `$host.on('summernote.change', ...)` should NOT be re-registered on HTMX `afterSwap` — leads to duplicate listeners; use `$host.off('summernote.change').on(...)` or guard with data attribute
-- Template `{# visible comments #}` with `{{` or `{%` inside are NOT actually commented out — Django's comment syntax `{# #}` is single-line only; multi-line requires `{% comment %}`
-**FROM SUMMERNOTE ROOT CAUSE FIX SESSION (Session 8 — Current):**
-- **ROOT CAUSE IDENTIFIED**: Summernote BS5 creates DOM with Bootstrap classes: `.note-editor.note-frame.card`, `.note-toolbar.card-header`, `.note-btn.btn.btn-outline-secondary.btn-sm`, `.note-editable.card-block`
-- Global `.card { padding: var(--space-6) }` bleeds 24px padding into Summernote's outer frame; `.card-header { font-size; font-weight; margin-bottom }` bloats the toolbar; `.btn { padding: 12px 16px; font-size: 16px }` bloats every toolbar button
-- Fix: three-layer isolation: (1) CSS `:not()` exclusions on global rules — `.card:not(.note-editor)`, `.btn:not(.note-btn)`, etc.; (2) JS `classList.remove('card')` / `classList.remove('card-header')` / `classList.remove('card-block')` at runtime; (3) Retained `!important` CSS + inline JS `style.setProperty()` as belt-and-suspenders
-- When adding `:not(.x)` to a global selector, specificity bumps from 0,1,0 to 0,2,0 — audit ALL overrides of that selector across the project for cascade breakage
-- `.btn-xs` using Bootstrap CSS custom properties (`--bs-btn-padding-y`) is overridden by `.btn:not(.note-btn) { padding: ... }` at higher specificity — must convert to explicit `padding` and bump selector to `.btn.btn-xs` (0,2,0) to tie
-- To discover the exact DOM structure a third-party widget creates, fetch and read its FULL source JS from CDN — documentation rarely shows the actual renderer templates with Bootstrap class reuse
-- `enforceToolbarStyles()` must be called at 4+ points after Summernote init: immediately, 100ms, 500ms, and via `onInit` callback — Summernote's own CSS applies asynchronously across multiple animation frames
-**FROM STATIC CONSOLIDATION SESSION (Mar 1, 2026 Session 9):**
-- `.env` with `DJANGO_DEBUG=False` in dev causes CSRF 403 (production-mode enforcement + no trusted origins) AND blocks `django.contrib.staticfiles` serving — always confirm DEBUG=True in dev `.env`
-- `DJANGO_CSRF_TRUSTED_ORIGINS` must include `http://127.0.0.1:8000` AND `http://localhost:8000` for local dev — empty value means no origins trusted at all
-- CSS file merging order matters: tokens/variables MUST come before rules that reference them — `foundation.css` = tokens → design-system → base (in that order)
-- JS IIFE concatenation is safe as long as each module is self-contained — verify no cross-file `var` leakage; `const`/`let`/IIFE scoping prevents collisions
-- `<meta name="htmx-config">` MUST appear BEFORE the htmx `<script>` tag — htmx reads it during initialisation; placing it after means config is ignored
-- `htmx.config.globalViewTransitions = true` in `<meta>` tag and in inline `<script>` are NOT cumulative — prefer the meta tag (declarative, single source) and remove the duplicate script assignment
-- When consolidating admin static files referenced in child `{% block extrajs %}` / `{% block extrahead %}`, move them to the admin base template and REMOVE the child block overrides — otherwise the styles/scripts load twice
-- `django-csp==4.0` in requirements does NOT enforce CSP unless `CSP_*` settings AND `CspMiddleware` are configured — mere pip install is a no-op
-- HTTP requests per page reduced from 13 CSS+JS to 6 = 54% fewer requests — significant for perceived load time on first visit (before browser cache)
-**FROM POST CREATION FIX SESSION (Mar 2, 2026 Session 10):**
-- `data-ui-confirm` on form elements causes `site.js` submit handler to call `event.preventDefault()` THEN attempt Bootstrap Modal via Alpine store — if ANY link in the Alpine→Bootstrap→Modal chain breaks, form is permanently dead (preventDefault already fired, showConfirm returns false)
-- NEVER use `data-ui-confirm` on creation/edit forms (where user explicitly fills content) — reserve it for destructive/bulk operations (delete, bulk archive) where accidental clicks are costly
-- Double jQuery: Tagulous `{{ form.media }}` loads jQuery as blocking script in `<head>`, then `summernote_assets.html` loaded CDN jQuery as deferred — deferred jQuery REPLACED window.jQuery but Tagulous's IIFE-captured `$` kept working (isolated closure). Fix: conditional `if(!window.jQuery) document.write(...)` so CDN only loads when Tagulous absent
-- `document.write('<script src="..."><\/script>')` during HTML parsing is reliable for conditional synchronous script loading — dynamically created `defer` scripts DON'T follow document-order defer semantics
-- Tagulous Select2 adaptor wraps in `(function($){...})(jQuery)` — captures jQuery at IIFE execution time, so even if window.jQuery is later overwritten, the captured `$` still works for Select2 init
-
+1. **Custom QuerySet typing**: `Post.objects: ClassVar[PostQuerySet] = PostQuerySet.as_manager()  # type: ignore[assignment]` — Pylance needs this to resolve custom queryset methods
+2. **View function typing**: All Django view functions must annotate `request: HttpRequest` explicitly — omission cascades into 10-20+ downstream unknown-type errors per function
+3. **Summernote CSS isolation**: Summernote BS5 reuses `.card`, `.card-header`, `.btn` Bootstrap classes — use `:not(.note-editor)` / `:not(.note-btn)` exclusions on global rules + JS `classList.remove()` as backup
+4. **OOB swaps**: `hx-swap-oob="true"` required when updating multiple DOM targets from one HTMX response
+5. **HTMX view guards**: `request.htmx` is falsy for non-HTMX requests — guard with `if not request.htmx: return redirect(...)` on all HTMX-only views
+6. **Toast from server**: `HX-Trigger` response header is the cleanest way to fire Alpine events (toasts, modal close) from Django — use `trigger_client_event` from `django_htmx.http`
+7. **Dark mode**: Bootstrap 5.3 `data-bs-theme` on `<html>` enables native dark mode — Alpine drives the toggle
+8. **nh3 gotcha**: `"rel"` must NOT be in `ALLOWED_HTML_ATTRIBUTES["a"]` when `link_rel` parameter is used — causes Rust panic
+9. **PostgreSQL extensions**: `pg_trgm` and `unaccent` must be created manually via `CREATE EXTENSION IF NOT EXISTS ...;`
+10. **Signal handler typing**: Django signal handlers must annotate `sender: type[Any]`, `instance: Any`, `**kwargs: Any` — unannotated triggers ~40 cascade errors per handler
+11. **Tagulous stubs**: Tagulous has NO official type stubs — use `typings/tagulous/` directory with `.pyi` files, set `"typingsPath": "typings"` in pyrightconfig
+12. **Lean tab contexts**: Loading all tabs' data in one view (`_control_common_context`) kills performance — use lean per-tab context builders with HTMX lazy-loading
+13. **CSS glassmorphism**: `color-mix(in srgb, var(--surface-1) 85%, transparent)` enables glassmorphism with CSS variables without hardcoding rgba
+14. **will-change**: Only add `will-change: transform` to elements that actually animate — prevents unnecessary compositor rasterisation
+15. **Summernote word count**: Use `MutationObserver` on `.summernote-bridge-host` for real-time updates instead of reading the hidden textarea (delayed by bridge sync)
+16. **Settings routing**: `os.environ.get("DJANGO_ENV", "development")` in config/settings.py — never hardcode the import
+17. **Connection health**: `CONN_HEALTH_CHECKS = True` in DATABASES config enables Django 4.1+ connection health verification on persistent connections
+18. **Selector dedup**: Each queryset helper lives in exactly ONE app's selectors.py; cross-app usage imports from the canonical location — never copy
+19. **data-ui-confirm**: Must NEVER go on create/edit forms — only on destructive/bulk actions; `preventDefault()` kills the form if the modal chain breaks
+20. **Conditional jQuery**: `if(!window.jQuery) document.write(...)` prevents double-load when Tagulous already includes jQuery
+21. **Alpine wrapper divs**: `display:contents` + `x-cloak` on Alpine wrapper elements makes them invisible to layout while maintaining scope
+22. **View Transitions**: `::view-transition-old(root)` / `::view-transition-new(root)` with `animation: none` prevents default cross-fade — let HTMX handle transitions
+23. **btn-xs specificity**: `.btn-xs` needs explicit `padding` + `.btn.btn-xs` selector (0,2,0 specificity) to override `:not(.note-btn)` rules
+24. **Multi-line template comments**: `{% comment %}...{% endcomment %}` for multi-line — `{# #}` is single-line only and `{# ... {%  ... #}` still triggers tag processing
+25. **Alpine CDN load order**: Alpine CDN script must load LAST after all stores/components are registered
+26. **overflow-y clips dropdowns**: `overflow-y: auto` on containers clips absolutely-positioned Summernote dropdowns/popovers — never set on containers with third-party widgets
+27. **Production cache**: Redis cache must `raise ImportError(...)` on failure, not silently fallback to LocMemCache
+28. **STORAGES dict**: Replaces deprecated `STATICFILES_STORAGE` and `DEFAULT_FILE_STORAGE` in Django 4.2+
+29. **PowerShell encoding**: `Set-Content` defaults to system encoding (CP1252 on Windows) — use Python for text replacement in files with non-ASCII characters
+30. **`:not()` specificity bump**: Adding `:not(.x)` bumps specificity from 0,1,0 to 0,2,0 — audit ALL downstream overrides for cascade breakage
 
 ---
 
@@ -1479,197 +1299,46 @@ python manage.py startapp [name] apps/[name]
 
 | ❌ Never | ✅ Always |
 |---|---|
-| Business logic in views | services.py |
-| ORM queries in views | selectors.py |
-| Logic in templates | view context or core_tags.py |
+| Business logic in views | `services.py` |
+| ORM queries in views | `selectors.py` |
+| Logic in templates | View context or `core_tags.py` |
 | `fields = '__all__'` in forms | List every field explicitly |
-| Hardcoded URLs in templates | `{% url 'namespace:name' %}` |
-| Hardcoded URLs in Python | `reverse('namespace:name', kwargs={...})` |
-| CDN imports in child templates | base.html only — once |
+| Hardcoded URLs in templates or Python | `{% url 'namespace:name' %}` / `reverse()` |
+| CDN imports in child templates | `base.html` only — once |
 | `<script>` outside `{% block extra_js %}` | Use the block |
 | `<style>` outside `{% block extra_css %}` | Use the block |
-| Alpine logic > 2 props inline | Extract to named function in app.js |
-| Missing `app_name` in urls.py | Every urls.py defines `app_name` |
-| N+1 queries (ORM in loop) | select_related / prefetch_related in selectors |
-| Secrets in settings | `environ.Env()` from .env |
-| Missing `request.htmx` check in HTMX view | Check and redirect |
-| Model not inheriting BaseModel | Always inherit BaseModel |
-| Cross-app view/form/url imports | Use core/ or Django signals |
-| HeadlessUI logic inline in template | Extract to app.js named function |
-| Creating utility already in core/ | Check core/utils.py first |
-| **[AUDIT FOUND]** DB credentials hardcoded | Use os.getenv() with NO fallback, fail loudly in production |
-| **[AUDIT FOUND]** SECRET_KEY with insecure fallback | NEVER have fallback value; fail if not in .env |
-| **[AUDIT FOUND]** No selectors.py in any app | Every app MUST have selectors.py for all ORM |
-| **[AUDIT FOUND]** No BaseModel inheritance | Every model must inherit core.models.BaseModel |
-| **[AUDIT FOUND]** Hardcoded URLs /admin/, /seo/audit/ | Replace with {% url %} or reverse() calls |
-| **[TYPE SESSION]** Missing `request: HttpRequest` in view functions | Cascades into 10-20+ downstream unknown-type errors per function | Always annotate `request: HttpRequest` in EVERY view function |
-| **[TYPE SESSION]** `Post.objects = PostQuerySet.as_manager()` untyped | Pylance sees `BaseManager[Post]`, blocking all custom queryset methods | `objects: ClassVar[PostQuerySet] = PostQuerySet.as_manager()  # type: ignore[assignment]` |
-| **[TYPE SESSION]** pyrightconfig `include` lists both `blog` and `apps` | Pylance analyses `apps/blog` twice causing duplicate diagnostics | Only include `["apps", "config"]` |
-| **[TYPE SESSION]** ruff `target-version` mismatch with actual Python | UP rules flag valid 3.11 syntax as "old" or vice versa | Match `target-version` to your actual Python version |
-| **[TYPE SESSION]** `logger = getLogger(...)` placed before imports | Causes E402 "module level import not at top of file" | Place `logger =` AFTER all imports |
-| **[SUMMERNOTE ROOT CAUSE]** Global `.card`/`.btn` rules bleed into Summernote | Summernote BS5 reuses `.card`, `.card-header`, `.btn`, `.btn-sm` Bootstrap classes on its DOM — global overrides for these classes corrupt the editor | Use `:not(.note-editor)` / `:not(.note-btn)` / `:not(.note-toolbar)` on global rules + JS `classList.remove()` |
-| **[SUMMERNOTE ROOT CAUSE]** CSS `!important` isolation alone insufficient | Even with `!important` overrides, global padding/font-size from shared Bootstrap classes still applies first paint causing FOUC before JS corrects it | Prevent bleeding at source with `:not()` selectors; keep `!important` + JS as backup only |
-| **[SPECIFICITY]** Adding `:not()` bumps specificity from 0,1,0 to 0,2,0 | Downstream selectors at 0,1,0 or 0,1,1 that override the base rule silently lose | Audit ALL overrides after adding `:not()` to a widely-used selector |
-| **[STATIC CONSOLIDATION]** Duplicate CSS/JS across child `{% block extrahead/extrajs %}` | Child blocks override parent — if base already loads the file, child block causes double-load | Move shared assets to base template, remove child block overrides |
-| **[STATIC CONSOLIDATION]** `DJANGO_DEBUG=False` in dev `.env` | Blocks staticfiles serving + enforces production CSRF → 403 + blank pages | Always verify `.env` has `DJANGO_DEBUG=True` for local development |
-| **[HTMX CONFIG]** `<meta name="htmx-config">` placed AFTER htmx `<script>` | htmx reads meta during init — late placement means config is silently ignored | Place htmx-config meta tag BEFORE the htmx script tag |
-| **[POST CREATION]** `data-ui-confirm` on create/edit forms | site.js submit handler calls preventDefault() then tries Bootstrap Modal — if chain fails, form permanently blocked | NEVER use data-ui-confirm on content creation forms; reserve for destructive/bulk actions only |
-| **[DOUBLE JQUERY]** CDN jQuery loaded unconditionally alongside Tagulous jQuery | Two jQuery instances: plugins registered on wrong instance, event handler confusion, memory waste | Use `if(!window.jQuery) document.write(...)` to conditionally load CDN jQuery only when no jQuery present |
-| **[ENTERPRISE AUDIT]** Duplicate admin URLs in blog/urls.py AND config/urls.py | 83 template/Python refs to `blog:admin_*` broke when deduped | Admin URL patterns belong ONLY in config/urls.py; blog/urls.py is for public routes |
-| **[ENTERPRISE AUDIT]** Non-namespaced `{% url 'login' %}` in templates | Breaks when core app gains `app_name = "core"` | ALL core URLs must use `core:` namespace: `{% url 'core:login' %}`, `{% url 'core:register' %}` etc. |
-| **[ENTERPRISE AUDIT]** `DJANGO_ENV` missing from settings router | Hardcoded `from .settings.development import *` can't switch envs | Use `os.environ.get("DJANGO_ENV", "development")` to route to correct settings module |
-| **[ENTERPRISE AUDIT]** Inline reading progress `x-data="{ progress: 0 }" x-init="window.addEventListener('scroll', ..."` | Memory leak — scroll listener never removed on page navigation | Extract to `readingProgress()` Alpine component with `destroy()` cleanup |
-| **[ENTERPRISE AUDIT]** Selectors duplicated across blog/selectors.py and comments/selectors.py | `get_post_comments`, `get_post_likes`, `has_user_liked_post` existed in both | Each selector lives in ONE canonical location; cross-app imports allowed for selectors |
-| **[ENTERPRISE AUDIT]** Write operations in selectors.py | `bulk_subscribe_newsletter()` in comments/selectors.py violates reads-only contract | selectors.py = reads ONLY; write ops go in services.py |
-| **[ENTERPRISE AUDIT]** PowerShell `Set-Content` corrupts non-ASCII | `Set-Content` defaults to system encoding (CP1252 on Windows) not UTF-8 | Use Python for text replacement in files with non-ASCII characters, or `Set-Content -Encoding UTF8` |
-| *(Human corrections appended here)* | |
+| Alpine logic > 2 props inline | Extract to named function in `app.js` |
+| Missing `app_name` in `urls.py` | Always defined — enables namespacing |
+| N+1 queries (ORM in loop) | `select_related` / `prefetch_related` in selectors |
+| Secrets in settings files | `environ.Env()` from `.env`, fail if missing |
+| Missing `request.htmx` check in HTMX view | Guard and redirect for non-HTMX requests |
+| Model not inheriting BaseModel | Always inherit `core.models.BaseModel` |
+| Cross-app view/form/url imports | Use `core/` or Django signals |
+| Global CSS rules bleeding into Summernote | Use `:not(.note-editor)` / `:not(.note-btn)` exclusions |
+| `data-ui-confirm` on create/edit forms | Reserve for destructive/bulk operations only |
+| Write operations in `selectors.py` | `selectors.py` = reads ONLY; writes go in `services.py` |
+| Duplicate selectors across apps | One canonical location per selector; import cross-app |
+| `<meta name="htmx-config">` after htmx script | Place htmx-config meta BEFORE the htmx script tag |
 
 ---
 
 ## 🎯 ACTIVE CONTEXT — UPDATE EVERY SESSION
 
 ```
-Last Updated:     Mar 2, 2026 (Session 11 — Enterprise Audit & Full-Stack Upgrade)
-Session Type:     MAJOR — 8-phase enterprise audit + full-stack upgrade (7 parallel agents)
-Working On:       Entire repo — settings, CSS, JS, templates, types, URLs, selectors, HTMX
-Current App:      All apps (blog, core, seo, comments, pages, tags)
-Status:           ✅ COMPLETE — All 8 phases implemented, verified, committed
+Last Updated:     Mar 3, 2026
+Working On:       SEO Admin UI rewrite (clean data-table design)
+Status:           Backend views split into 4 modules, templates rewritten
 Blocked By:       Nothing
 Next Steps:
-  1. BaseModel migration for remaining models (Agent 1 — HIGH)
-  2. HeadlessUI partials 4-13 (Agent 3 — MEDIUM)
-  3. Test suite expansion (Agent 6 — MEDIUM)
+  1. Media Manager (apps/media/) — django-filer integration (HIGH)
+  2. HeadlessUI components 4-13 (MEDIUM)
+  3. BaseModel migration for remaining models (HIGH)
+  4. Test suite expansion (MEDIUM)
+  5. SEO selector optimization — cache + DB pagination (MEDIUM)
 Open Questions:   None
-Last Commit:      "feat: enterprise audit — 8-phase full-stack upgrade"
 
-SESSION 11 CHANGES (Current — Enterprise Audit & Full-Stack Upgrade):
-  TRIGGER: Frontend audit report (HTML) analyzed → 7 deep audit subagents → 54-step plan → 7 parallel write agents
-
-  PHASE 1 — Production Infrastructure:
-    - config/settings.py: DJANGO_ENV-based routing (was hardcoded dev import)
-    - config/settings/base.py: CACHES (LocMemCache), LOGGING (per-app loggers), CONN_HEALTH_CHECKS, django_celery_beat
-    - config/settings/production.py: Silent LocMemCache fallback → ImportError, deprecated STATICFILES_STORAGE → STORAGES dict
-    - requirements/base.txt: +django-solo, +django-celery-beat
-    - requirements/development.txt: -black, -isort, -flake8, -pylint (replaced by ruff)
-    - requirements/production.txt: -drf-yasg, -python-decouple, -django-db-connection-pool
-    - .env.example: deduplicated (removed entire copy-pasted bottom half)
-
-  PHASE 2 — Template & JS Dedup:
-    - base.html: Removed inline toast stack + Bootstrap confirm modal (HeadlessUI partials canonical)
-    - base.html: Wrapped layout.css in {% if request.user.is_staff %} (admin-only)
-    - base.html: Fixed all non-namespaced URLs to core: namespace
-    - feed_panel.html: Removed Alpine x-on:input.debounce (HTMX is sole search mechanism)
-    - site.js: Replaced $store.ui.notify → dispatchToast(), added showModalConfirm() utility
-    - site.js: Removed duplicate htmx:afterRequest handler (consolidated into app.js)
-    - app.js: Consolidated htmx:afterRequest (handles showToast + ui:feedback), guarded admin store
-
-  PHASE 3 — Selector Dedup & Boundaries:
-    - blog/selectors.py: Removed 6 duplicate functions, added get_post_reaction_counts()
-    - blog/views.py: Refactored 4 helpers to use selectors instead of inline ORM
-    - comments/selectors.py: Removed bulk_subscribe_newsletter (write op in read-only layer)
-
-  PHASE 4 — Type Annotation Hardening (~85 annotations across 10 files):
-    - blog/models.py (10 return types), blog/services.py (23 functions), blog/middleware.py
-    - pages/views.py (15 funcs), pages/models.py (ClassVar + 9 types), pages/selectors.py (docstrings)
-    - seo/views.py (15 funcs), seo/middleware.py, comments/models.py (6 __str__), core/views.py
-
-  PHASE 5 — URL & Routing Hygiene:
-    - blog/urls.py: Removed 12 duplicate admin URL patterns (kept in config/urls.py only)
-    - seo/urls.py: Added trailing slashes to 6 paths
-    - core/urls.py: Added app_name = "core"
-    - 83 blog:admin_* references → admin_* across 14 files
-    - Non-namespaced login/logout/profile/register → core: namespace in base.html + partials
-
-  PHASE 6 — CSS Enterprise Polish:
-    - foundation.css: focus-visible ring, View Transitions CSS, dark mode body transition
-    - foundation.css: card hover effects (.card:not(.note-editor)), skeleton loader classes
-    - site/core.css: Removed duplicate box-sizing rule
-
-  PHASE 7 — Database & Model Hardening:
-    - CONN_HEALTH_CHECKS=True in DATABASES config
-    - DATA_UPLOAD_MAX_MEMORY_SIZE + FILE_UPLOAD_MAX_MEMORY_SIZE (10MB caps)
-    - Applied 21 django-celery-beat migrations
-
-  PHASE 8 — HTMX + Auth UX:
-    - post_detail.html: Inline reading progress → x-data="readingProgress()" (fixes memory leak)
-    - dashboard.html: HTMX pagination (hx-get, hx-target, hx-select, hx-swap, hx-push-url)
-    - login.html: Alpine password toggle, submit loading state, autofocus
-    - register.html: form-control classes, Alpine password toggle, submit loading state
-    - app.js: readingProgress() Alpine component with proper destroy() cleanup
-
-  VERIFICATION:
-    - Ruff: ✅ "All checks passed!" (0 violations)
-    - Django: ✅ "System check identified no issues"
-    - Server: ✅ 200 OK at http://127.0.0.1:8000/
-    - Migrations: ✅ 21 django-celery-beat migrations applied
-
-PHASE SUMMARY (All Sessions):
-  ✅ Phase 0 — Foundation: animations.css, headless.css, app.js created; base.html wired
-  ✅ Phase 1 — Zero inline styles: all 71 inline styles across 20+ templates eliminated
-  ✅ Phase 2 — Admin micro-interactions: topbar glassmorphism, row-remove, Ctrl+S, hover states
-  ✅ Phase 3 — Public micro-interactions: image zoom, progress glow, comment stagger, reaction spring
-  ✅ Phase 4 — HeadlessUI HTML partials: modal, toast-stack, drawer (MVP set)
-  ✅ Phase 5 — Static consolidation: CSS 11→5, JS 8→4
-  ✅ Phase 6 — Post/Page creation fix + double jQuery fix
-  ✅ Phase 7 — Enterprise audit 8-phase full-stack upgrade (Session 11)
-
-RUFF STATUS: ✅ "All checks passed!" (0 violations)
-DJANGO CHECK: ✅ "System check identified no issues"
-
-COMPLETED ACROSS ALL SESSIONS:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-✅ Post.objects: ClassVar[PostQuerySet] — ~50+ cascade Pylance errors fixed
-✅ 36 admin_views.py functions annotated with request: HttpRequest
-✅ 32 views.py functions annotated with request: HttpRequest
-✅ Ruff 9 rule categories, 0 violations
-✅ pyrightconfig.json: venvPath, useLibraryCodeForTypes, correct includes
-✅ Silent exceptions log via logger.warning — zero silent failures
-✅ SSE WSGI blocking stream → polling endpoint
-✅ Post model: is_published, get_reading_time_display(), can_be_edited_by()
-✅ apps/blog/signals.py: all params typed, TextChoices fixed, evaluate_comment_risk call corrected
-✅ apps/core/integrations.py: dict[str, Any] payload, -> bool return type
-✅ handler404 + handler500 in urls.py + views.py + error templates
-✅ site_appearance() context processor: 5 DB hits/request → 0 (cached 5 min)
-✅ get_category_max_depth() cached with 5-min TTL
-✅ SeoRedirectRule save/delete invalidates middleware redirect cache
-✅ INTERNAL_IPS in development.py
-✅ SESSION_ENGINE=cache + whitenoise in production.py + MIDDLEWARE
-✅ get_all_tags_with_counts() alias in tags/selectors.py
-✅ .env.example comprehensive rewrite + dedup
-✅ AGENTS.md: single canonical version, onboarding guide, feature-add guides
-✅ SECRET_KEY raises ValueError (already hardened — no fallback)
-✅ POSTGRES_* raises ValueError (already hardened — no fallback)
-✅ selectors.py pattern fully applied in all apps (blog, seo, comments, tags, pages)
-✅ typings/tagulous/ stub package: TagField/SingleTagField descriptors + tree model attributes
-✅ admin_views.py: cast(Any) × 7 eliminated; type:ignore[union-attr] × 8 eliminated; cast import removed
-✅ animations.css, headless.css, app.js created (Phase 0)
-✅ 71 inline styles across 20+ templates eliminated (Phase 1) — 3 legitimate remain
-✅ Admin micro-interactions: topbar glassmorphism, .is-removing row animation, Ctrl+S, hover states
-✅ Public micro-interactions: image zoom, progress glow, comment stagger, reaction spring
-✅ HeadlessUI HTML partials: _modal.html, _toast_stack.html, _drawer.html wired into base.html
-✅ JS theme dedup: theme-core.js consolidates dark mode
-✅ Meta auto-sync: editor.html, post_form.html, page_form.html
-✅ Summernote root cause fix: :not() exclusions + JS class stripping
-✅ CSS consolidated: 11 files → 5; JS consolidated: 8 files → 4
-✅ Post/Page creation fix: removed data-ui-confirm + double jQuery fix
-✅ DJANGO_ENV-based settings routing (config/settings.py)
-✅ CACHES + LOGGING + CONN_HEALTH_CHECKS in base.py
-✅ Production: STORAGES dict (replaces deprecated STATICFILES_STORAGE), ImportError on missing redis
-✅ Requirements: cleaned dead deps (black/isort/flake8/pylint/drf-yasg/decouple/db-pool)
-✅ CSS: focus-visible ring, View Transitions, dark mode transition, card hover, skeleton loaders
-✅ JS: admin store guarded, theme sync 15s→120s, afterRequest consolidated, readingProgress() component
-✅ Templates: base.html deduped (toast/modal removed), feed_panel search-only, HTMX pagination
-✅ Auth pages: Alpine password toggles, loading states, form-control classes
-✅ Type annotations: ~85 annotations across 10 files (models, views, services, middleware)
-✅ URL hygiene: admin URL dedup, seo trailing slashes, core app_name, 83 refs fixed
-✅ Selector dedup: 6 duplicates removed, views refactored to use selectors
-✅ Encoding fix: 4 files CP1252→UTF-8 (em-dashes)
-✅ django-celery-beat: added + 21 migrations applied
-
-REMAINING ISSUES (Known/Accepted):
-🟡 HeadlessUI components: 3/13 partials MVP'd (_modal, _toast_stack, _drawer) — remaining 10 not started
-🟠 BaseModel not inherited by all models — pending migration planning (Agent 1 — HIGH)
-3 remaining style= are all legitimate (2 dynamic server %widths + 1 GTM noscript)
+RUFF STATUS:      ✅ All checks passed (0 violations)
+DJANGO CHECK:     ✅ System check identified no issues
 ```
 
 ---
@@ -1690,9 +1359,8 @@ REMAINING ISSUES (Known/Accepted):
 13. ZERO cross-app direct imports — use core/ or signals
 14. ALL apps self-contained under apps/ with app_name in urls.py
 15. ALL HeadlessUI components = app.js function + HTML partial + components.css
-```
 
 ---
 
 *Living document. Claude grows it every session. Team grows it. Never becomes stale.*
-*Audit: ✅ | HeadlessUI: 3/13 MVP | Last session: Mar 2 2026 — Session 11 Enterprise Audit & Full-Stack Upgrade | Model: Sonnet / Opus / Haiku*
+*HeadlessUI: 3/13 done | Last clean rewrite: Mar 3, 2026*

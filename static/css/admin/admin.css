@@ -1397,24 +1397,76 @@ details > summary:hover {
     line-height: 1.2;
 }
 
-.admin-control-kanban {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(200px, 1fr));
-    gap: 10px;
+/* ── SEO Summary Bar (replaces KPI card grid) ── */
+.seo-summary-bar {
+    display: flex;
+    gap: 1.5rem;
+    padding: 0.75rem 1rem;
+    background: var(--bs-tertiary-bg);
+    border: 1px solid var(--bs-border-color);
+    border-radius: var(--bs-border-radius);
 }
 
-.admin-control-kanban .lane {
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    background: var(--surface-2);
-    padding: 8px;
-    min-height: 120px;
+.seo-summary-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
 }
 
-.admin-control-kanban .lane h6 {
+.seo-summary-item .label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--bs-secondary-color);
+}
+
+.seo-summary-item strong {
+    font-size: 1.25rem;
     font-weight: 700;
-    margin-bottom: 8px;
+    line-height: 1;
+    color: var(--bs-emphasis-color);
 }
+
+.seo-summary-item.text-danger strong {
+    color: var(--bs-danger);
+}
+
+/* ── Status Filter Pills ── */
+.seo-status-pills {
+    display: inline-flex;
+    gap: 0.25rem;
+    padding: 0.25rem;
+    background: var(--bs-tertiary-bg);
+    border-radius: var(--bs-border-radius);
+}
+
+.seo-status-pill {
+    padding: 0.25rem 0.75rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+    border: none;
+    border-radius: var(--bs-border-radius-sm);
+    background: transparent;
+    color: var(--bs-secondary-color);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    text-decoration: none;
+}
+
+.seo-status-pill:hover {
+    background: var(--bs-body-bg);
+    color: var(--bs-emphasis-color);
+}
+
+.seo-status-pill.active {
+    background: var(--bs-body-bg);
+    color: var(--bs-primary);
+    font-weight: 600;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+}
+
+
 
 .admin-control-tabs {
     display: flex;
@@ -1508,22 +1560,7 @@ details > summary:hover {
     border-color: color-mix(in srgb, var(--warning) 86%, var(--surface-1));
 }
 
-.lane-card {
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    background: var(--surface-1);
-    padding: 8px;
-    margin-bottom: 8px;
-}
 
-.lane-card.compact {
-    padding: 6px;
-}
-
-.lane-card-title {
-    font-weight: 700;
-    font-size: 0.86rem;
-}
 
 /* Explicit padding needed: .btn:not(.note-btn) in components.css at 0,2,0
    overrides Bootstrap CSS-variable-based sizing at 0,1,0. */
@@ -1532,17 +1569,7 @@ details > summary:hover {
     font-size: 0.72rem;
 }
 
-@media (max-width: 1300px) {
-    .admin-control-kanban {
-        grid-template-columns: repeat(2, minmax(200px, 1fr));
-    }
-}
 
-@media (max-width: 768px) {
-    .admin-control-kanban {
-        grid-template-columns: 1fr;
-    }
-}
 
 
 /* ── WordPress-style Category Management ──────────────────────────────────── */

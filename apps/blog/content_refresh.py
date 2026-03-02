@@ -1,6 +1,7 @@
 ﻿from __future__ import annotations
 
-from datetime import timedelta
+from datetime import datetime, timedelta
+from typing import Any
 
 from django.utils import timezone
 
@@ -9,7 +10,7 @@ from pages.models import Page
 from .models import ContentRefreshSettings, Post
 
 
-def _refresh_queryset(queryset, cutoff, now, max_items, force=False):
+def _refresh_queryset(queryset: Any, cutoff: datetime, now: datetime, max_items: int, force: bool = False) -> int:
     if not force:
         queryset = queryset.filter(updated_at__lt=cutoff)
     target_ids = list(queryset.order_by("updated_at").values_list("id", flat=True)[:max_items])
@@ -18,7 +19,7 @@ def _refresh_queryset(queryset, cutoff, now, max_items, force=False):
     return queryset.model.objects.filter(id__in=target_ids).update(updated_at=now)
 
 
-def run_content_date_refresh(force=False, now=None):
+def run_content_date_refresh(force: bool = False, now: datetime | None = None) -> dict[str, Any]:
     now = now or timezone.now()
     settings = ContentRefreshSettings.get_solo()
 

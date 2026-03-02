@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
+from typing import Any
 from urllib.parse import urlparse
 
 from django.contrib.contenttypes.models import ContentType
@@ -39,10 +40,10 @@ class CheckResult:
     message: str
     suggested_fix: str = ""
     autofixable: bool = False
-    details: dict = field(default_factory=dict)
+    details: dict[str, Any] = field(default_factory=lambda: {})
 
 
-def _tokens(text: str):
+def _tokens(text: str) -> list[str]:
     if not text:
         return []
     return [
@@ -52,7 +53,7 @@ def _tokens(text: str):
     ]
 
 
-def _focus_term(adapter):
+def _focus_term(adapter: Any) -> str:
     candidates = _tokens(
         " ".join(
             part for part in [adapter.title, adapter.meta_title, adapter.meta_description] if part
@@ -61,15 +62,15 @@ def _focus_term(adapter):
     return candidates[0] if candidates else ""
 
 
-def _is_absolute_url(url: str):
+def _is_absolute_url(url: str) -> bool:
     if not url:
         return False
     parsed = urlparse(url)
     return bool(parsed.scheme and parsed.netloc)
 
 
-def _extract_links(html: str):
-    links = []
+def _extract_links(html: str) -> list[str]:
+    links: list[str] = []
     for pair in LINK_RE.findall(html or ""):
         href = pair[0] or pair[1]
         if href:
@@ -77,40 +78,40 @@ def _extract_links(html: str):
     return links
 
 
-def _extract_internal_links(html: str):
+def _extract_internal_links(html: str) -> list[str]:
     links = _extract_links(html)
     return [link for link in links if link.startswith("/") or "://" not in link]
 
 
-def _extract_external_links(html: str):
+def _extract_external_links(html: str) -> list[str]:
     links = _extract_links(html)
     return [link for link in links if link.startswith("http://") or link.startswith("https://")]
 
 
-def _extract_image_tags(html: str):
+def _extract_image_tags(html: str) -> list[str]:
     return IMG_RE.findall(html or "")
 
 
-def _extract_alt_value(img_tag: str):
+def _extract_alt_value(img_tag: str) -> str:
     match = ALT_RE.search(img_tag)
     if not match:
         return ""
     return (match.group(1) or match.group(2) or "").strip()
 
 
-def _has_schema(metadata: dict):
-    json_ld = metadata.get("json_ld") or []
+def _has_schema(metadata: dict[str, Any]) -> bool:
+    json_ld: list[Any] = metadata.get("json_ld") or []
     return bool(json_ld)
 
 
-def _is_indexable(metadata: dict):
+def _is_indexable(metadata: dict[str, Any]) -> bool:
     robots = (metadata.get("robots") or "").replace(" ", "").lower()
     if not robots:
         return True
     return "noindex" not in robots
 
 
-def _estimate_cannibalization(adapter):
+def _estimate_cannibalization(adapter: Any) -> int:
     title = (adapter.title or "").strip()
     if not title:
         return 0
@@ -121,7 +122,7 @@ def _estimate_cannibalization(adapter):
     ).count()
 
 
-def run_checks(adapter, metadata: dict, *, min_internal_links: int = 3):
+def run_checks(adapter: Any, metadata: dict[str, Any], *, min_internal_links: int = 3) -> list[CheckResult]:
     focus = _focus_term(adapter)
     title = (metadata.get("title") or adapter.title or "").strip()
     description = (metadata.get("description") or "").strip()
@@ -311,7 +312,7 @@ def run_checks(adapter, metadata: dict, *, min_internal_links: int = 3):
             suggested_fix="Ensure outbound links use safe rel policy.",
         )
     )
-    og = metadata.get("open_graph") or {}
+    og: dict[str, Any] = metadata.get("open_graph") or {}
     og_ok = bool(og.get("title") and og.get("description") and og.get("url"))
     results.append(
         CheckResult(
@@ -323,7 +324,7 @@ def run_checks(adapter, metadata: dict, *, min_internal_links: int = 3):
             autofixable=True,
         )
     )
-    tw = metadata.get("twitter") or {}
+    tw: dict[str, Any] = metadata.get("twitter") or {}
     tw_ok = bool(tw.get("card") and tw.get("title") and tw.get("description"))
     results.append(
         CheckResult(

@@ -1,7 +1,7 @@
 ﻿from __future__ import annotations
 
 import math
-from typing import ClassVar
+from typing import Any, ClassVar
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
@@ -15,22 +15,22 @@ from blog.models import render_markdown_to_safe_html
 User = get_user_model()
 
 
-class PageQuerySet(models.QuerySet):
-    def delete(self, *args, **kwargs):
+class PageQuerySet(models.QuerySet["Page"]):
+    def delete(self, *args: Any, **kwargs: Any) -> tuple[int, dict[str, int]]:
         from .policies import POLICY_SLUGS
 
         if self.filter(slug__in=POLICY_SLUGS).exists():
             raise ValidationError("Policy pages are protected and cannot be deleted.")
         return super().delete(*args, **kwargs)
 
-    def published(self):
+    def published(self) -> PageQuerySet:
         return self.filter(
             status=Page.Status.PUBLISHED,
             published_at__isnull=False,
             published_at__lte=timezone.now(),
         )
 
-    def visible_to(self, user):
+    def visible_to(self, user: Any) -> PageQuerySet:
         visible = models.Q(
             status=Page.Status.PUBLISHED,
             published_at__isnull=False,
@@ -40,7 +40,7 @@ class PageQuerySet(models.QuerySet):
             return self.filter(visible | models.Q(author=user))
         return self.filter(visible)
 
-    def search(self, query: str):
+    def search(self, query: str) -> PageQuerySet:
         text = (query or "").strip()
         if not text:
             return self
@@ -138,7 +138,7 @@ class Page(models.Model):
         self.published_at = timezone.now()
         self.save(update_fields=["status", "published_at", "updated_at"])
 
-    def record_revision(self, editor=None, note="") -> PageRevision:
+    def record_revision(self, editor: Any = None, note: str = "") -> PageRevision:
         return PageRevision.objects.create(
             page=self,
             editor=editor,
@@ -150,14 +150,14 @@ class Page(models.Model):
             note=note,
         )
 
-    def delete(self, *args, **kwargs):
+    def delete(self, *args: Any, **kwargs: Any) -> tuple[int, dict[str, int]]:
         from .policies import POLICY_SLUGS
 
         if self.slug in POLICY_SLUGS:
             raise ValidationError("Policy pages are protected and cannot be deleted.")
         return super().delete(*args, **kwargs)
 
-    def save(self, *args, **kwargs) -> None:
+    def save(self, *args: Any, **kwargs: Any) -> None:
         if not self.slug:
             self.slug = self._build_unique_slug()
 

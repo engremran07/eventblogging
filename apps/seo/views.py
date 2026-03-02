@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from typing import Any
+from typing import Any, cast
 
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.decorators import login_required
@@ -50,7 +50,7 @@ def _clip_passages(markdown_text: str, query_terms: set[str], *, limit: int = 2)
     lines = [line.strip() for line in markdown_text.splitlines() if line.strip()]
     if not lines:
         return []
-    ranked = []
+    ranked: list[tuple[float, str]] = []
     for line in lines:
         line_tokens = _token_set(line)
         overlap = len(query_terms & line_tokens)
@@ -129,7 +129,7 @@ def _score_post(query_vector: list[float], query_tokens: set[str], post: Post, m
         + (0.05 * freshness)
     )
     return {
-        "id": post.id,
+        "id": post.pk,
         "type": "post",
         "title": post.title,
         "url": post.get_absolute_url(),
@@ -169,7 +169,7 @@ def _score_page(query_vector: list[float], query_tokens: set[str], page: Page) -
         + (0.05 * freshness)
     )
     return {
-        "id": page.id,
+        "id": page.pk,
         "type": "page",
         "title": page.title,
         "url": page.get_absolute_url(),
@@ -228,25 +228,28 @@ def related_semantic(request: HttpRequest, post_id: int) -> JsonResponse:
         Post.objects.visible_to(request.user).select_related("author", "primary_topic"),
         pk=post_id,
     )
-    related = get_related_posts_algorithmic(
-        request.user,
-        anchor_post=anchor,
-        limit=min(max(_safe_int(request.GET.get("limit", "8"), 8), 1), 20),
-        with_explanations=True,
+    related: list[dict[str, Any]] = cast(
+        "list[dict[str, Any]]",
+        get_related_posts_algorithmic(
+            request.user,
+            anchor_post=anchor,
+            limit=min(max(_safe_int(request.GET.get("limit", "8"), 8), 1), 20),
+            with_explanations=True,
+        ),
     )
     return JsonResponse(
         {
             "post": {
-                "id": anchor.id,
+                "id": anchor.pk,
                 "title": anchor.title,
                 "url": anchor.get_absolute_url(),
             },
             "count": len(related),
             "results": [
                 {
-                    "id": item["post"].id,
-                    "title": item["post"].title,
-                    "url": item["post"].get_absolute_url(),
+                    "id": item["post"].pk,  # type: ignore[union-attr]
+                    "title": item["post"].title,  # type: ignore[union-attr]
+                    "url": item["post"].get_absolute_url(),  # type: ignore[union-attr]
                     "recommendation_type": item["recommendation_type"],
                     "score": round(item["total_score"], 5),
                     "components": item["components"],
@@ -328,7 +331,7 @@ def reindex_post(request: HttpRequest, post_id: int) -> JsonResponse:
     return JsonResponse(
         {
             "ok": True,
-            "snapshot_id": snapshot.id,
+            "snapshot_id": snapshot.pk,
             "score": snapshot.score,
             "critical_count": snapshot.critical_count,
             "warning_count": snapshot.warning_count,

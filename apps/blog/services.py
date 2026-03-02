@@ -4,11 +4,11 @@ import hashlib
 import logging
 import math
 import re
-from collections import Counter
+from collections import Counter, defaultdict
+from collections.abc import Iterable, Mapping
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 
-from django.contrib.auth.models import User
 from django.contrib.postgres.search import SearchQuery, SearchRank, SearchVector
 from django.core.cache import cache
 from django.core.paginator import Paginator
@@ -217,7 +217,7 @@ def _taxonomy_overlap(anchor_taxonomy: dict[str, set[str]], candidate_taxonomy: 
     return (0.5 * tag_overlap) + (0.35 * category_overlap) + (0.15 * topic_overlap)
 
 
-def _lexical_rank_map(post_ids, seed_text: str):
+def _lexical_rank_map(post_ids: list[object], seed_text: str) -> dict[object, float]:
     seed_text = (seed_text or "").strip()
     if not post_ids or not seed_text:
         return {}
@@ -271,35 +271,35 @@ def get_related_posts_algorithmic(
         return []
 
     seed_text = (query_text or "").strip()
-    anchor_id = anchor_post.pk if anchor_post else None
+    anchor_id: object = anchor_post.pk if anchor_post else None
 
     if not seed_text:
         if anchor_post:
             seed_text = _post_document(anchor_post)
         else:
             anchor_post = candidates[0]
-            anchor_id = anchor_post.id
+            anchor_id = anchor_post.pk
             seed_text = _post_document(anchor_post)
 
     seed_vector = (
         _get_post_vector(anchor_post) if anchor_post and not query_text.strip() else build_embedding_vector(seed_text)
     )
-    anchor_taxonomy = _taxonomy_sets_for_post(anchor_post) if anchor_post else None
+    anchor_taxonomy: dict[str, set[str]] = _taxonomy_sets_for_post(anchor_post) if anchor_post else {"tags": set(), "categories": set(), "topic": set()}
 
-    candidate_ids = [post.id for post in candidates if post.id != anchor_id]
-    lexical_ranks = _lexical_rank_map(candidate_ids, seed_text)
+    candidate_ids: list[object] = [post.pk for post in candidates if post.pk != anchor_id]
+    lexical_ranks: dict[object, float] = _lexical_rank_map(candidate_ids, seed_text)
     max_views = max(post.views_count for post in candidates) or 1
     now = timezone.now()
 
-    ranked = []
+    ranked: list[dict[str, Any]] = []
     for post in candidates:
-        if anchor_id and post.id == anchor_id:
+        if anchor_id and post.pk == anchor_id:
             continue
 
         candidate_vector = _get_post_vector(post)
         semantic_raw = cosine_similarity(seed_vector, candidate_vector)
         semantic_score = max(min((semantic_raw + 1.0) / 2.0, 1.0), 0.0)
-        lexical_score = lexical_ranks.get(post.id, 0.0)
+        lexical_score: float = float(lexical_ranks.get(post.pk, 0.0))
         taxonomy_score = _taxonomy_overlap(anchor_taxonomy, _taxonomy_sets_for_post(post))
         behavior_score = min((post.views_count / max_views), 1.0)
 
@@ -345,19 +345,19 @@ def get_related_posts_algorithmic(
     ranked.sort(
         key=lambda item: (
             item["total_score"],
-            item["post"].published_at or item["post"].created_at,
+            item["post"].published_at or item["post"].created_at,  # type: ignore[union-attr]
         ),
         reverse=True,
     )
 
-    top_ranked = ranked[:limit]
+    top_ranked: list[dict[str, Any]] = ranked[:limit]
     if with_explanations:
         return top_ranked
     return [item["post"] for item in top_ranked]
 
 
-def _get_auto_tagging_settings():
-    defaults = {
+def _get_auto_tagging_settings() -> dict[str, Any]:
+    defaults: dict[str, Any] = {
         "enabled": True,
         "max_tags": 6,
         "max_total_tags": 12,
@@ -391,7 +391,7 @@ def _extract_heading_text(markdown_text: str) -> str:
     return " ".join(heading for heading in headings if heading)
 
 
-def _apply_text_weights(weighted: dict[str, float], text: str, factor: float) -> None:
+def _apply_text_weights(weighted: defaultdict[str, float], text: str, factor: float) -> None:
     if not text:
         return
     for token in _tokenize_text(text):
@@ -399,7 +399,7 @@ def _apply_text_weights(weighted: dict[str, float], text: str, factor: float) ->
 
 
 def _weighted_token_profile(post: Post) -> dict[str, float]:
-    weighted = Counter()
+    weighted: defaultdict[str, float] = defaultdict(float)
 
     title = post.title or ""
     excerpt = post.excerpt or ""
@@ -431,8 +431,8 @@ def _weighted_token_profile(post: Post) -> dict[str, float]:
     return weighted
 
 
-def _collect_candidate_terms(tag_model, fallback_terms, limit=260):
-    terms = []
+def _collect_candidate_terms(tag_model: type[Any], fallback_terms: Iterable[str], limit: int = 260) -> list[str]:
+    terms: list[str] = []
     try:
         terms.extend(list(tag_model.objects.order_by("-count", "name").values_list("name", flat=True)[:limit]))
     except Exception:
@@ -443,7 +443,7 @@ def _collect_candidate_terms(tag_model, fallback_terms, limit=260):
     return terms
 
 
-def _collect_terms_matching_top_tokens(tag_model, token_weights, limit=120):
+def _collect_terms_matching_top_tokens(tag_model: type[Any], token_weights: Mapping[str, float], limit: int = 120) -> list[str]:
     if not token_weights:
         return []
     top_tokens = [
@@ -461,7 +461,7 @@ def _collect_terms_matching_top_tokens(tag_model, token_weights, limit=120):
         return []
 
 
-def _score_candidate_term(term, token_weights, raw_text, *, scope=TaxonomySynonymGroup.Scope.ALL):
+def _score_candidate_term(term: str, token_weights: Mapping[str, float], raw_text: str, *, scope: str = TaxonomySynonymGroup.Scope.ALL) -> float:
     normalized = term.replace("/", " ").replace("-", " ").replace("_", " ").lower()
     term_tokens = _tokenize_text(normalized)
     if not term_tokens:
@@ -491,8 +491,8 @@ def _score_candidate_term(term, token_weights, raw_text, *, scope=TaxonomySynony
     return score
 
 
-def _rule_terms(token_weights, rule_map):
-    hits = set()
+def _rule_terms(token_weights: Mapping[str, float], rule_map: dict[str, set[str]]) -> set[str]:
+    hits: set[str] = set()
     active_tokens = set(token_weights.keys())
     for term, triggers in rule_map.items():
         if active_tokens & triggers:
@@ -501,15 +501,15 @@ def _rule_terms(token_weights, rule_map):
 
 
 def _rank_auto_terms(
-    candidates,
-    token_weights,
-    raw_text,
-    max_items,
-    min_score,
+    candidates: list[str],
+    token_weights: Mapping[str, float],
+    raw_text: str,
+    max_items: int,
+    min_score: float,
     *,
-    scope=TaxonomySynonymGroup.Scope.ALL,
-):
-    scored = []
+    scope: str = TaxonomySynonymGroup.Scope.ALL,
+) -> list[str]:
+    scored: list[tuple[float, str]] = []
     for candidate in candidates:
         score = _score_candidate_term(candidate, token_weights, raw_text, scope=scope)
         if score >= min_score:
@@ -519,7 +519,7 @@ def _rank_auto_terms(
 
 
 def _expand_category_ancestors(categories: set[str]) -> set[str]:
-    expanded = set()
+    expanded: set[str] = set()
     for category in categories:
         parts = [part for part in category.split("/") if part]
         for depth in range(1, len(parts) + 1):
@@ -528,13 +528,13 @@ def _expand_category_ancestors(categories: set[str]) -> set[str]:
 
 
 def _rank_terms_by_relevance(
-    terms,
-    token_weights,
-    raw_text,
+    terms: Iterable[str],
+    token_weights: Mapping[str, float],
+    raw_text: str,
     *,
-    scope=TaxonomySynonymGroup.Scope.ALL,
-):
-    scored = [(_score_candidate_term(term, token_weights, raw_text, scope=scope), term) for term in terms]
+    scope: str = TaxonomySynonymGroup.Scope.ALL,
+) -> list[str]:
+    scored: list[tuple[float, str]] = [(_score_candidate_term(term, token_weights, raw_text, scope=scope), term) for term in terms]
     scored.sort(key=lambda row: (row[0], len(row[1])), reverse=True)
     return [term for _, term in scored]
 
@@ -648,7 +648,7 @@ def apply_auto_taxonomy_to_post(post: Post) -> dict[str, Any]:
             if segment and segment not in manual_tags and segment not in category_derived_tags:
                 category_derived_tags.append(segment)
 
-    final_tags = []
+    final_tags: list[str] = []
     for tag in ranked_manual_tags + ranked_auto_tags + category_derived_tags:
         if tag not in final_tags:
             final_tags.append(tag)
@@ -684,10 +684,10 @@ def apply_auto_taxonomy_to_post(post: Post) -> dict[str, Any]:
     }
 
 
-def apply_post_filters(queryset: QuerySet[Post], params: dict[str, Any]) -> QuerySet[Post]:
+def apply_post_filters(queryset: QuerySet[Post], params: Mapping[str, Any]) -> QuerySet[Post]:
     query = params.get("q", "").strip()
     if query:
-        queryset = queryset.search(query)
+        queryset = cast("QuerySet[Post]", queryset.search(query))  # type: ignore[attr-defined]
 
     topic = params.get("topic", "").strip()
     if topic:
@@ -699,8 +699,8 @@ def apply_post_filters(queryset: QuerySet[Post], params: dict[str, Any]) -> Quer
 
     category = params.get("category", "").strip()
     if category:
-        category_match = Post.categories.tag_model.objects.filter(name__iexact=category).with_descendants()
-        if category_match.exists():
+        category_match: Any = Post.categories.tag_model.objects.filter(name__iexact=category).with_descendants()  # type: ignore[attr-defined]
+        if category_match.exists():  # type: ignore[union-attr]
             queryset = queryset.filter(categories__in=category_match)
         else:
             queryset = queryset.filter(categories__name__iexact=category)
@@ -715,7 +715,7 @@ def apply_post_filters(queryset: QuerySet[Post], params: dict[str, Any]) -> Quer
     elif mode == "featured":
         queryset = queryset.filter(is_featured=True)
 
-    queryset = queryset.with_reaction_counts()
+    queryset = cast("QuerySet[Post]", queryset.with_reaction_counts())  # type: ignore[attr-defined]
 
     sort = params.get("sort", "latest")
     if sort == "trending":
@@ -742,9 +742,9 @@ def apply_post_filters(queryset: QuerySet[Post], params: dict[str, Any]) -> Quer
 
 def get_sidebar_data() -> dict[str, Any]:
     try:
-        tag_cloud = Post.tags.tag_model.objects.weight(min=1, max=6).order_by("-count", "name")[:36]
-        topic_cloud = Post.primary_topic.tag_model.objects.weight(min=1, max=6).order_by("-count", "name")[:20]
-        category_tree = Post.categories.tag_model.objects.as_nested_list()
+        tag_cloud = Post.tags.tag_model.objects.weight(min=1, max=6).order_by("-count", "name")[:36]  # type: ignore[attr-defined]
+        topic_cloud = Post.primary_topic.tag_model.objects.weight(min=1, max=6).order_by("-count", "name")[:20]  # type: ignore[attr-defined]
+        category_tree = Post.categories.tag_model.objects.as_nested_list()  # type: ignore[attr-defined]
     except Exception:
         logger.warning("Failed to load sidebar tag/topic/category data", exc_info=True)
         tag_cloud = []
@@ -759,7 +759,7 @@ def get_sidebar_data() -> dict[str, Any]:
 
 
 def get_tagulous_live_metrics(limit: int = 10) -> dict[str, Any]:
-    def serialize_tag(tag):
+    def serialize_tag(tag: Any) -> dict[str, Any]:
         return {
             "name": tag.name,
             "label": getattr(tag, "label", tag.name),
@@ -768,16 +768,16 @@ def get_tagulous_live_metrics(limit: int = 10) -> dict[str, Any]:
             "level": getattr(tag, "level", None),
         }
 
-    metrics = {
+    metrics: dict[str, Any] = {
         "top_tags": [],
         "top_topics": [],
         "top_categories": [],
         "max_category_depth_live": 0,
     }
     try:
-        top_tags = list(Post.tags.tag_model.objects.weight(min=1, max=6).order_by("-count", "name")[:limit])
-        top_topics = list(
-            Post.primary_topic.tag_model.objects.weight(min=1, max=6).order_by("-count", "name")[:limit]
+        top_tags: list[Any] = list(Post.tags.tag_model.objects.weight(min=1, max=6).order_by("-count", "name")[:limit])  # type: ignore[attr-defined]
+        top_topics: list[Any] = list(
+            Post.primary_topic.tag_model.objects.weight(min=1, max=6).order_by("-count", "name")[:limit]  # type: ignore[attr-defined]
         )
         top_categories = list(Post.categories.tag_model.objects.order_by("-count", "name")[:limit])
         deepest = Post.categories.tag_model.objects.order_by("-level").first()
@@ -786,7 +786,7 @@ def get_tagulous_live_metrics(limit: int = 10) -> dict[str, Any]:
                 "top_tags": [serialize_tag(tag) for tag in top_tags],
                 "top_topics": [serialize_tag(tag) for tag in top_topics],
                 "top_categories": [serialize_tag(tag) for tag in top_categories],
-                "max_category_depth_live": deepest.level if deepest else 0,
+                "max_category_depth_live": getattr(deepest, "level", 0) if deepest else 0,
             }
         )
     except Exception:
@@ -835,7 +835,7 @@ def get_listing_context(request: HttpRequest, forced_filters: dict[str, Any] | N
     liked_ids: set[int] = set()
     bookmarked_ids: set[int] = set()
     if request.user.is_authenticated and page_posts:
-        post_ids = [post.id for post in page_posts]
+        post_ids = [post.pk for post in page_posts]
         liked_ids = set(
             PostLike.objects.filter(user=request.user, post_id__in=post_ids).values_list(
                 "post_id",
@@ -850,8 +850,8 @@ def get_listing_context(request: HttpRequest, forced_filters: dict[str, Any] | N
         )
 
     for post in page_posts:
-        post.user_liked = post.id in liked_ids
-        post.user_bookmarked = post.id in bookmarked_ids
+        post.user_liked = post.pk in liked_ids  # type: ignore[attr-defined]
+        post.user_bookmarked = post.pk in bookmarked_ids  # type: ignore[attr-defined]
 
     query_without_page = params.copy()
     query_without_page.pop("page", None)
@@ -870,11 +870,14 @@ def get_listing_context(request: HttpRequest, forced_filters: dict[str, Any] | N
             if part
         )
 
-    related_ranked = get_related_posts_algorithmic(
-        request.user,
-        query_text=related_seed,
-        limit=5,
-        with_explanations=True,
+    related_ranked = cast(
+        "list[dict[str, Any]]",
+        get_related_posts_algorithmic(
+            request.user,
+            query_text=related_seed,
+            limit=5,
+            with_explanations=True,
+        ),
     )
 
     return {
@@ -901,7 +904,7 @@ def get_listing_context(request: HttpRequest, forced_filters: dict[str, Any] | N
     }
 
 
-def get_dashboard_metrics(user: User) -> dict[str, Any]:
+def get_dashboard_metrics(user: Any) -> dict[str, Any]:
     scoped_posts = get_dashboard_post_queryset(user)
     published = scoped_posts.filter(status=Post.Status.PUBLISHED)
     scope = "all" if bool(user and user.is_authenticated and user.is_staff) else "mine"
@@ -918,7 +921,7 @@ def get_dashboard_metrics(user: User) -> dict[str, Any]:
     }
 
 
-def get_dashboard_post_queryset(user: User) -> QuerySet[Post]:
+def get_dashboard_post_queryset(user: Any) -> QuerySet[Post]:
     base_qs = Post.objects.all()
     if not user or not user.is_authenticated:
         return base_qs.none()
@@ -929,7 +932,7 @@ def get_dashboard_post_queryset(user: User) -> QuerySet[Post]:
 
 def serialize_post_for_api(post: Post) -> dict[str, Any]:
     return {
-        "id": post.id,
+        "id": post.pk,
         "title": post.title,
         "subtitle": post.subtitle,
         "slug": post.slug,
@@ -1080,7 +1083,7 @@ def bulk_tag_posts(post_ids: list[int], tag_names: list[str]) -> int:
     count = 0
     for post in posts:
         for tag_name in tag_names:
-            post.tags.add(tag_name)
+            post.tags.add(tag_name)  # type: ignore[attr-defined]
         count += 1
     return count
 
@@ -1100,7 +1103,7 @@ def bulk_categorize_posts(post_ids: list[int], category_names: list[str]) -> int
     count = 0
     for post in posts:
         for cat_name in category_names:
-            post.categories.add(cat_name)
+            post.categories.add(cat_name)  # type: ignore[attr-defined]
         count += 1
     return count
 

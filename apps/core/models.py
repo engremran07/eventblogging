@@ -6,6 +6,7 @@ All singleton settings models consolidated here.
 from __future__ import annotations
 
 import uuid
+from typing import Any
 
 from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator
@@ -600,6 +601,6 @@ class UserProfile(models.Model):
         return self.user.username
 
     @classmethod
-    def get_for_user(cls, user):
+    def get_for_user(cls, user: Any) -> UserProfile:
         profile, _ = cls.objects.get_or_create(user=user)
         return profile

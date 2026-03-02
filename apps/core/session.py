@@ -10,6 +10,7 @@ This module is the single source of truth for:
 from __future__ import annotations
 
 from django.conf import settings
+from django.http import HttpRequest
 from django.utils.crypto import salted_hmac
 
 
@@ -19,7 +20,7 @@ class SessionService:
     FINGERPRINT_SALT = "core.session.fingerprint"
 
     @classmethod
-    def ensure_session_key(cls, request) -> str:
+    def ensure_session_key(cls, request: HttpRequest) -> str:
         """
         Ensure the current request has a persisted session key and return it.
         """
@@ -30,7 +31,7 @@ class SessionService:
         return request.session.session_key or ""
 
     @classmethod
-    def fingerprint(cls, request) -> str:
+    def fingerprint(cls, request: HttpRequest) -> str:
         """
         Return a non-reversible session fingerprint for storage/logging.
         """
@@ -50,9 +51,9 @@ class SessionService:
         return f"{prefix}:{normalized_namespace}:{normalized_identifier}"
 
     @classmethod
-    def is_marked(cls, request, namespace: str, identifier: str | int) -> bool:
+    def is_marked(cls, request: HttpRequest, namespace: str, identifier: str | int) -> bool:
         return bool(request.session.get(cls.marker_key(namespace, identifier), False))
 
     @classmethod
-    def mark(cls, request, namespace: str, identifier: str | int, value: bool = True) -> None:
+    def mark(cls, request: HttpRequest, namespace: str, identifier: str | int, value: bool = True) -> None:
         request.session[cls.marker_key(namespace, identifier)] = bool(value)

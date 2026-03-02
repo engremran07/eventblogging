@@ -6,9 +6,12 @@ Auth is centralized here as the single source of truth for non-admin sessions.
 
 from __future__ import annotations
 
+from typing import Any, cast
+
 from django.contrib import messages
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import User
 from django.contrib.auth.views import (
     LoginView,
     LogoutView,
@@ -72,8 +75,9 @@ def core_register(request: HttpRequest) -> HttpResponse:
 @login_required
 @require_http_methods(["GET", "POST"])
 def core_profile(request: HttpRequest) -> HttpResponse:
-    profile = UserProfile.get_for_user(request.user)
-    account_form = UserAccountForm(request.POST or None, instance=request.user)
+    user = cast(User, request.user)
+    profile = UserProfile.get_for_user(user)
+    account_form = UserAccountForm(request.POST or None, instance=user)
     profile_form = UserProfileForm(request.POST or None, instance=profile)
 
     if request.method == "POST":
@@ -84,14 +88,14 @@ def core_profile(request: HttpRequest) -> HttpResponse:
             return redirect("profile")
         messages.error(request, "Unable to update profile.")
 
-    metrics = {
-        "post_count": request.user.posts.count() if hasattr(request.user, "posts") else 0,
-        "comment_count": request.user.post_comments.count()
-        if hasattr(request.user, "post_comments")
+    metrics: dict[str, Any] = {
+        "post_count": user.posts.count() if hasattr(user, "posts") else 0,  # type: ignore[attr-defined]
+        "comment_count": user.post_comments.count()  # type: ignore[attr-defined]
+        if hasattr(user, "post_comments")
         else 0,
-        "like_count": request.user.liked_posts.count() if hasattr(request.user, "liked_posts") else 0,
-        "bookmark_count": request.user.bookmarked_posts.count()
-        if hasattr(request.user, "bookmarked_posts")
+        "like_count": user.liked_posts.count() if hasattr(user, "liked_posts") else 0,  # type: ignore[attr-defined]
+        "bookmark_count": user.bookmarked_posts.count()  # type: ignore[attr-defined]
+        if hasattr(user, "bookmarked_posts")
         else 0,
     }
 

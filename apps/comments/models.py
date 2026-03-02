@@ -5,9 +5,14 @@ Fully pluggable - can be removed without affecting core blog functionality.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, Any
+
 from django.contrib.auth import get_user_model
 from django.core.validators import MinLengthValidator
 from django.db import models
+
+if TYPE_CHECKING:
+    from blog.models import Post as _Post
 
 User = get_user_model()
 
@@ -15,12 +20,12 @@ User = get_user_model()
 class Comment(models.Model):
     """User comment on a post."""
 
-    post = models.ForeignKey("blog.Post", on_delete=models.CASCADE, related_name="comments")
+    post: models.ForeignKey[_Post] = models.ForeignKey("blog.Post", on_delete=models.CASCADE, related_name="comments")  # type: ignore[assignment]
     author = models.ForeignKey(User, on_delete=models.CASCADE, related_name="post_comments")
     body = models.TextField(validators=[MinLengthValidator(3)])
     is_approved = models.BooleanField(default=True)
     moderation_score = models.PositiveSmallIntegerField(default=0, editable=False)
-    moderation_reasons = models.JSONField(default=list, blank=True, editable=False)
+    moderation_reasons: models.JSONField[list[Any]] = models.JSONField(default=list, blank=True, editable=False)  # type: ignore[assignment]
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -39,7 +44,7 @@ class PostLike(models.Model):
     """User reaction: like/heart on a post."""
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="liked_posts")
-    post = models.ForeignKey("blog.Post", on_delete=models.CASCADE, related_name="likes")
+    post: models.ForeignKey[_Post] = models.ForeignKey("blog.Post", on_delete=models.CASCADE, related_name="likes")  # type: ignore[assignment]
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -59,7 +64,7 @@ class PostBookmark(models.Model):
     """User saved/bookmarked a post for later."""
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="bookmarked_posts")
-    post = models.ForeignKey("blog.Post", on_delete=models.CASCADE, related_name="bookmarks")
+    post: models.ForeignKey[_Post] = models.ForeignKey("blog.Post", on_delete=models.CASCADE, related_name="bookmarks")  # type: ignore[assignment]
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -81,7 +86,7 @@ class PostBookmark(models.Model):
 class PostView(models.Model):
     """Tracks page views for analytics."""
 
-    post = models.ForeignKey("blog.Post", on_delete=models.CASCADE, related_name="view_events")
+    post: models.ForeignKey[_Post] = models.ForeignKey("blog.Post", on_delete=models.CASCADE, related_name="view_events")  # type: ignore[assignment]
     user = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
@@ -107,7 +112,7 @@ class PostView(models.Model):
 class PostRevision(models.Model):
     """Versioning/audit trail for post edits."""
 
-    post = models.ForeignKey("blog.Post", on_delete=models.CASCADE, related_name="revisions")
+    post: models.ForeignKey[_Post] = models.ForeignKey("blog.Post", on_delete=models.CASCADE, related_name="revisions")  # type: ignore[assignment]
     editor = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,

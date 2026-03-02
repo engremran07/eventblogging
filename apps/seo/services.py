@@ -7,8 +7,9 @@ import re
 from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import timedelta
-from typing import Any
+from typing import Any, cast
 
+from django.contrib.auth.models import AbstractBaseUser
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Avg, Count
 from django.utils import timezone
@@ -64,26 +65,26 @@ class ContentAdapter:
     link_edge_model: type = SeoLinkEdge
 
     @property
-    def excerpt_or_summary(self):
+    def excerpt_or_summary(self) -> str:
         return self.excerpt or self.summary
 
     @property
-    def is_published(self):
+    def is_published(self) -> bool:
         return (
             self.status == "published"
             and self.published_at is not None
             and self.published_at <= timezone.now()
         )
 
-    def get_absolute_url(self):
+    def get_absolute_url(self) -> str:
         return self.url
 
 
-def _content_type_for_instance(instance):
+def _content_type_for_instance(instance: Any) -> ContentType:
     return ContentType.objects.get_for_model(instance.__class__)
 
 
-def _build_adapter_from_instance(instance):
+def _build_adapter_from_instance(instance: Any) -> ContentAdapter:
     route_type = "other"
     summary = ""
     excerpt = ""
@@ -123,15 +124,15 @@ def _build_adapter_from_instance(instance):
     )
 
 
-def build_adapter_from_instance(instance):
+def build_adapter_from_instance(instance: Any) -> ContentAdapter:
     return _build_adapter_from_instance(instance)
 
 
-def _normalize_text(text: str):
+def _normalize_text(text: str) -> str:
     return " ".join((text or "").split()).strip()
 
 
-def _clip(text: str, limit: int):
+def _clip(text: str, limit: int) -> str:
     return _normalize_text(text)[:limit]
 
 
@@ -142,11 +143,11 @@ def build_route_adapter(
     description: str = "",
     body_markdown: str = "",
     url: str = "/",
-    updated_at=None,
-    published_at=None,
+    updated_at: Any = None,
+    published_at: Any = None,
     canonical_url: str = "",
     og_image_url: str = "",
-):
+) -> ContentAdapter:
     model = Page if route_type in {"page", "policy"} else Post
     content_type = ContentType.objects.get_for_model(model)
     safe_title = _clip(title, 220) or "Untitled"
@@ -179,13 +180,13 @@ def build_route_adapter(
     )
 
 
-def resolve_metadata_for_instance(instance, *, request=None):
+def resolve_metadata_for_instance(instance: Any, *, request: Any = None) -> dict[str, Any]:
     adapter = _build_adapter_from_instance(instance)
     return resolve_metadata(adapter, request=request).to_dict()
 
 
 def resolve_metadata_for_route(
-    request,
+    request: Any,
     *,
     route_type: str,
     title: str,
@@ -193,7 +194,7 @@ def resolve_metadata_for_route(
     body_markdown: str = "",
     canonical_url: str = "",
     og_image_url: str = "",
-):
+) -> dict[str, Any]:
     adapter = build_route_adapter(
         route_type=route_type,
         title=title,
@@ -208,9 +209,9 @@ def resolve_metadata_for_route(
     return resolve_metadata(adapter, request=request).to_dict()
 
 
-def metadata_template_payload(metadata: dict):
+def metadata_template_payload(metadata: dict[str, Any]) -> dict[str, Any]:
     metadata = metadata or {}
-    json_ld = metadata.get("json_ld") or []
+    json_ld: list[Any] = metadata.get("json_ld") or []
     json_ld_serialized = [
         json.dumps(node, ensure_ascii=False, separators=(",", ":")) for node in json_ld
     ]
@@ -220,12 +221,12 @@ def metadata_template_payload(metadata: dict):
     }
 
 
-def seo_context_for_instance(instance, *, request=None):
+def seo_context_for_instance(instance: Any, *, request: Any = None) -> dict[str, Any]:
     return metadata_template_payload(resolve_metadata_for_instance(instance, request=request))
 
 
 def seo_context_for_route(
-    request,
+    request: Any,
     *,
     route_type: str,
     title: str,
@@ -246,15 +247,15 @@ def seo_context_for_route(
     return metadata_template_payload(metadata)
 
 
-def _get_instance(content_type: str, object_id: int):
+def _get_instance(content_type: str, object_id: int) -> Post | Page | None:
     if content_type == "post":
         return Post.objects.filter(pk=object_id).first()
     if content_type == "page":
-        return Page.objects.filter(pk=object_id).first()
+        return Page.objects.filter(pk=object_id).first()  # type: ignore[return-value]
     return None
 
 
-def _serialize_check_result(result):
+def _serialize_check_result(result: Any) -> dict[str, Any]:
     return {
         "key": result.key,
         "severity": result.severity,
@@ -266,7 +267,7 @@ def _serialize_check_result(result):
     }
 
 
-def _score_from_results(results):
+def _score_from_results(results: list[Any]) -> dict[str, Any]:
     total = len(results) or 1
     passed = sum(1 for row in results if row.passed)
     critical_count = sum(1 for row in results if not row.passed and row.severity == "critical")
@@ -285,7 +286,7 @@ def _score_from_results(results):
     }
 
 
-def _checksum(adapter: ContentAdapter, metadata: dict, results):
+def _checksum(adapter: ContentAdapter, metadata: dict[str, Any], results: list[Any]) -> str:
     payload = {
         "id": f"{adapter.route_type}:{adapter.pk}",
         "updated_at": adapter.updated_at.isoformat() if adapter.updated_at else "",
@@ -296,8 +297,8 @@ def _checksum(adapter: ContentAdapter, metadata: dict, results):
     return hashlib.sha256(raw).hexdigest()
 
 
-def _target_pool(source_adapter: ContentAdapter):
-    targets = []
+def _target_pool(source_adapter: ContentAdapter) -> list[ContentAdapter]:
+    targets: list[ContentAdapter] = []
     for post in Post.objects.published().only(
         "id",
         "title",
@@ -315,7 +316,7 @@ def _target_pool(source_adapter: ContentAdapter):
         if source_adapter.route_type == "post" and source_adapter.pk == post.pk:
             continue
         targets.append(_build_adapter_from_instance(post))
-    for page in Page.objects.published().only(
+    for page in Page.objects.published().only(  # type: ignore[attr-defined]
         "id",
         "title",
         "summary",
@@ -335,7 +336,7 @@ def _target_pool(source_adapter: ContentAdapter):
     return targets
 
 
-def _build_metadata_suggestion(adapter: ContentAdapter, metadata: dict):
+def _build_metadata_suggestion(adapter: ContentAdapter, metadata: dict[str, Any]) -> None:
     payload = {
         "meta_title": metadata.get("title", "")[:70],
         "meta_description": metadata.get("description", "")[:170],
@@ -350,12 +351,12 @@ def _build_metadata_suggestion(adapter: ContentAdapter, metadata: dict):
     )
 
 
-def _metadata_lock_for_target(content_type, object_id):
+def _metadata_lock_for_target(content_type: ContentType, object_id: int) -> SeoMetadataLock | None:
     return SeoMetadataLock.objects.filter(content_type=content_type, object_id=object_id).first()
 
 
-def _apply_metadata_payload(target, payload: dict, lock: SeoMetadataLock | None):
-    changed_fields = []
+def _apply_metadata_payload(target: Any, payload: dict[str, Any], lock: SeoMetadataLock | None) -> list[str]:
+    changed_fields: list[str] = []
     title = _clip(payload.get("meta_title", ""), 70)
     description = _clip(payload.get("meta_description", ""), 170)
     canonical = _normalize_text(payload.get("canonical_url", ""))
@@ -377,7 +378,7 @@ def _apply_metadata_payload(target, payload: dict, lock: SeoMetadataLock | None)
     return changed_fields
 
 
-def _persist_interlink_suggestions(adapter: ContentAdapter, suggestions):
+def _persist_interlink_suggestions(adapter: ContentAdapter, suggestions: list[dict[str, Any]]) -> None:
     rows = [
         SeoSuggestion(
             content_type=adapter.content_type,
@@ -409,7 +410,7 @@ def _persist_interlink_suggestions(adapter: ContentAdapter, suggestions):
         )
 
 
-def _apply_interlinks(adapter: ContentAdapter, suggestions, settings: SeoEngineSettings):
+def _apply_interlinks(adapter: ContentAdapter, suggestions: list[dict[str, Any]], settings: SeoEngineSettings) -> int:
     if not settings.apply_interlinks_on_audit:
         return 0
     if adapter.is_published and not settings.auto_update_published_links:
@@ -435,9 +436,9 @@ def _apply_interlinks(adapter: ContentAdapter, suggestions, settings: SeoEngineS
         return 0
 
     instance.body_markdown = new_markdown
-    instance._seo_skip_signal = True
+    instance._seo_skip_signal = True  # type: ignore[union-attr]
     instance.save()
-    instance._seo_skip_signal = False
+    instance._seo_skip_signal = False  # type: ignore[union-attr]
     if hasattr(instance, "record_revision"):
         instance.record_revision(note=f"SEO interlink auto-update: {applied_count} links applied")
 
@@ -461,7 +462,7 @@ def _apply_interlinks(adapter: ContentAdapter, suggestions, settings: SeoEngineS
     return applied_count
 
 
-def _apply_interlink_payload(target, payload):
+def _apply_interlink_payload(target: Any, payload: dict[str, Any]) -> int:
     suggestion = {
         "anchor_text": payload.get("anchor_text", ""),
         "target_url": payload.get("target_url", ""),
@@ -483,7 +484,7 @@ def _apply_interlink_payload(target, payload):
     return applied_count
 
 
-def audit_instance(instance, *, trigger="save", request=None):
+def audit_instance(instance: Any, *, trigger: str = "save", request: Any = None) -> SeoAuditSnapshot | None:
     if not instance or not instance.pk:
         return None
     settings = SeoEngineSettings.get_solo()
@@ -516,7 +517,7 @@ def audit_instance(instance, *, trigger="save", request=None):
         checksum=checksum,
     )
 
-    issue_rows = []
+    issue_rows: list[SeoIssue] = []
     for result in results:
         if result.passed:
             continue
@@ -573,7 +574,7 @@ def audit_instance(instance, *, trigger="save", request=None):
     return snapshot
 
 
-def audit_content(content_type: str, object_id: int, *, trigger="manual"):
+def audit_content(content_type: str, object_id: int, *, trigger: str = "manual") -> SeoAuditSnapshot | None:
     instance = _get_instance(content_type, object_id)
     if not instance:
         return None
@@ -597,8 +598,8 @@ def audit_content_batch(
     processed = 0
     snapshots = 0
     autopilot_approved = 0
-    unique_ids = []
-    seen = set()
+    unique_ids: list[int] = []
+    seen: set[int] = set()
     for raw_id in object_ids or []:
         try:
             value = int(raw_id)
@@ -628,7 +629,7 @@ def audit_content_batch(
     }
 
 
-def live_check(content_type: str, payload: dict):
+def live_check(content_type: str, payload: dict[str, Any]) -> dict[str, Any]:
     model = Post if content_type == "post" else Page
     ct = ContentType.objects.get_for_model(model)
     title = (payload.get("title") or "").strip()
@@ -676,7 +677,7 @@ def live_check(content_type: str, payload: dict):
     }
 
 
-def apply_due_autofixes():
+def apply_due_autofixes() -> dict[str, Any]:
     settings = SeoEngineSettings.get_solo()
     if not settings.auto_fix_enabled:
         return {"updated": 0, "reason": "disabled"}
@@ -691,12 +692,12 @@ def apply_due_autofixes():
 
 
 def run_autopilot_for_instance(
-    instance,
+    instance: Any,
     *,
-    reviewer=None,
+    reviewer: AbstractBaseUser | Any | None = None,
     min_confidence: float | None = None,
     limit: int = 120,
-):
+) -> dict[str, Any]:
     """
     Auto-approve safe suggestions for a single content instance.
     """
@@ -731,7 +732,7 @@ def run_autopilot_for_instance(
     approved = 0
     skipped = 0
     for suggestion in candidates:
-        result = approve_suggestion(suggestion.id, reviewer=reviewer)
+        result = approve_suggestion(suggestion.pk, reviewer=reviewer)  # type: ignore[arg-type]
         if result.get("ok"):
             approved += 1
         else:
@@ -746,7 +747,7 @@ def run_autopilot_for_instance(
     }
 
 
-def handle_deleted_content(instance):
+def handle_deleted_content(instance: Any) -> str | None:
     if not instance:
         return None
     old_path = ""
@@ -785,7 +786,7 @@ def handle_deleted_content(instance):
     return old_path
 
 
-def disable_gone_redirect_for_live_instance(instance):
+def disable_gone_redirect_for_live_instance(instance: Any) -> int:
     if not instance:
         return 0
 
@@ -809,7 +810,7 @@ def disable_gone_redirect_for_live_instance(instance):
     )
 
 
-def approve_suggestion(candidate_id: int, *, reviewer=None):
+def approve_suggestion(candidate_id: int, *, reviewer: AbstractBaseUser | Any | None = None) -> dict[str, Any]:
     suggestion = SeoSuggestion.objects.select_related("content_type").filter(pk=candidate_id).first()
     if not suggestion:
         return {"ok": False, "message": "Suggestion not found.", "status": 404}
@@ -821,10 +822,10 @@ def approve_suggestion(candidate_id: int, *, reviewer=None):
 
     model = suggestion.content_type.model_class()
     target = model.objects.filter(pk=suggestion.object_id).first() if model else None
-    payload = suggestion.payload_json or {}
+    payload: dict[str, Any] = cast("dict[str, Any]", suggestion.payload_json or {})  # type: ignore[reportUnknownMemberType]
     now = timezone.now()
 
-    if suggestion.suggestion_type == SeoSuggestion.SuggestionType.METADATA:
+    if suggestion.suggestion_type == SeoSuggestion.SuggestionType.METADATA:  # type: ignore[comparison-overlap]
         if not target:
             return {"ok": False, "message": "Target content not found.", "status": 404}
         lock = _metadata_lock_for_target(suggestion.content_type, suggestion.object_id)
@@ -836,10 +837,10 @@ def approve_suggestion(candidate_id: int, *, reviewer=None):
             "ok": True,
             "message": "Metadata suggestion approved.",
             "changed_fields": changed,
-            "target_url": target.get_absolute_url(),
+            "target_url": target.get_absolute_url(),  # type: ignore[union-attr]
         }
 
-    if suggestion.suggestion_type == SeoSuggestion.SuggestionType.INTERLINK:
+    if suggestion.suggestion_type == SeoSuggestion.SuggestionType.INTERLINK:  # type: ignore[comparison-overlap]
         if not target:
             return {"ok": False, "message": "Target content not found.", "status": 404}
         applied_count = _apply_interlink_payload(target, payload)
@@ -852,12 +853,12 @@ def approve_suggestion(candidate_id: int, *, reviewer=None):
             "ok": True,
             "message": "Interlink suggestion approved.",
             "applied_count": applied_count,
-            "target_url": target.get_absolute_url(),
+            "target_url": target.get_absolute_url(),  # type: ignore[union-attr]
         }
 
-    if suggestion.suggestion_type == SeoSuggestion.SuggestionType.REDIRECT:
-        old_path = payload.get("old_path", "")
-        target_url = payload.get("suggested_target", "/")
+    if suggestion.suggestion_type == SeoSuggestion.SuggestionType.REDIRECT:  # type: ignore[comparison-overlap]
+        old_path: str = payload.get("old_path", "")
+        target_url: str = payload.get("suggested_target", "/")
         if not old_path:
             return {"ok": False, "message": "Redirect payload is incomplete.", "status": 409}
         status_code = int(payload.get("status_code", 301))
@@ -879,13 +880,13 @@ def approve_suggestion(candidate_id: int, *, reviewer=None):
         return {
             "ok": True,
             "message": "Redirect suggestion approved.",
-            "redirect_rule_id": rule.id,
+            "redirect_rule_id": rule.pk,
         }
 
     return {"ok": False, "message": "Unsupported suggestion type.", "status": 409}
 
 
-def reject_suggestion(candidate_id: int):
+def reject_suggestion(candidate_id: int) -> dict[str, Any]:
     suggestion = SeoSuggestion.objects.filter(pk=candidate_id).first()
     if not suggestion:
         return {"ok": False, "message": "Suggestion not found.", "status": 404}
@@ -899,7 +900,7 @@ def reject_suggestion(candidate_id: int):
     return {"ok": True, "message": "Suggestion rejected."}
 
 
-def seo_overview_metrics():
+def seo_overview_metrics() -> dict[str, Any]:
     latest_snapshot = SeoAuditSnapshot.objects.order_by("-audited_at").first()
     issue_counts = {
         "critical_open": SeoIssue.objects.filter(

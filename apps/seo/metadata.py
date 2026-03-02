@@ -17,34 +17,34 @@ class ResolvedMetadata:
     description: str
     canonical: str
     robots: str
-    alternates: dict
-    open_graph: dict
-    twitter: dict
-    json_ld: list
+    alternates: dict[str, Any]
+    open_graph: dict[str, Any]
+    twitter: dict[str, Any]
+    json_ld: list[dict[str, Any]]
 
-    def to_dict(self):
+    def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
 
-def _build_absolute_url(request, path: str):
+def _build_absolute_url(request: Any, path: str) -> str:
     if request is None:
         return path
     return request.build_absolute_uri(path)
 
 
-def _canonical_from_base(base_url: str, path: str):
+def _canonical_from_base(base_url: str, path: str) -> str:
     if not base_url:
         return path
     return urljoin(base_url.rstrip("/") + "/", path.lstrip("/"))
 
 
-def _resolve_route_profile(route_name: str):
+def _resolve_route_profile(route_name: str) -> SeoRouteProfile | None:
     if not route_name:
         return None
     return SeoRouteProfile.objects.filter(route_name=route_name, enabled=True).first()
 
 
-def _organization_schema(site_settings):
+def _organization_schema(site_settings: Any) -> dict[str, Any] | None:
     if not site_settings.organization_schema_name:
         return None
     org_url = site_settings.organization_schema_url or ""
@@ -56,7 +56,7 @@ def _organization_schema(site_settings):
     }
 
 
-def _content_schema(adapter, canonical):
+def _content_schema(adapter: Any, canonical: str) -> dict[str, Any]:
     if adapter.route_type == "post":
         return {
             "@context": "https://schema.org",
@@ -77,13 +77,13 @@ def _content_schema(adapter, canonical):
     }
 
 
-def _build_robots(site_seo, *, noindex=False):
+def _build_robots(site_seo: Any, *, noindex: bool = False) -> str:
     index_part = "noindex" if noindex else ("index" if site_seo.robots_index else "noindex")
     follow_part = "follow" if site_seo.robots_follow else "nofollow"
     return f"{index_part},{follow_part},max-snippet:-1,max-image-preview:large"
 
 
-def resolve_metadata(adapter, *, request=None):
+def resolve_metadata(adapter: Any, *, request: Any = None) -> ResolvedMetadata:
     site_seo = SiteSeoSettings.get_solo()
     route_name = ""
     if request and request.resolver_match:
@@ -153,7 +153,7 @@ def resolve_metadata(adapter, *, request=None):
         "site": site_seo.twitter_site_handle or "",
     }
 
-    json_ld = []
+    json_ld: list[dict[str, Any]] = []
     org_schema = _organization_schema(site_seo)
     if org_schema:
         json_ld.append(org_schema)
@@ -206,7 +206,7 @@ def resolve_metadata(adapter, *, request=None):
     )
 
 
-def auto_generate_meta_title(instance) -> str | None:
+def auto_generate_meta_title(instance: Any) -> str | None:
     """
     Auto-generate meta_title for a post if not manually set.
     Uses pattern: "Post Title - Site Name" (max 70 chars).
@@ -230,7 +230,7 @@ def auto_generate_meta_title(instance) -> str | None:
     return candidate if candidate else None
 
 
-def auto_generate_meta_description(instance) -> str | None:
+def auto_generate_meta_description(instance: Any) -> str | None:
     """
     Auto-generate meta_description for a post if not manually set.
     Uses: excerpt > summary > first 160 chars of body (max 170 chars).
@@ -241,7 +241,7 @@ def auto_generate_meta_description(instance) -> str | None:
     Returns:
         Auto-generated meta_description string, or None if can't generate
     """
-    candidates = []
+    candidates: list[str] = []
 
     # Try excerpt first
     if hasattr(instance, "excerpt") and instance.excerpt:
@@ -270,7 +270,7 @@ def auto_generate_meta_description(instance) -> str | None:
     return None
 
 
-def generate_article_schema(post, canonical: str) -> dict[str, Any]:
+def generate_article_schema(post: Any, canonical: str) -> dict[str, Any]:
     """
     Generate JSON-LD schema for a blog post (Article/NewsArticle type).
 
@@ -318,7 +318,7 @@ def generate_article_schema(post, canonical: str) -> dict[str, Any]:
     return schema
 
 
-def generate_news_article_schema(post, canonical: str) -> dict[str, Any]:
+def generate_news_article_schema(post: Any, canonical: str) -> dict[str, Any]:
     """
     Generate JSON-LD schema for a post as NewsArticle type.
     More specific variant of Article schema for news/timely content.
@@ -364,7 +364,7 @@ def generate_news_article_schema(post, canonical: str) -> dict[str, Any]:
     return schema
 
 
-def apply_auto_metadata_to_instance(instance) -> None:
+def apply_auto_metadata_to_instance(instance: Any) -> None:
     """
     Apply auto-generated metadata fields to a model instance.
     Only sets fields that are not already manually set.
@@ -385,7 +385,7 @@ def apply_auto_metadata_to_instance(instance) -> None:
             instance.meta_description = auto_desc
 
 
-def generate_schema_markup(post, canonical: str, *, schema_type: str = "BlogPosting") -> dict[str, Any]:
+def generate_schema_markup(post: Any, canonical: str, *, schema_type: str = "BlogPosting") -> dict[str, Any]:
     """
     Generate JSON-LD schema markup for a post.
     Wrapper that delegates to specific schema generators.

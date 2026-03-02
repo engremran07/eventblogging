@@ -1,10 +1,11 @@
 ﻿from __future__ import annotations
 
 import math
-from typing import TYPE_CHECKING, ClassVar
+from decimal import Decimal
+from typing import TYPE_CHECKING, Any, ClassVar
 
-import bleach
 import markdown
+import nh3
 from django.contrib.auth import get_user_model
 from django.contrib.postgres.search import SearchVector, SearchVectorField
 from django.db import models
@@ -17,46 +18,18 @@ from tagulous.models import SingleTagField, TagField
 if TYPE_CHECKING:
     from comments.models import PostRevision
 
-try:
-    from bleach.css_sanitizer import CSSSanitizer
-except Exception:  # pragma: no cover - optional dependency guard
-    CSSSanitizer = None
-
 User = get_user_model()
 
-ALLOWED_HTML_TAGS = bleach.sanitizer.ALLOWED_TAGS.union(
-    {
-        "div",
-        "p",
-        "pre",
-        "code",
-        "h1",
-        "h2",
-        "h3",
-        "h4",
-        "h5",
-        "h6",
-        "blockquote",
-        "ul",
-        "ol",
-        "li",
-        "hr",
-        "img",
-        "span",
-        "table",
-        "thead",
-        "tbody",
-        "tr",
-        "th",
-        "td",
-        "tfoot",
-        "colgroup",
-        "col",
-        "font",
-    }
-)
+# ── HTML sanitization via nh3 (Rust-based replacement for deprecated bleach) ──
+ALLOWED_HTML_TAGS: set[str] = {
+    "a", "abbr", "acronym", "b", "blockquote", "code", "em", "i", "li",
+    "ol", "strong", "ul",  # nh3 defaults
+    "div", "p", "pre", "h1", "h2", "h3", "h4", "h5", "h6",
+    "hr", "img", "span", "table", "thead", "tbody", "tr", "th", "td",
+    "tfoot", "colgroup", "col", "font", "br", "sub", "sup", "del",
+}
 
-ALLOWED_CSS_PROPERTIES = [
+ALLOWED_CSS_PROPERTIES: set[str] = {
     "color",
     "background-color",
     "font-size",
@@ -84,39 +57,27 @@ ALLOWED_CSS_PROPERTIES = [
     "margin-right",
     "margin-bottom",
     "margin-left",
-]
-
-CSS_SANITIZER = (
-    CSSSanitizer(allowed_css_properties=ALLOWED_CSS_PROPERTIES)
-    if CSSSanitizer is not None
-    else None
-)
-
-ALLOWED_HTML_ATTRIBUTES = {
-    **bleach.sanitizer.ALLOWED_ATTRIBUTES,
-    "a": ["href", "title", "target", "rel"],
-    "img": ["src", "alt", "title", "loading"],
-    "code": ["class"],
-    "span": ["class", "style"],
-    "font": ["color", "face", "size", "style"],
-    "p": ["style"],
-    "div": ["style"],
-    "blockquote": ["style"],
-    "table": ["class", "style"],
-    "thead": ["style"],
-    "tbody": ["style"],
-    "tfoot": ["style"],
-    "tr": ["style"],
-    "th": ["colspan", "rowspan", "style"],
-    "td": ["colspan", "rowspan", "style"],
-    "colgroup": ["span", "style"],
-    "col": ["span", "style"],
 }
 
-if CSS_SANITIZER is None:
-    for element_name, attrs in list(ALLOWED_HTML_ATTRIBUTES.items()):
-        if "style" in attrs:
-            ALLOWED_HTML_ATTRIBUTES[element_name] = [attr for attr in attrs if attr != "style"]
+ALLOWED_HTML_ATTRIBUTES: dict[str, set[str]] = {
+    "a": {"href", "title", "target", "rel"},
+    "img": {"src", "alt", "title", "loading"},
+    "code": {"class"},
+    "span": {"class", "style"},
+    "font": {"color", "face", "size", "style"},
+    "p": {"style"},
+    "div": {"style"},
+    "blockquote": {"style"},
+    "table": {"class", "style"},
+    "thead": {"style"},
+    "tbody": {"style"},
+    "tfoot": {"style"},
+    "tr": {"style"},
+    "th": {"colspan", "rowspan", "style"},
+    "td": {"colspan", "rowspan", "style"},
+    "colgroup": {"span", "style"},
+    "col": {"span", "style"},
+}
 
 
 def render_markdown_to_safe_html(markdown_text: str) -> str:
@@ -124,17 +85,13 @@ def render_markdown_to_safe_html(markdown_text: str) -> str:
         markdown_text,
         extensions=["extra", "sane_lists", "nl2br", "tables", "toc"],
     )
-    clean_kwargs = {
-        "tags": ALLOWED_HTML_TAGS,
-        "attributes": ALLOWED_HTML_ATTRIBUTES,
-        "protocols": ["http", "https", "mailto"],
-        "strip": True,
-    }
-    if CSS_SANITIZER is not None:
-        clean_kwargs["css_sanitizer"] = CSS_SANITIZER
-    return bleach.clean(
+    return nh3.clean(
         rendered,
-        **clean_kwargs,
+        tags=ALLOWED_HTML_TAGS,
+        attributes=ALLOWED_HTML_ATTRIBUTES,
+        url_schemes={"http", "https", "mailto"},
+        link_rel="noopener noreferrer",
+        filter_style_properties=ALLOWED_CSS_PROPERTIES,
     )
 
 
@@ -146,7 +103,7 @@ class PostQuerySet(models.QuerySet["Post"]):
             published_at__lte=timezone.now(),
         )
 
-    def visible_to(self, user: User | None) -> PostQuerySet:
+    def visible_to(self, user: Any) -> PostQuerySet:
         public_posts = Q(
             status=Post.Status.PUBLISHED,
             published_at__isnull=False,
@@ -264,18 +221,18 @@ class Post(models.Model):
     )
 
     # Stores the last deterministic auto-tag pass for manual+auto merge workflows.
-    auto_tags = models.JSONField(default=list, blank=True, editable=False)
-    auto_categories = models.JSONField(default=list, blank=True, editable=False)
+    auto_tags: Any = models.JSONField(default=list, blank=True, editable=False)  # type: ignore[assignment]
+    auto_categories: Any = models.JSONField(default=list, blank=True, editable=False)  # type: ignore[assignment]
     auto_primary_topic = models.CharField(max_length=255, blank=True, editable=False)
     auto_tagging_updated_at = models.DateTimeField(null=True, blank=True, editable=False)
 
-    schema_markup = models.JSONField(default=dict, blank=True, editable=False)
-    suggested_internal_links = models.JSONField(default=list, blank=True, editable=False)
+    schema_markup: Any = models.JSONField(default=dict, blank=True, editable=False)  # type: ignore[assignment]
+    suggested_internal_links: Any = models.JSONField(default=list, blank=True, editable=False)  # type: ignore[assignment]
 
     # SEO algorithmic signals
-    tfidf_vector = models.JSONField(default=dict, blank=True, editable=False, help_text="TF-IDF scores per term")
-    auto_tags_raw = models.JSONField(default=list, blank=True, editable=False, help_text="Raw auto-generated tags from BM25")
-    keyword_index = models.JSONField(default=dict, blank=True, editable=False, help_text="Keyword → anchor variants mapping")
+    tfidf_vector: Any = models.JSONField(default=dict, blank=True, editable=False, help_text="TF-IDF scores per term")  # type: ignore[assignment]
+    auto_tags_raw: Any = models.JSONField(default=list, blank=True, editable=False, help_text="Raw auto-generated tags from BM25")  # type: ignore[assignment]
+    keyword_index: Any = models.JSONField(default=dict, blank=True, editable=False, help_text="Keyword → anchor variants mapping")  # type: ignore[assignment]
     search_intent = models.CharField(
         max_length=20,
         blank=True,
@@ -289,11 +246,11 @@ class Post(models.Model):
     )
     thin_content_score = models.PositiveSmallIntegerField(default=0, editable=False, help_text="0-10 score")
     seo_audit_score = models.PositiveSmallIntegerField(default=0, editable=False, help_text="0-100 score")
-    seo_audit_results = models.JSONField(default=list, blank=True, editable=False, help_text="25-point audit results")
+    seo_audit_results: Any = models.JSONField(default=list, blank=True, editable=False, help_text="25-point audit results")  # type: ignore[assignment]
 
     # Content signals
     flesch_score = models.SmallIntegerField(default=0, editable=False, help_text="Flesch-Kincaid readability 0-100")
-    keyword_density = models.DecimalField(max_digits=4, decimal_places=2, default=0, editable=False, help_text="Primary keyword density %")
+    keyword_density = models.DecimalField(max_digits=4, decimal_places=2, default=Decimal("0"), editable=False, help_text="Primary keyword density %")
     heading_count = models.PositiveSmallIntegerField(default=0, editable=False)
     image_count = models.PositiveSmallIntegerField(default=0, editable=False)
     internal_link_count = models.PositiveSmallIntegerField(default=0, editable=False)
@@ -370,7 +327,7 @@ class Post(models.Model):
         minutes = self.reading_time or 1
         return f"{minutes} min read"
 
-    def can_be_edited_by(self, user) -> bool:
+    def can_be_edited_by(self, user: Any) -> bool:
         """True if *user* is the post author or a staff member."""
         if not user or not getattr(user, "is_authenticated", False):
             return False
@@ -381,7 +338,7 @@ class Post(models.Model):
         self.published_at = timezone.now()
         self.save(update_fields=["status", "published_at", "updated_at"])
 
-    def record_revision(self, editor=None, note="") -> PostRevision:
+    def record_revision(self, editor: Any = None, note: str = "") -> PostRevision:
         from comments.models import PostRevision
 
         return PostRevision.objects.create(
@@ -413,7 +370,7 @@ class Post(models.Model):
     def _build_reading_time(self) -> int:
         return max(math.ceil(self.word_count / 220), 1)
 
-    def save(self, *args, **kwargs) -> None:
+    def save(self, *args: Any, **kwargs: Any) -> None:
         if not self.slug:
             self.slug = self._build_unique_slug()
 
@@ -457,10 +414,10 @@ class ContentRefreshSettings(models.Model):
         verbose_name = "Content Refresh Timer"
         verbose_name_plural = "Content Refresh Timer"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "Content Refresh Timer"
 
     @classmethod
-    def get_solo(cls):
+    def get_solo(cls) -> ContentRefreshSettings:
         obj, _ = cls.objects.get_or_create(singleton_key="global")
         return obj

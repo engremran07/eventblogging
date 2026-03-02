@@ -4,6 +4,7 @@ import math
 import re
 from collections import Counter
 from types import SimpleNamespace
+from typing import Any
 
 from .models import TaxonomySynonymGroup
 from .synonyms import expand_terms
@@ -30,7 +31,7 @@ STOP_WORDS = {
 }
 
 
-def _tokens(text: str):
+def _tokens(text: str) -> list[str]:
     if not text:
         return []
     return [
@@ -40,18 +41,18 @@ def _tokens(text: str):
     ]
 
 
-def compute_link_budget(total_docs: int, *, word_count: int, min_links: int, whitehat_cap: int):
+def compute_link_budget(total_docs: int, *, word_count: int, min_links: int, whitehat_cap: int) -> int:
     branching_target = max(math.ceil(max(total_docs, 1) ** (1 / 3)), min_links)
     length_bonus = max(min(word_count // 1200, 2), 0)
     raw_target = max(min_links, branching_target + length_bonus)
     return max(min(raw_target, whitehat_cap), min_links)
 
 
-def _extract_anchor_candidates(body_markdown: str):
+def _extract_anchor_candidates(body_markdown: str) -> list[str]:
     headings = [match.group(1).strip() for match in HEADING_RE.finditer(body_markdown or "")]
     sentences = [segment.strip() for segment in SENTENCE_RE.findall(body_markdown or "")]
 
-    phrase_counter = Counter()
+    phrase_counter: Counter[str] = Counter()
     for source_text in headings + sentences:
         tokens = _tokens(source_text)
         if len(tokens) < 2:
@@ -64,7 +65,7 @@ def _extract_anchor_candidates(body_markdown: str):
                     continue
                 phrase_counter[phrase] += 1
 
-    ranked = []
+    ranked: list[tuple[float, str]] = []
     for phrase, count in phrase_counter.items():
         if len(phrase) < 8:
             continue
@@ -73,7 +74,7 @@ def _extract_anchor_candidates(body_markdown: str):
     return [phrase for _, phrase in ranked[:200]]
 
 
-def _target_score(anchor_text: str, target):
+def _target_score(anchor_text: str, target: Any) -> float:
     anchor_tokens = expand_terms(_tokens(anchor_text), scope=TaxonomySynonymGroup.Scope.ALL)
     if not anchor_tokens:
         return 0.0
@@ -91,15 +92,15 @@ def _target_score(anchor_text: str, target):
     return min(base, 1.0)
 
 
-def build_interlink_suggestions(source_adapter, target_adapters, *, max_links: int, min_score: float = 0.1):
+def build_interlink_suggestions(source_adapter: Any, target_adapters: Any, *, max_links: int, min_score: float = 0.1) -> list[dict[str, Any]]:
     body_text = source_adapter.body_markdown or ""
     anchor_candidates = _extract_anchor_candidates(body_text)
     if not anchor_candidates:
         return []
 
-    used_target_ids = set()
-    used_anchors = set()
-    suggestions = []
+    used_target_ids: set[tuple[str, object]] = set()
+    used_anchors: set[str] = set()
+    suggestions: list[dict[str, Any]] = []
 
     for anchor in anchor_candidates:
         best_target = None
@@ -137,10 +138,10 @@ def build_interlink_suggestions(source_adapter, target_adapters, *, max_links: i
     return suggestions
 
 
-def apply_suggestions_to_markdown(body_markdown: str, suggestions, *, max_apply: int):
+def apply_suggestions_to_markdown(body_markdown: str, suggestions: list[dict[str, Any]], *, max_apply: int) -> tuple[str, int, list[dict[str, Any]]]:
     content = body_markdown or ""
     applied = 0
-    applied_suggestions = []
+    applied_suggestions: list[dict[str, Any]] = []
 
     for suggestion in suggestions:
         if applied >= max_apply:
@@ -162,7 +163,7 @@ def apply_suggestions_to_markdown(body_markdown: str, suggestions, *, max_apply:
     return content, applied, applied_suggestions
 
 
-def suggest_internal_links(post, *, max_suggestions: int = 8) -> list[dict]:
+def suggest_internal_links(post: Any, *, max_suggestions: int = 8) -> list[dict[str, Any]]:
     """
     Suggest internal links for a post based on content matching.
     

@@ -156,9 +156,9 @@ def get_post_reaction_counts(post: Post) -> dict[str, int]:
         and hasattr(post, "comment_total")
     ):
         return {
-            "like_total": post.like_total,
-            "bookmark_total": post.bookmark_total,
-            "comment_total": post.comment_total,
+            "like_total": int(getattr(post, "like_total", 0)),
+            "bookmark_total": int(getattr(post, "bookmark_total", 0)),
+            "comment_total": int(getattr(post, "comment_total", 0)),
         }
 
     return {

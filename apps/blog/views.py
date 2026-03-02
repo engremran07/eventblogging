@@ -1,10 +1,10 @@
 ﻿from __future__ import annotations
 
 import logging
+from typing import Any, cast
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.models import User
 from django.core.paginator import Paginator
 from django.db.models import F, Q, QuerySet
 from django.http import Http404, HttpRequest, HttpResponse, HttpResponseBadRequest, JsonResponse
@@ -59,9 +59,14 @@ DASHBOARD_SORT_CHOICES = {
 }
 
 
-def _get_visible_post_or_404(slug: str, user: User | None) -> Post:
+def _get_visible_post_or_404(slug: str, user: Any) -> Post:
     """Thin wrapper around selectors.get_post_by_slug for backwards compat."""
     return get_post_by_slug(slug, user)
+
+
+def _is_htmx(request: HttpRequest) -> bool:
+    """Check HTMX request flag set by django-htmx middleware."""
+    return bool(getattr(request, "htmx", False))
 
 
 def _track_view(request: HttpRequest, post: Post) -> None:
@@ -79,7 +84,7 @@ def _track_view(request: HttpRequest, post: Post) -> None:
     SessionService.mark(request, "post_view", post.pk)
 
 
-def _reaction_state(post: Post, user: User) -> dict[str, bool]:
+def _reaction_state(post: Post, user: Any) -> dict[str, bool]:
     """Thin wrapper around comments.selectors.user_likes_or_bookmarks_post."""
     return user_likes_or_bookmarks_post(post, user)
 
@@ -100,23 +105,23 @@ def _render_reaction_fragment(request: HttpRequest, post: Post, *, global_reacti
     return render(request, "blog/partials/reaction_bar.html", context)
 
 
-def _refresh_auto_taxonomy_for_queryset(queryset):
+def _refresh_auto_taxonomy_for_queryset(queryset: QuerySet[Post]) -> None:
     for item in queryset.prefetch_related("tags", "categories"):
         apply_auto_taxonomy_to_post(item)
 
 
-def _can_manage_comments(post, user):
+def _can_manage_comments(post: Post, user: Any) -> bool:
     return bool(user.is_authenticated and (user == post.author or user.is_staff))
 
 
-def _can_edit_comment(comment, user):
+def _can_edit_comment(comment: Any, user: Any) -> bool:
     return bool(
         user.is_authenticated
         and (user == comment.author or user == comment.post.author or user.is_staff)
     )
 
 
-def _get_comments_queryset_for_user(post: Post, user: User) -> QuerySet[Comment]:
+def _get_comments_queryset_for_user(post: Post, user: Any) -> QuerySet[Comment]:
     """Return the visible comments queryset for a post, respecting user role.
 
     Staff and the post author see every comment.  Authenticated users also see
@@ -128,13 +133,13 @@ def _get_comments_queryset_for_user(post: Post, user: User) -> QuerySet[Comment]
     if _can_manage_comments(post, user):
         return _get_post_comments(post, approved_only=False)
     if user.is_authenticated:
-        return post.comments.select_related("author").filter(
+        return post.comments.select_related("author").filter(  # type: ignore[attr-defined]
             Q(is_approved=True) | Q(author=user)
         )
     return _get_post_comments(post, approved_only=True)
 
 
-def _render_listing(request: HttpRequest, forced_filters=None) -> HttpResponse:
+def _render_listing(request: HttpRequest, forced_filters: dict[str, Any] | None = None) -> HttpResponse:
     context = get_listing_context(request, forced_filters=forced_filters)
     context.update(get_search_suggestion_context(request.user, context.get("active_query", "")))
     controls = FeatureControlSettings.get_solo()
@@ -154,7 +159,7 @@ def _render_listing(request: HttpRequest, forced_filters=None) -> HttpResponse:
             description=description,
         )
     )
-    template_name = "blog/partials/feed_panel.html" if request.htmx else "blog/home.html"
+    template_name = "blog/partials/feed_panel.html" if _is_htmx(request) else "blog/home.html"
     return render(request, template_name, context)
 
 
@@ -183,12 +188,13 @@ def dashboard(request: HttpRequest) -> HttpResponse:
     if sort_by not in DASHBOARD_SORT_CHOICES:
         sort_by = "-updated_at"
 
-    posts_qs = (
+    posts_qs = cast(
+        "QuerySet[Post]",
         get_dashboard_post_queryset(request.user)
-        .with_reaction_counts()
+        .with_reaction_counts()  # type: ignore[attr-defined]
         .prefetch_related("tags")
         .select_related("author")
-        .order_by(sort_by)
+        .order_by(sort_by),
     )
     page_obj = Paginator(posts_qs, DASHBOARD_POSTS_PER_PAGE).get_page(request.GET.get("page", 1))
     query_params = request.GET.copy()
@@ -220,7 +226,7 @@ def post_bulk_action(request: HttpRequest) -> HttpResponse:
         messages.warning(request, "Select at least one post.")
         feedback_level = "warning"
         feedback_message = "Select at least one post."
-        if request.htmx:
+        if _is_htmx(request):
             response = HttpResponseClientRedirect(reverse("blog:dashboard"))
             return attach_ui_feedback(
                 response,
@@ -238,7 +244,7 @@ def post_bulk_action(request: HttpRequest) -> HttpResponse:
         messages.warning(request, "No matching posts found.")
         feedback_level = "warning"
         feedback_message = "No matching posts found."
-        if request.htmx:
+        if _is_htmx(request):
             response = HttpResponseClientRedirect(reverse("blog:dashboard"))
             return attach_ui_feedback(
                 response,
@@ -328,7 +334,7 @@ def post_bulk_action(request: HttpRequest) -> HttpResponse:
         except Exception:
             logger.exception("SEO refresh failed after post bulk action '%s'.", action)
 
-    if request.htmx:
+    if _is_htmx(request):
         response = HttpResponseClientRedirect(reverse("blog:dashboard"))
         return attach_ui_feedback(
             response,
@@ -409,15 +415,15 @@ def post_create(request: HttpRequest) -> HttpResponse:
             emit_platform_webhook(
                 "post.created",
                 {
-                    "post_id": post.id,
+                    "post_id": post.pk,
                     "slug": post.slug,
-                    "author_id": request.user.id,
+                    "author_id": request.user.pk,
                     "status": post.status,
                 },
             )
 
             messages.success(request, "Post created successfully.")
-            if request.htmx:
+            if _is_htmx(request):
                 response = HttpResponseClientRedirect(post.get_absolute_url())
                 return attach_ui_feedback(
                     response,
@@ -475,9 +481,9 @@ def post_update(request: HttpRequest, slug: str) -> HttpResponse:
             emit_platform_webhook(
                 "post.updated",
                 {
-                    "post_id": post.id,
+                    "post_id": post.pk,
                     "slug": post.slug,
-                    "author_id": request.user.id,
+                    "author_id": request.user.pk,
                     "changed_fields": changed_fields,
                 },
             )
@@ -487,7 +493,7 @@ def post_update(request: HttpRequest, slug: str) -> HttpResponse:
                 post.record_revision(editor=request.user, note=note)
 
             messages.success(request, "Post updated successfully.")
-            if request.htmx:
+            if _is_htmx(request):
                 response = HttpResponseClientRedirect(post.get_absolute_url())
                 return attach_ui_feedback(
                     response,
@@ -533,9 +539,9 @@ def post_delete(request: HttpRequest, slug: str) -> HttpResponse:
         emit_platform_webhook(
             "post.deleted",
             {
-                "post_id": post.id,
+                "post_id": post.pk,
                 "slug": post.slug,
-                "author_id": request.user.id,
+                "author_id": request.user.pk,
             },
         )
         post.delete()
@@ -551,7 +557,7 @@ def post_revisions(request: HttpRequest, slug: str) -> HttpResponse:
     if not (request.user == post.author or request.user.is_staff):
         raise Http404("Post not available")
 
-    revisions = post.revisions.select_related("editor").all()
+    revisions = post.revisions.select_related("editor").all()  # type: ignore[attr-defined]
     return render(
         request,
         "blog/post_revisions.html",
@@ -591,7 +597,7 @@ def comment_create(request: HttpRequest, slug: str) -> HttpResponse:
 
     if not controls.enable_comments:
         response = HttpResponseBadRequest("Comments are disabled globally.")
-        if request.htmx:
+        if _is_htmx(request):
             attach_ui_feedback(
                 response,
                 toast={
@@ -608,7 +614,7 @@ def comment_create(request: HttpRequest, slug: str) -> HttpResponse:
 
     if not post.allow_comments:
         response = HttpResponseBadRequest("Comments are disabled for this post.")
-        if request.htmx:
+        if _is_htmx(request):
             attach_ui_feedback(
                 response,
                 toast={
@@ -629,8 +635,8 @@ def comment_create(request: HttpRequest, slug: str) -> HttpResponse:
         comment.post = post
         comment.author = request.user
         moderation = evaluate_comment_risk(comment.body)
-        risk_score = int(moderation["score"])
-        risk_reasons = list(moderation["reasons"])
+        risk_score = int(moderation["score"])  # type: ignore[arg-type]
+        risk_reasons: list[str] = list(moderation["reasons"])  # type: ignore[arg-type]
         threshold = int(getattr(controls, "comment_spam_threshold", 70) or 70)
         threshold = max(1, min(threshold, 100))
         score_requires_moderation = risk_score >= threshold
@@ -646,9 +652,9 @@ def comment_create(request: HttpRequest, slug: str) -> HttpResponse:
         emit_platform_webhook(
             "comment.created",
             {
-                "comment_id": comment.id,
-                "post_id": post.id,
-                "author_id": request.user.id,
+                "comment_id": comment.pk,
+                "post_id": post.pk,
+                "author_id": request.user.pk,
                 "approved": comment.is_approved,
                 "risk_score": risk_score,
             },
@@ -675,7 +681,7 @@ def comment_create(request: HttpRequest, slug: str) -> HttpResponse:
             "comment_form": CommentForm(),
             "can_manage_comments": can_manage,
         }
-        if request.htmx:
+        if _is_htmx(request):
             response = render(request, "blog/partials/comments_section.html", context)
             return attach_ui_feedback(
                 response,
@@ -691,7 +697,7 @@ def comment_create(request: HttpRequest, slug: str) -> HttpResponse:
     comments = _get_comments_queryset_for_user(post, request.user)
     error_message = "Unable to add comment."
     if form.errors:
-        first_error = next(iter(form.errors.values()), [])
+        first_error = next(iter(form.errors.values()), None)
         if first_error:
             error_message = str(first_error[0])
     context = {
@@ -700,7 +706,7 @@ def comment_create(request: HttpRequest, slug: str) -> HttpResponse:
         "comment_form": form,
         "can_manage_comments": can_manage,
     }
-    if request.htmx:
+    if _is_htmx(request):
         response = render(request, "blog/partials/comments_section.html", context, status=400)
         return attach_ui_feedback(
             response,
@@ -728,9 +734,9 @@ def comment_update(request: HttpRequest, comment_id: int) -> HttpResponse:
         emit_platform_webhook(
             "comment.updated",
             {
-                "comment_id": comment.id,
-                "post_id": comment.post_id,
-                "editor_id": request.user.id,
+                "comment_id": comment.pk,
+                "post_id": comment.post_id,  # type: ignore[attr-defined]
+                "editor_id": request.user.pk,
             },
         )
         messages.success(request, "Comment updated.")
@@ -748,7 +754,7 @@ def comment_update(request: HttpRequest, comment_id: int) -> HttpResponse:
         "comment_form": CommentForm(),
         "can_manage_comments": _can_manage_comments(post, request.user),
     }
-    if request.htmx:
+    if _is_htmx(request):
         response = render(request, "blog/partials/comments_section.html", context, status=200)
         return attach_ui_feedback(
             response,
@@ -773,9 +779,9 @@ def comment_delete(request: HttpRequest, comment_id: int) -> HttpResponse:
     emit_platform_webhook(
         "comment.deleted",
         {
-            "comment_id": comment.id,
-            "post_id": post.id,
-            "editor_id": request.user.id,
+            "comment_id": comment.pk,
+            "post_id": post.pk,
+            "editor_id": request.user.pk,
         },
     )
     comment.delete()
@@ -787,7 +793,7 @@ def comment_delete(request: HttpRequest, comment_id: int) -> HttpResponse:
         "comment_form": CommentForm(),
         "can_manage_comments": _can_manage_comments(post, request.user),
     }
-    if request.htmx:
+    if _is_htmx(request):
         response = render(request, "blog/partials/comments_section.html", context, status=200)
         return attach_ui_feedback(
             response,
@@ -810,7 +816,10 @@ def comment_bulk_action(request: HttpRequest, slug: str) -> HttpResponse:
 
     action = (request.POST.get("bulk_action") or "").strip()
     selected_ids = request.POST.getlist("selected_comments")
-    queryset = post.comments.filter(id__in=selected_ids)
+    queryset = cast(
+        "QuerySet[Comment]",
+        post.comments.filter(id__in=selected_ids),  # type: ignore[attr-defined]
+    )
 
     feedback_level = "info"
     feedback_message = "No changes applied."
@@ -846,7 +855,7 @@ def comment_bulk_action(request: HttpRequest, slug: str) -> HttpResponse:
         "comment_form": CommentForm(),
         "can_manage_comments": True,
     }
-    if request.htmx:
+    if _is_htmx(request):
         response = render(request, "blog/partials/comments_section.html", context, status=200)
         return attach_ui_feedback(
             response,
@@ -868,7 +877,7 @@ def toggle_like(request: HttpRequest, slug: str) -> HttpResponse:
     feedback_target = "global" if _is_card_reaction_request(request) else "reactions"
     if not controls.enable_reactions:
         response = HttpResponseBadRequest("Reactions are disabled globally.")
-        if request.htmx:
+        if _is_htmx(request):
             attach_ui_feedback(
                 response,
                 toast={
@@ -885,7 +894,7 @@ def toggle_like(request: HttpRequest, slug: str) -> HttpResponse:
 
     if not post.allow_reactions:
         response = HttpResponseBadRequest("Reactions are disabled for this post.")
-        if request.htmx:
+        if _is_htmx(request):
             attach_ui_feedback(
                 response,
                 toast={
@@ -909,7 +918,7 @@ def toggle_like(request: HttpRequest, slug: str) -> HttpResponse:
         post,
         global_reactions_enabled=controls.enable_reactions,
     )
-    if request.htmx:
+    if _is_htmx(request):
         return attach_ui_feedback(
             response,
             toast={
@@ -933,7 +942,7 @@ def toggle_bookmark(request: HttpRequest, slug: str) -> HttpResponse:
     feedback_target = "global" if _is_card_reaction_request(request) else "reactions"
     if not controls.enable_reactions:
         response = HttpResponseBadRequest("Reactions are disabled globally.")
-        if request.htmx:
+        if _is_htmx(request):
             attach_ui_feedback(
                 response,
                 toast={
@@ -950,7 +959,7 @@ def toggle_bookmark(request: HttpRequest, slug: str) -> HttpResponse:
 
     if not post.allow_reactions:
         response = HttpResponseBadRequest("Reactions are disabled for this post.")
-        if request.htmx:
+        if _is_htmx(request):
             attach_ui_feedback(
                 response,
                 toast={
@@ -974,7 +983,7 @@ def toggle_bookmark(request: HttpRequest, slug: str) -> HttpResponse:
         post,
         global_reactions_enabled=controls.enable_reactions,
     )
-    if request.htmx:
+    if _is_htmx(request):
         return attach_ui_feedback(
             response,
             toast={
@@ -995,7 +1004,7 @@ def newsletter_subscribe(request: HttpRequest) -> HttpResponse:
     controls = FeatureControlSettings.get_solo()
     if not controls.enable_newsletter:
         response = HttpResponseBadRequest("Newsletter subscription is disabled.")
-        if request.htmx:
+        if _is_htmx(request):
             return attach_ui_feedback(
                 response,
                 toast={"level": "error", "message": "Newsletter is currently disabled."},
@@ -1060,7 +1069,7 @@ def newsletter_subscribe(request: HttpRequest) -> HttpResponse:
         "newsletter_form": NewsletterForm(),
     }
 
-    if request.htmx:
+    if _is_htmx(request):
         level_map = {
             "success": "success",
             "info": "info",
@@ -1140,7 +1149,7 @@ def api_dashboard_stats(request: HttpRequest) -> JsonResponse:
     metrics = get_dashboard_metrics(request.user)
     metrics["dashboard_top_posts"] = [
         {
-            "id": post.id,
+            "id": post.pk,
             "title": post.title,
             "slug": post.slug,
             "views_count": post.views_count,
@@ -1151,7 +1160,7 @@ def api_dashboard_stats(request: HttpRequest) -> JsonResponse:
     ]
     metrics["dashboard_latest_activity"] = [
         {
-            "id": post.id,
+            "id": post.pk,
             "title": post.title,
             "slug": post.slug,
             "status": post.status,
@@ -1206,7 +1215,7 @@ def dashboard_stats_stream(request: HttpRequest) -> JsonResponse:
 
     top_posts = [
         {
-            "id": post.id,
+            "id": post.pk,
             "title": post.title,
             "views": post.views_count,
             "url": post.get_absolute_url(),

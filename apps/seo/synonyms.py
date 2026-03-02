@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections import Counter
 from functools import lru_cache
+from typing import Any
 
 from .models import TaxonomySynonymGroup
 
@@ -13,11 +14,11 @@ SCOPE_PRIORITY = {
 }
 
 
-def normalize_term(value: str):
+def normalize_term(value: str) -> str:
     return " ".join((value or "").strip().lower().split())
 
 
-def _scope_group_order(scope: str):
+def _scope_group_order(scope: str) -> list[str]:
     if scope == TaxonomySynonymGroup.Scope.CATEGORIES:
         return [TaxonomySynonymGroup.Scope.CATEGORIES, TaxonomySynonymGroup.Scope.ALL]
     if scope == TaxonomySynonymGroup.Scope.TOPICS:
@@ -32,7 +33,7 @@ def _scope_group_order(scope: str):
     ]
 
 
-def _pick_canonical(terms):
+def _pick_canonical(terms: Any) -> Any:
     ranked = sorted(
         terms,
         key=lambda row: (bool(row.is_canonical), float(row.weight), row.term),
@@ -42,7 +43,7 @@ def _pick_canonical(terms):
 
 
 @lru_cache(maxsize=8)
-def _synonym_index_for_scope(scope: str):
+def _synonym_index_for_scope(scope: str) -> dict[str, Any]:
     allowed_scopes = _scope_group_order(scope)
     groups = (
         TaxonomySynonymGroup.objects.filter(is_active=True, scope__in=allowed_scopes)
@@ -100,11 +101,11 @@ def canonical_term(term: str, *, scope: str = TaxonomySynonymGroup.Scope.ALL):
 
 
 def expand_terms(
-    terms,
+    terms: list[str] | None,
     *,
     scope: str = TaxonomySynonymGroup.Scope.ALL,
     include_original: bool = True,
-):
+) -> set[str]:
     expanded = set()
     index = _synonym_index_for_scope(scope)
     for raw in terms or []:
@@ -123,11 +124,11 @@ def expand_terms(
 
 
 def augment_weighted_terms(
-    token_weights,
+    token_weights: dict[str, float] | Counter[str] | None,
     *,
     scope: str = TaxonomySynonymGroup.Scope.ALL,
     expansion_factor: float = 0.55,
-):
+) -> Counter[str]:
     weighted = Counter(token_weights or {})
     index = _synonym_index_for_scope(scope)
     for raw_term, raw_weight in list(weighted.items()):

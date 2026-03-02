@@ -87,6 +87,15 @@ def _target_score(anchor_text: str, target: Any) -> float:
     overlap = len(anchor_tokens & target_tokens)
     union = len(anchor_tokens | target_tokens) or 1
     base = overlap / union
+
+    # TF-IDF boost: if target has tfidf_vector, score overlap with anchor terms
+    tfidf_vector = getattr(target, "tfidf_vector", None) or {}
+    if tfidf_vector and isinstance(tfidf_vector, dict):
+        tfidf_boost = sum(
+            tfidf_vector.get(tok, 0.0) for tok in anchor_tokens
+        )
+        base += min(tfidf_boost * 0.3, 0.15)  # Cap TF-IDF boost at 0.15
+
     if target.is_featured:
         base += 0.05
     return min(base, 1.0)
@@ -165,12 +174,14 @@ def apply_suggestions_to_markdown(body_markdown: str, suggestions: list[dict[str
 
 def suggest_internal_links(post: Any, *, max_suggestions: int = 8) -> list[dict[str, Any]]:
     """
-    Suggest internal links for a post based on content matching.
-    
+    Suggest internal links for a post/page based on content matching.
+    Uses the FULL published content pool (no artificial caps) to maximize
+    crawl-budget coverage — every piece of content is a potential target.
+
     Args:
-        post: Post instance
+        post: Post or Page instance
         max_suggestions: Maximum number of suggestions to return
-    
+
     Returns:
         List of dicts with 'anchor_text', 'target_url', 'target_type', 'target_id', 'score'
     """
@@ -180,14 +191,29 @@ def suggest_internal_links(post: Any, *, max_suggestions: int = 8) -> list[dict[
     if not post or not post.pk:
         return []
 
-    # Fetch source pool once to avoid duplicated queries and stale counts.
+    is_post = isinstance(post, PostModel)
+    is_page = isinstance(post, PageModel)
+
+    # Fetch FULL published content pool — no recency caps
     other_posts = list(
         PostModel.objects.published()
-        .exclude(pk=post.pk)
-        .order_by("-published_at")[:50]
+        .exclude(pk=post.pk if is_post else -1)
+        .only(
+            "id", "title", "excerpt", "slug", "body_markdown", "body_html",
+            "word_count", "published_at", "updated_at", "created_at",
+            "status", "is_featured", "tfidf_vector",
+        )
     )
 
-    pages = list(PageModel.objects.published().order_by("-published_at")[:20])
+    pages = list(
+        PageModel.objects.published()
+        .exclude(pk=post.pk if is_page else -1)
+        .only(
+            "id", "title", "summary", "slug", "body_markdown", "body_html",
+            "word_count", "published_at", "updated_at", "created_at",
+            "status", "is_featured", "tfidf_vector",
+        )
+    )
 
     # Build adapter-like objects for compatibility
     target_adapters = [
@@ -198,6 +224,7 @@ def suggest_internal_links(post: Any, *, max_suggestions: int = 8) -> list[dict[
             url=p.get_absolute_url(),
             excerpt_or_summary=p.excerpt or "",
             is_featured=p.is_featured,
+            tfidf_vector=getattr(p, "tfidf_vector", {}) or {},
         )
         for p in other_posts
     ]
@@ -210,13 +237,14 @@ def suggest_internal_links(post: Any, *, max_suggestions: int = 8) -> list[dict[
             url=p.get_absolute_url(),
             excerpt_or_summary=p.summary or "",
             is_featured=False,
+            tfidf_vector=getattr(p, "tfidf_vector", {}) or {},
         )
         for p in pages
     )
 
     # Build source adapter
     source_adapter = SimpleNamespace(
-        route_type="post",
+        route_type="post" if is_post else "page",
         body_markdown=post.body_markdown,
         pk=post.pk,
     )
@@ -242,3 +270,271 @@ def suggest_internal_links(post: Any, *, max_suggestions: int = 8) -> list[dict[
     )
 
     return suggestions
+
+
+# ---------------------------------------------------------------------------
+# Reverse linking — When A links to B, suggest B link back to A
+# ---------------------------------------------------------------------------
+
+def reverse_interlink_scan(source_instance: Any) -> list[dict[str, Any]]:
+    """
+    For a newly saved piece of content, find all published content that
+    already links TO it and create reverse-link suggestions FROM those
+    pieces BACK to this content — ensuring bidirectional crawl paths.
+    """
+    import logging
+
+    from django.contrib.contenttypes.models import ContentType
+
+    from .models import SeoLinkEdge
+
+    logger = logging.getLogger(__name__)
+
+    if not source_instance or not source_instance.pk:
+        return []
+
+    ct = ContentType.objects.get_for_model(source_instance.__class__)
+
+    inbound_edges = list(
+        SeoLinkEdge.objects.filter(
+            target_content_type=ct,
+            target_object_id=source_instance.pk,
+            status=SeoLinkEdge.Status.APPLIED,
+        )
+        .select_related("source_content_type")
+        .only("source_content_type", "source_object_id", "anchor_text")
+    )
+
+    if not inbound_edges:
+        return []
+
+    reverse_suggestions: list[dict[str, Any]] = []
+    source_url = source_instance.get_absolute_url()
+    source_title = getattr(source_instance, "title", "") or ""
+
+    for edge in inbound_edges:
+        existing = SeoLinkEdge.objects.filter(
+            source_content_type=ct,
+            source_object_id=source_instance.pk,
+            target_content_type=edge.source_content_type,
+            target_object_id=edge.source_object_id,
+        ).exists()
+
+        if existing:
+            continue
+
+        linker_model = edge.source_content_type.model_class()
+        if not linker_model:
+            continue
+        linker = linker_model.objects.filter(pk=edge.source_object_id).first()
+        if not linker:
+            continue
+
+        linker_title = getattr(linker, "title", "") or ""
+        anchor = source_title[:60] if source_title else f"Related: {linker_title[:40]}"
+
+        reverse_suggestions.append({
+            "anchor_text": anchor,
+            "target_url": source_url,
+            "target_type": "post" if hasattr(source_instance, "excerpt") else "page",
+            "target_id": source_instance.pk,
+            "source_id": linker.pk,
+            "source_type": edge.source_content_type.model,
+            "score": 0.6,
+        })
+
+    logger.debug(
+        "Reverse interlink scan for %s pk=%s: %d suggestions",
+        ct.model, source_instance.pk, len(reverse_suggestions),
+    )
+    return reverse_suggestions
+
+
+# ---------------------------------------------------------------------------
+# Orphan detection & repair
+# ---------------------------------------------------------------------------
+
+def find_orphan_content() -> dict[str, list[int]]:
+    """Find all published content with zero inbound links (orphans)."""
+    from django.contrib.contenttypes.models import ContentType
+
+    from blog.models import Post as PostModel
+    from pages.models import Page as PageModel
+
+    from .models import SeoLinkEdge
+
+    post_ct = ContentType.objects.get_for_model(PostModel)
+    page_ct = ContentType.objects.get_for_model(PageModel)
+
+    linked_post_ids = set(
+        SeoLinkEdge.objects.filter(
+            target_content_type=post_ct,
+            status=SeoLinkEdge.Status.APPLIED,
+        ).values_list("target_object_id", flat=True)
+    )
+    orphan_posts = [
+        p.pk for p in PostModel.objects.published().only("id")
+        if p.pk not in linked_post_ids
+    ]
+
+    linked_page_ids = set(
+        SeoLinkEdge.objects.filter(
+            target_content_type=page_ct,
+            status=SeoLinkEdge.Status.APPLIED,
+        ).values_list("target_object_id", flat=True)
+    )
+    orphan_pages = [
+        p.pk for p in PageModel.objects.published().only("id")
+        if p.pk not in linked_page_ids
+    ]
+
+    return {"posts": orphan_posts, "pages": orphan_pages}
+
+
+def repair_orphans(*, max_repairs: int = 50) -> dict[str, int]:
+    """
+    Orphan Safety Net — For each orphan, find the best existing content
+    to link FROM and create a suggestion. Ensures every published piece
+    of content is reachable in a single crawl.
+    """
+    import logging
+
+    from blog.models import Post as PostModel
+    from pages.models import Page as PageModel
+
+    logger = logging.getLogger(__name__)
+
+    orphans = find_orphan_content()
+    repairs_created = 0
+
+    all_posts = list(PostModel.objects.published().only(
+        "id", "title", "body_markdown", "tfidf_vector", "is_featured",
+    ))
+    all_pages = list(PageModel.objects.published().only(
+        "id", "title", "body_markdown", "tfidf_vector", "is_featured",
+    ))
+
+    all_content: list[tuple[str, Any]] = [
+        ("post", p) for p in all_posts
+    ] + [
+        ("page", p) for p in all_pages
+    ]
+
+    for post_pk in orphans.get("posts", [])[:max_repairs]:
+        orphan = PostModel.objects.filter(pk=post_pk).first()
+        if not orphan:
+            continue
+        best_source = _find_best_linker(orphan, all_content)
+        if best_source:
+            suggestions = suggest_internal_links(best_source[1], max_suggestions=1)
+            if suggestions:
+                repairs_created += 1
+
+    for page_pk in orphans.get("pages", [])[:max_repairs]:
+        orphan = PageModel.objects.filter(pk=page_pk).first()
+        if not orphan:
+            continue
+        best_source = _find_best_linker(orphan, all_content)
+        if best_source:
+            repairs_created += 1
+
+    logger.info(
+        "Orphan repair: %d orphan posts, %d orphan pages, %d repairs created",
+        len(orphans.get("posts", [])),
+        len(orphans.get("pages", [])),
+        repairs_created,
+    )
+    return {
+        "orphan_posts": len(orphans.get("posts", [])),
+        "orphan_pages": len(orphans.get("pages", [])),
+        "repairs_created": repairs_created,
+    }
+
+
+def _find_best_linker(
+    orphan: Any,
+    all_content: list[tuple[str, Any]],
+) -> tuple[str, Any] | None:
+    """Find the best existing content to link FROM to the orphan."""
+    orphan_title = getattr(orphan, "title", "") or ""
+    orphan_tokens = set(_tokens(orphan_title))
+    if not orphan_tokens:
+        return None
+
+    best_score = 0.0
+    best_source: tuple[str, Any] | None = None
+
+    for content_type, content in all_content:
+        if content.pk == orphan.pk:
+            continue
+        source_title = getattr(content, "title", "") or ""
+        source_tokens = set(_tokens(source_title))
+        if not source_tokens:
+            continue
+        overlap = len(orphan_tokens & source_tokens)
+        union = len(orphan_tokens | source_tokens) or 1
+        score = overlap / union
+        if score > best_score:
+            best_score = score
+            best_source = (content_type, content)
+
+    return best_source if best_score > 0.05 else None
+
+
+def verify_graph_connectivity() -> dict[str, Any]:
+    """
+    Verify that the internal link graph is fully connected.
+    Returns graph connectivity statistics.
+    """
+    from blog.models import Post as PostModel
+    from pages.models import Page as PageModel
+
+    from .models import SeoLinkEdge
+
+    nodes: set[str] = set()
+    edges_graph: dict[str, set[str]] = {}
+
+    for post in PostModel.objects.published().only("id"):
+        node_id = f"post:{post.pk}"
+        nodes.add(node_id)
+        edges_graph.setdefault(node_id, set())
+
+    for page in PageModel.objects.published().only("id"):
+        node_id = f"page:{page.pk}"
+        nodes.add(node_id)
+        edges_graph.setdefault(node_id, set())
+
+    for edge in SeoLinkEdge.objects.filter(status=SeoLinkEdge.Status.APPLIED).select_related(
+        "source_content_type", "target_content_type"
+    ):
+        source_type = edge.source_content_type.model
+        target_type = edge.target_content_type.model
+        source_id = f"{source_type}:{edge.source_object_id}"
+        target_id = f"{target_type}:{edge.target_object_id}"
+        if source_id in nodes and target_id in nodes:
+            edges_graph.setdefault(source_id, set()).add(target_id)
+
+    total_nodes = len(nodes)
+    if total_nodes == 0:
+        return {"total_nodes": 0, "reachable": 0, "orphans": 0, "connected": True}
+
+    start = next(iter(nodes))
+    visited: set[str] = set()
+    queue = [start]
+    visited.add(start)
+
+    while queue:
+        current = queue.pop(0)
+        for neighbor in edges_graph.get(current, set()):
+            if neighbor not in visited:
+                visited.add(neighbor)
+                queue.append(neighbor)
+
+    orphan_nodes = nodes - visited
+    return {
+        "total_nodes": total_nodes,
+        "reachable": len(visited),
+        "orphans": len(orphan_nodes),
+        "orphan_ids": sorted(orphan_nodes)[:50],
+        "connected": len(visited) == total_nodes,
+    }

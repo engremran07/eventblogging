@@ -8,7 +8,7 @@
 {% block breadcrumbs %}
 <ol class="breadcrumb">
     <li class="breadcrumb-item"><a href="{% url 'admin:index' %}">Home</a></li>
-    <li class="breadcrumb-item"><a href="{% url 'admin_config:seo_overview' %}">SEO</a></li>
+    <li class="breadcrumb-item"><a href="{% url 'admin_config:seo_control' %}">SEO</a></li>
     {% if admin_control_breadcrumb_parent_label and admin_control_breadcrumb_parent_url %}
         <li class="breadcrumb-item"><a href="{{ admin_control_breadcrumb_parent_url }}">{{ admin_control_breadcrumb_parent_label }}</a></li>
     {% endif %}
@@ -28,21 +28,10 @@
             </div>
             <div class="workspace-hero-actions">
                 <a
-                    class="btn btn-sm {% if admin_control_section == 'seo_overview' %}btn-primary{% else %}btn-secondary{% endif %}"
-                    href="{% url 'admin_config:seo_overview' %}"
-                >Overview</a>
-                <a
-                    class="btn btn-sm {% if admin_control_section == 'seo_control' or admin_control_section == 'seo_queue' %}btn-primary{% else %}btn-secondary{% endif %}"
-                    href="{% url 'admin_config:seo_queue' %}"
-                >Audit Queue</a>
+                    class="btn btn-sm btn-primary"
+                    href="{% url 'admin_config:seo_control' %}"
+                >SEO Dashboard</a>
             </div>
-        </section>
-
-        <section class="card workspace-filter-card admin-control-nav-card">
-            <nav class="admin-control-nav">
-                <a class="admin-control-nav-item {% if admin_control_section == 'seo_overview' %}active{% endif %}" href="{% url 'admin_config:seo_overview' %}">Overview</a>
-                <a class="admin-control-nav-item {% if admin_control_section == 'seo_control' or admin_control_section == 'seo_queue' %}active{% endif %}" href="{% url 'admin_config:seo_queue' %}">Audit Queue</a>
-            </nav>
         </section>
 
         <div class="admin-control-content">

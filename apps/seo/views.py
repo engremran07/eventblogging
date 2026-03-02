@@ -86,16 +86,26 @@ def _render_live_check_panel(
     error: str = "",
     status: int = 200,
 ) -> HttpResponse:
-    return render(
+    data = payload or {}
+    field_checks = data.get("field_checks", {})
+
+    # Ensure all tracked fields have entries (empty = all passed for that field)
+    _TRACKED_FIELDS = ("title", "slug", "meta_description", "canonical_url", "body_markdown", "meta_title")
+    for f in _TRACKED_FIELDS:
+        field_checks.setdefault(f, [])
+
+    response = render(
         request,
         "seo/partials/live_check_panel.html",
         {
             "content_type": content_type,
-            "live_check": payload or {},
+            "live_check": data,
             "live_check_error": error,
+            "field_checks": field_checks,
         },
         status=status,
     )
+    return response
 
 
 def _score_post(query_vector: list[float], query_tokens: set[str], post: Post, max_views: int) -> dict[str, Any]:

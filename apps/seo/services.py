@@ -5,7 +5,7 @@ import json
 import logging
 import re
 from collections.abc import Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import timedelta
 from typing import Any, cast
 
@@ -64,6 +64,13 @@ class ContentAdapter:
     status: str
     link_edge_model: type = SeoLinkEdge
 
+    # Rich metadata fields (populated from instance for schema/OG)
+    _author_name: str = ""
+    _keywords_csv: str = ""
+    _section: str = ""
+    _tag_names: list[str] = field(default_factory=list)
+    _twitter_creator: str = ""
+
     @property
     def excerpt_or_summary(self) -> str:
         return self.excerpt or self.summary
@@ -89,12 +96,29 @@ def _build_adapter_from_instance(instance: Any) -> ContentAdapter:
     summary = ""
     excerpt = ""
     og_image_url = ""
+    author_name = ""
+    keywords_csv = ""
+    section = ""
+    tag_names: list[str] = []
 
     if isinstance(instance, Post):
         route_type = "post"
         excerpt = instance.excerpt or ""
         if instance.cover_image:
             og_image_url = instance.cover_image.url
+        # Rich metadata for schema/OG
+        if hasattr(instance, "author") and instance.author:
+            author_name = instance.author.get_full_name() or instance.author.username
+        try:
+            tag_names = [t.name for t in instance.tags.all()]  # type: ignore[union-attr]
+            keywords_csv = ", ".join(tag_names)
+        except Exception:
+            pass
+        try:
+            if instance.primary_topic:
+                section = str(instance.primary_topic)
+        except Exception:
+            pass
     elif isinstance(instance, Page):
         route_type = "page"
         summary = instance.summary or ""
@@ -121,6 +145,10 @@ def _build_adapter_from_instance(instance: Any) -> ContentAdapter:
         og_image_url=og_image_url,
         is_featured=bool(getattr(instance, "is_featured", False)),
         status=getattr(instance, "status", "") or "",
+        _author_name=author_name,
+        _keywords_csv=keywords_csv,
+        _section=section,
+        _tag_names=tag_names,
     )
 
 
@@ -247,6 +275,316 @@ def seo_context_for_route(
     return metadata_template_payload(metadata)
 
 
+# ---------------------------------------------------------------------------
+# Content signal computation
+# ---------------------------------------------------------------------------
+
+_VOWELS = set("aeiouAEIOU")
+_SYLLABLE_RE = re.compile(r"[aeiouy]+", re.IGNORECASE)
+_HEADING_HTML_RE = re.compile(r"<h[1-6][^>]*>", re.IGNORECASE)
+_IMG_HTML_RE = re.compile(r"<img\b", re.IGNORECASE)
+_INTERNAL_LINK_RE = re.compile(
+    r'<a\b[^>]*\bhref\s*=\s*["\']([^"\']+)["\']', re.IGNORECASE
+)
+_SENTENCE_SPLIT_RE = re.compile(r"[.!?]+")
+
+# Search-intent keyword sets
+_INTENT_INFORMATIONAL = frozenset({
+    "how", "what", "why", "when", "where", "guide", "tutorial",
+    "learn", "explain", "understand", "definition", "meaning",
+    "example", "examples", "tips", "introduction",
+})
+_INTENT_TRANSACTIONAL = frozenset({
+    "buy", "price", "deal", "discount", "order", "shop", "purchase",
+    "coupon", "cheap", "sale", "offer", "subscribe", "download",
+})
+_INTENT_COMMERCIAL = frozenset({
+    "best", "review", "compare", "comparison", "top", "versus", "vs",
+    "alternative", "alternatives", "ranking", "rated", "recommended",
+})
+_INTENT_NAVIGATIONAL = frozenset({
+    "login", "signin", "sign-in", "signup", "sign-up", "account",
+    "dashboard", "portal", "official", "homepage",
+})
+
+
+def _count_syllables(word: str) -> int:
+    """Estimate syllable count using vowel-group heuristic."""
+    word = word.lower().strip()
+    if not word:
+        return 0
+    count = len(_SYLLABLE_RE.findall(word))
+    # Silent-e adjustment
+    if word.endswith("e") and count > 1:
+        count -= 1
+    # Minimum 1 syllable per word
+    return max(count, 1)
+
+
+def _compute_flesch_kincaid(text: str) -> int:
+    """
+    Compute Flesch-Kincaid Reading Ease score (0-100).
+    Higher = easier to read.
+    Formula: 206.835 - 1.015*(words/sentences) - 84.6*(syllables/words)
+    """
+    if not text:
+        return 0
+    # Strip markdown syntax
+    clean = re.sub(r"[#*_`\[\]()>~|\\-]+", " ", text)
+    words = [w for w in clean.split() if len(w) > 0]
+    total_words = len(words)
+    if total_words < 10:
+        return 0
+    sentences = [s.strip() for s in _SENTENCE_SPLIT_RE.split(clean) if len(s.strip()) > 5]
+    total_sentences = max(len(sentences), 1)
+    total_syllables = sum(_count_syllables(w) for w in words)
+
+    score = 206.835 - 1.015 * (total_words / total_sentences) - 84.6 * (total_syllables / total_words)
+    return max(0, min(100, round(score)))
+
+
+def _extract_focus_term(instance: Any) -> str:
+    """Extract the dominant focus term from title + meta_title."""
+    title = getattr(instance, "title", "") or ""
+    meta_title = getattr(instance, "meta_title", "") or ""
+    combined = f"{title} {meta_title}"
+    tokens = TOKEN_RE.findall(combined.lower())
+    if not tokens:
+        return ""
+    # Return the most frequent non-stop-word token
+    from collections import Counter
+    stop = {"and", "the", "for", "with", "from", "that", "this", "your", "into",
+            "about", "over", "under", "while", "where", "are", "was", "been",
+            "have", "has", "had", "will", "can", "not", "but", "all"}
+    filtered = [t for t in tokens if t not in stop and len(t) > 2]
+    if not filtered:
+        return tokens[0] if tokens else ""
+    counts = Counter(filtered)
+    return counts.most_common(1)[0][0]
+
+
+def _compute_keyword_density(text: str, focus_term: str) -> float:
+    """Compute focus keyword density as a percentage."""
+    if not text or not focus_term:
+        return 0.0
+    words = text.lower().split()
+    total = len(words)
+    if total == 0:
+        return 0.0
+    occurrences = sum(1 for w in words if focus_term in w)
+    return round((occurrences / total) * 100, 2)
+
+
+def _compute_thin_content_score(word_count: int, heading_count: int, image_count: int) -> int:
+    """
+    Compute thin content score (0-10). Higher = thinner content.
+    0 = rich content, 10 = severely thin.
+    """
+    score = 0
+    if word_count < 100:
+        score += 6
+    elif word_count < 300:
+        score += 4
+    elif word_count < 500:
+        score += 2
+    elif word_count < 800:
+        score += 1
+
+    if heading_count == 0:
+        score += 2
+    if image_count == 0:
+        score += 1
+    # No structural variety (very few headings for long content)
+    if word_count > 500 and heading_count < 2:
+        score += 1
+
+    return min(score, 10)
+
+
+def _classify_search_intent(title: str) -> str:
+    """Classify search intent from title keywords."""
+    if not title:
+        return "informational"
+    words = set(title.lower().split())
+    # Check each intent category
+    if words & _INTENT_TRANSACTIONAL:
+        return "transactional"
+    if words & _INTENT_COMMERCIAL:
+        return "commercial"
+    if words & _INTENT_NAVIGATIONAL:
+        return "navigational"
+    # Default to informational
+    return "informational"
+
+
+def compute_content_signals(instance: Any) -> None:
+    """
+    Compute and persist all SEO content signals for a Post or Page.
+    Called from the signal pipeline after save.
+
+    Signals computed:
+    - flesch_score: Flesch-Kincaid readability (0-100)
+    - keyword_density: Focus keyword density percentage
+    - heading_count: Number of headings in body HTML
+    - image_count: Number of images in body HTML
+    - internal_link_count: Outbound internal links in body
+    - inbound_link_count: Links pointing TO this content
+    - is_orphan: True if no inbound links
+    - thin_content_score: Content thinness indicator (0-10)
+    - search_intent: Classified search intent
+    - seo_audit_score: Written back from latest audit snapshot
+    """
+    from decimal import Decimal as D
+
+    body_html = getattr(instance, "body_html", "") or ""
+    body_markdown = getattr(instance, "body_markdown", "") or ""
+    word_count = getattr(instance, "word_count", 0) or max(len(body_markdown.split()), 1)
+
+    # --- Flesch-Kincaid readability ---
+    flesch = _compute_flesch_kincaid(body_markdown)
+
+    # --- Keyword density ---
+    focus = _extract_focus_term(instance)
+    density = _compute_keyword_density(body_markdown, focus)
+
+    # --- Content counts from HTML ---
+    heading_count = len(_HEADING_HTML_RE.findall(body_html))
+    image_count = len(_IMG_HTML_RE.findall(body_html))
+
+    internal_links = _INTERNAL_LINK_RE.findall(body_html)
+    internal_link_count = sum(
+        1 for link in internal_links
+        if link.startswith("/") or "://" not in link
+    )
+
+    # --- Inbound links from SeoLinkEdge ---
+    ct = _content_type_for_instance(instance)
+    inbound_link_count = SeoLinkEdge.objects.filter(
+        target_content_type=ct,
+        target_object_id=instance.pk,
+        status=SeoLinkEdge.Status.APPLIED,
+    ).count()
+    is_orphan = inbound_link_count == 0
+
+    # --- Thin content score ---
+    thin_score = _compute_thin_content_score(word_count, heading_count, image_count)
+
+    # --- Search intent ---
+    search_intent = _classify_search_intent(getattr(instance, "title", "") or "")
+
+    # --- Build update dict (only fields the model has) ---
+    signal_values: dict[str, Any] = {
+        "flesch_score": flesch,
+        "keyword_density": D(str(round(density, 2))),
+        "heading_count": heading_count,
+        "image_count": image_count,
+        "internal_link_count": internal_link_count,
+        "inbound_link_count": inbound_link_count,
+        "is_orphan": is_orphan,
+        "thin_content_score": min(thin_score, 10),
+        "search_intent": search_intent,
+    }
+
+    changed_fields: list[str] = []
+    for field_name, value in signal_values.items():
+        if not hasattr(instance, field_name):
+            continue
+        current = getattr(instance, field_name, None)
+        if current != value:
+            setattr(instance, field_name, value)
+            changed_fields.append(field_name)
+
+    if changed_fields:
+        instance._seo_skip_signal = True  # type: ignore[union-attr]
+        try:
+            instance.save(update_fields=[*changed_fields, "updated_at"])
+        finally:
+            instance._seo_skip_signal = False  # type: ignore[union-attr]
+
+
+def compute_tfidf_signals(instance: Any) -> None:
+    """
+    Compute TF-IDF keyword extraction and persist to model fields.
+    Only runs for Post instances (Pages don't have the full TF-IDF pipeline).
+    """
+    if not isinstance(instance, Post):
+        return
+    if not getattr(instance, "body_html", ""):
+        return
+
+    try:
+        from .tfidf import PostTfidfExtractor
+
+        extractor = PostTfidfExtractor()
+        keywords = extractor.extract_keywords(instance, top_n=15)
+        if not keywords:
+            return
+
+        tfidf_vector = {kw["term"]: round(kw["score"], 4) for kw in keywords}
+
+        # Build keyword_index: term → list of anchor-friendly variants
+        keyword_index: dict[str, list[str]] = {}
+        for kw in keywords:
+            term = kw["term"]
+            variants = [term, term.title()]
+            if " " not in term:
+                variants.append(term.capitalize())
+            keyword_index[term] = variants
+
+        changed_fields: list[str] = []
+        if instance.tfidf_vector != tfidf_vector:
+            instance.tfidf_vector = tfidf_vector
+            changed_fields.append("tfidf_vector")
+        if instance.keyword_index != keyword_index:
+            instance.keyword_index = keyword_index
+            changed_fields.append("keyword_index")
+
+        if changed_fields:
+            instance._seo_skip_signal = True
+            try:
+                instance.save(update_fields=[*changed_fields, "updated_at"])
+            finally:
+                instance._seo_skip_signal = False
+    except Exception:
+        logger.warning(
+            "TF-IDF signal computation failed for post pk=%s",
+            instance.pk,
+            exc_info=True,
+        )
+
+
+def write_back_audit_score(instance: Any, snapshot: SeoAuditSnapshot) -> None:
+    """
+    Write the latest audit score and results back to the model instance.
+    """
+    if not snapshot:
+        return
+
+    changed_fields: list[str] = []
+    score = round(snapshot.score)
+
+    if hasattr(instance, "seo_audit_score") and instance.seo_audit_score != score:
+        instance.seo_audit_score = score
+        changed_fields.append("seo_audit_score")
+
+    # Serialize issue details
+    issues = list(
+        SeoIssue.objects.filter(snapshot=snapshot).values(
+            "check_key", "severity", "message", "suggested_fix", "autofixable"
+        )
+    )
+    if hasattr(instance, "seo_audit_results") and instance.seo_audit_results != issues:
+        instance.seo_audit_results = issues
+        changed_fields.append("seo_audit_results")
+
+    if changed_fields:
+        instance._seo_skip_signal = True  # type: ignore[union-attr]
+        try:
+            instance.save(update_fields=[*changed_fields, "updated_at"])
+        finally:
+            instance._seo_skip_signal = False  # type: ignore[union-attr]
+
+
 def _get_instance(content_type: str, object_id: int) -> Post | Page | None:
     if content_type == "post":
         return Post.objects.filter(pk=object_id).first()
@@ -263,6 +601,7 @@ def _serialize_check_result(result: Any) -> dict[str, Any]:
         "message": result.message,
         "suggested_fix": result.suggested_fix,
         "autofixable": result.autofixable,
+        "related_field": getattr(result, "related_field", ""),
         "details": result.details,
     }
 
@@ -668,11 +1007,21 @@ def live_check(content_type: str, payload: dict[str, Any]) -> dict[str, Any]:
     settings = SeoEngineSettings.get_solo()
     results = run_checks(adapter, metadata, min_internal_links=settings.min_links_per_doc)
     counters = _score_from_results(results)
+
+    # Group failing checks by related_field for inline OOB rendering
+    field_checks: dict[str, list[dict[str, Any]]] = {}
+    for row in results:
+        serialized = _serialize_check_result(row)
+        rf = serialized.get("related_field", "")
+        if rf:
+            field_checks.setdefault(rf, []).append(serialized)
+
     return {
         "score": counters["score"],
         "critical_count": counters["critical_count"],
         "warning_count": counters["warning_count"],
         "results": [_serialize_check_result(row) for row in results],
+        "field_checks": field_checks,
         "metadata": metadata,
     }
 

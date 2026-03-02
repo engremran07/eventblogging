@@ -1,6 +1,7 @@
 ﻿from __future__ import annotations
 
 import math
+from decimal import Decimal
 from typing import Any, ClassVar
 
 from django.contrib.auth import get_user_model
@@ -90,6 +91,35 @@ class Page(models.Model):
     meta_description = models.CharField(max_length=170, blank=True)
     canonical_url = models.URLField(blank=True)
 
+    # SEO structured data & suggestions
+    schema_markup: Any = models.JSONField(default=dict, blank=True, editable=False)  # type: ignore[assignment]
+    suggested_internal_links: Any = models.JSONField(default=list, blank=True, editable=False)  # type: ignore[assignment]
+
+    # SEO algorithmic signals (populated by seo.services.compute_content_signals)
+    tfidf_vector: Any = models.JSONField(default=dict, blank=True, editable=False, help_text="TF-IDF scores per term")  # type: ignore[assignment]
+    keyword_index: Any = models.JSONField(default=dict, blank=True, editable=False, help_text="Keyword → anchor variants mapping")  # type: ignore[assignment]
+    search_intent = models.CharField(
+        max_length=20,
+        blank=True,
+        choices=[
+            ("informational", "Informational"),
+            ("transactional", "Transactional"),
+            ("navigational", "Navigational"),
+            ("commercial", "Commercial"),
+        ],
+        editable=False,
+    )
+    thin_content_score = models.PositiveSmallIntegerField(default=0, editable=False, help_text="0-10 score")
+    seo_audit_score = models.PositiveSmallIntegerField(default=0, editable=False, help_text="0-100 score")
+    seo_audit_results: Any = models.JSONField(default=list, blank=True, editable=False, help_text="Audit check results")  # type: ignore[assignment]
+    flesch_score = models.SmallIntegerField(default=0, editable=False, help_text="Flesch-Kincaid readability 0-100")
+    keyword_density = models.DecimalField(max_digits=4, decimal_places=2, default=Decimal("0"), editable=False, help_text="Primary keyword density %")
+    heading_count = models.PositiveSmallIntegerField(default=0, editable=False)
+    image_count = models.PositiveSmallIntegerField(default=0, editable=False)
+    internal_link_count = models.PositiveSmallIntegerField(default=0, editable=False)
+    inbound_link_count = models.PositiveSmallIntegerField(default=0, editable=False)
+    is_orphan = models.BooleanField(default=True, editable=False, help_text="No inbound links")
+
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.DRAFT)
     word_count = models.PositiveIntegerField(default=0, editable=False)
     reading_time = models.PositiveSmallIntegerField(default=1)
@@ -168,11 +198,8 @@ class Page(models.Model):
         self.reading_time = self._build_reading_time()
         self.body_html = render_markdown_to_safe_html(self.body_markdown)
 
-        if not self.meta_title:
-            self.meta_title = self.title[:70]
-        if not self.meta_description:
-            seed = self.summary or self.body_markdown
-            self.meta_description = (seed or "")[:170]
+        # meta_title / meta_description auto-fill handled by seo signal pipeline
+        # (seo.signals._apply_page_metadata → seo.metadata.apply_auto_metadata_to_instance)
 
         super().save(*args, **kwargs)
 

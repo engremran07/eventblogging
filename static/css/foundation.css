@@ -846,3 +846,53 @@ legend {
   to   { opacity: 1; }
 }
 
+
+/* ============================================================================
+   INLINE SEO CHECK INDICATORS
+   ============================================================================
+   OOB-swapped per-field SEO check feedback below form inputs.
+   Shows failing checks with severity-colored icons inline with the field.
+*/
+
+.seo-inline-checks {
+  margin-top: 4px;
+}
+
+.seo-inline-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  padding: 3px 0;
+  animation: seo-inline-fade-in 200ms ease-out;
+}
+
+.seo-inline-check i {
+  flex-shrink: 0;
+  margin-top: 1px;
+  font-size: 0.75rem;
+}
+
+.seo-inline-critical {
+  color: var(--danger, #dc3545);
+}
+
+.seo-inline-warning {
+  color: var(--warning, #ffc107);
+}
+
+.seo-inline-info {
+  color: var(--info, #0dcaf0);
+}
+
+.seo-inline-fix {
+  color: var(--text-3, #868e96);
+  font-style: italic;
+}
+
+@keyframes seo-inline-fade-in {
+  from { opacity: 0; transform: translateY(-2px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+

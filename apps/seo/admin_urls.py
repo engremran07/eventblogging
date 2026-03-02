@@ -5,6 +5,7 @@ from . import admin_config_views as views
 app_name = "admin_config"
 
 urlpatterns = [
+    # ── Control Center (4-tab dashboard) ─────────────────────────────────
     path("control/", views.seo_control_center, name="seo_control"),
     path("control/run/", views.seo_control_run, name="seo_control_run"),
     path("control/autopilot/", views.seo_control_autopilot, name="seo_control_autopilot"),
@@ -12,11 +13,6 @@ urlpatterns = [
         "control/section/<slug:section>/",
         views.seo_control_section,
         name="seo_control_section",
-    ),
-    path(
-        "control/partial/<slug:section>/",
-        views.seo_control_section,
-        name="seo_control_canonical_partial",
     ),
     path(
         "control/settings/save/",
@@ -48,9 +44,7 @@ urlpatterns = [
         views.seo_control_center,
         name="seo_control_canonical_section",
     ),
-    path("overview/", views.seo_overview, name="seo_overview"),
-    path("engine/", views.seo_engine, name="seo_engine"),
-    path("scan/", views.seo_scan, name="seo_scan"),
+    # ── Scan / Interlink POST endpoints ──────────────────────────────────
     path("scan/start/", views.seo_scan_start, name="seo_scan_start"),
     path(
         "interlinks/scan/start/",
@@ -58,28 +52,11 @@ urlpatterns = [
         name="seo_interlink_scan_start",
     ),
     path(
-        "scan/jobs/<int:job_id>/progress/",
-        views.seo_scan_job_progress,
-        name="seo_scan_job_progress",
-    ),
-    path(
         "scan/jobs/<int:job_id>/cancel/",
         views.seo_scan_job_cancel,
         name="seo_scan_job_cancel",
     ),
-    path("interlinks/", views.seo_interlinks, name="seo_interlinks"),
-    path("queue/", views.seo_queue, name="seo_queue"),
-    path(
-        "queue/<int:suggestion_id>/edit/",
-        views.seo_queue_edit,
-        name="seo_queue_edit",
-    ),
-    path(
-        "queue/<int:suggestion_id>/<str:action>/",
-        views.seo_queue_single_action,
-        name="seo_queue_single_action",
-    ),
-    path("queue/bulk/", views.seo_queue_bulk, name="seo_queue_bulk"),
+    # ── Taxonomy (synonyms) ──────────────────────────────────────────────
     path("taxonomy/synonyms/", views.taxonomy_synonyms, name="taxonomy_synonyms"),
     path(
         "taxonomy/synonyms/groups/create/",
@@ -106,6 +83,12 @@ urlpatterns = [
         views.taxonomy_synonym_export,
         name="taxonomy_synonym_export",
     ),
+    # ── Legacy redirects (kept for backward compat + tests) ──────────────
+    path("overview/", views.seo_overview, name="seo_overview"),
+    path("engine/", views.seo_engine, name="seo_engine"),
+    path("scan/", views.seo_scan, name="seo_scan"),
+    path("interlinks/", views.seo_interlinks, name="seo_interlinks"),
+    path("queue/", views.seo_queue, name="seo_queue"),
     path(
         "action-center/",
         views.legacy_action_center_redirect,

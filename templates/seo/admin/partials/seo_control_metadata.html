@@ -33,13 +33,11 @@
                                         {% endif %}
                                     </td>
                                     <td>
-                                        {% if task.target_admin_url %}
-                                            <a href="{{ task.target_admin_url }}">{{ task.target_title|truncatechars:42 }}</a>
-                                        {% elif task.target_public_url %}
-                                            <a href="{{ task.target_public_url }}" target="_blank" rel="noopener">{{ task.target_title|truncatechars:42 }}</a>
-                                        {% else %}
-                                            {{ task.target_title|truncatechars:42 }}
-                                        {% endif %}
+                                        <div class="d-flex align-items-center gap-1">
+                                            {% if task.target_admin_url %}<a href="{{ task.target_admin_url }}" title="Edit"><i class="bi bi-pencil-square"></i></a>{% endif %}
+                                            {% if task.target_public_url %}<a href="{{ task.target_public_url }}" target="_blank" rel="noopener" title="Verify"><i class="bi bi-box-arrow-up-right"></i></a>{% endif %}
+                                            <span>{{ task.target_title|truncatechars:42 }}</span>
+                                        </div>
                                     </td>
                                     <td>{{ task.description|truncatechars:180 }}</td>
                                     <td>{{ task.recommendation|truncatechars:180 }}</td>

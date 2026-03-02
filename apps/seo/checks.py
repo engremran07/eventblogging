@@ -40,6 +40,7 @@ class CheckResult:
     message: str
     suggested_fix: str = ""
     autofixable: bool = False
+    related_field: str = ""
     details: dict[str, Any] = field(default_factory=lambda: {})
 
 
@@ -397,5 +398,34 @@ def run_checks(adapter: Any, metadata: dict[str, Any], *, min_internal_links: in
             },
         )
     )
+
+    # ── Map checks to form fields for inline display ────────────────────────
+    _FIELD_MAP: dict[str, str] = {
+        "title_present": "title",
+        "title_length_range": "title",
+        "title_uniqueness_global": "title",
+        "focus_term_in_title": "title",
+        "meta_description_present": "meta_description",
+        "meta_description_length_range": "meta_description",
+        "canonical_present_or_resolvable": "canonical_url",
+        "canonical_valid_absolute": "canonical_url",
+        "slug_quality": "slug",
+        "single_h1": "body_markdown",
+        "content_min_word_count": "body_markdown",
+        "focus_term_in_intro": "body_markdown",
+        "focus_term_in_heading": "body_markdown",
+        "image_alt_coverage": "body_markdown",
+        "internal_links_minimum": "body_markdown",
+        "internal_links_not_broken": "body_markdown",
+        "external_links_rel_policy": "body_markdown",
+        "open_graph_complete": "meta_title",
+        "twitter_card_complete": "meta_title",
+        "schema_presence_valid": "",
+        "robots_directive_consistency": "",
+        "sitemap_membership_and_lastmod": "",
+        "orphan_or_cannibalization_risk": "",
+    }
+    for result in results:
+        result.related_field = _FIELD_MAP.get(result.key, "")
 
     return results

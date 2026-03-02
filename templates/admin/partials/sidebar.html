@@ -100,20 +100,13 @@
         <div class="nav-section">
             <div class="nav-section-label">SEO</div>
             
-            <a href="{% url 'admin_config:seo_overview' %}" class="nav-item {% if 'seo_overview' in request.resolver_match.url_name %}active{% endif %}">
+            <a href="{% url 'admin_config:seo_control' %}" class="nav-item {% if 'seo_control' in request.resolver_match.url_name or 'seo_overview' in request.resolver_match.url_name or 'seo_queue' in request.resolver_match.url_name %}active{% endif %}">
                 <span class="nav-icon"><i class="fas fa-chart-bar"></i></span>
-                <span class="nav-label">Overview</span>
-            </a>
-            
-            <a href="{% url 'admin_config:seo_queue' %}" class="nav-item {% if 'seo_queue' in request.resolver_match.url_name or 'seo_control' in request.resolver_match.url_name %}active{% endif %}">
-                <span class="nav-icon"><i class="fas fa-list-check"></i></span>
-                <span class="nav-label">Audit Queue</span>
+                <span class="nav-label">SEO Dashboard</span>
                 {% if admin_nav_badges.seo_pending_total %}
                     <span class="nav-badge">{{ admin_nav_badges.seo_pending_total }}</span>
                 {% endif %}
             </a>
-            
-            <!-- Other SEO sections removed - not in seo.admin_urls -->
         </div>
         
         <!-- USERS SECTION -->

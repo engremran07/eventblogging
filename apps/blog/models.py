@@ -60,7 +60,7 @@ ALLOWED_CSS_PROPERTIES: set[str] = {
 }
 
 ALLOWED_HTML_ATTRIBUTES: dict[str, set[str]] = {
-    "a": {"href", "title", "target", "rel"},
+    "a": {"href", "title", "target"},
     "img": {"src", "alt", "title", "loading"},
     "code": {"class"},
     "span": {"class", "style"},
@@ -381,11 +381,8 @@ class Post(models.Model):
         self.reading_time = self._build_reading_time()
         self.body_html = render_markdown_to_safe_html(self.body_markdown)
 
-        if not self.meta_title:
-            self.meta_title = self.title[:70]
-        if not self.meta_description:
-            seed = self.excerpt or self.body_markdown
-            self.meta_description = seed[:170]
+        # meta_title / meta_description auto-fill handled by seo signal pipeline
+        # (seo.signals._apply_auto_seo_enhancements → seo.metadata.apply_auto_metadata_to_instance)
 
         super().save(*args, **kwargs)
 

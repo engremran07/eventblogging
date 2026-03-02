@@ -16,6 +16,10 @@
     <meta property="og:title" content="{{ resolved_seo.open_graph.title|default:resolved_seo.title }}">
     <meta property="og:description" content="{{ resolved_seo.open_graph.description|default:resolved_seo.description }}">
     <meta property="og:url" content="{{ resolved_seo.open_graph.url|default:resolved_seo.canonical }}">
+    {% if resolved_seo.open_graph.site_name %}
+    <meta property="og:site_name" content="{{ resolved_seo.open_graph.site_name }}">
+    {% endif %}
+    <meta property="og:locale" content="{{ resolved_seo.open_graph.locale|default:'en_US' }}">
     {% if resolved_seo.open_graph.image %}
     <meta property="og:image" content="{{ resolved_seo.open_graph.image }}">
     {% endif %}
@@ -25,6 +29,15 @@
     {% if resolved_seo.open_graph.modified_time %}
     <meta property="article:modified_time" content="{{ resolved_seo.open_graph.modified_time }}">
     {% endif %}
+    {% if resolved_seo.open_graph.author %}
+    <meta property="article:author" content="{{ resolved_seo.open_graph.author }}">
+    {% endif %}
+    {% if resolved_seo.open_graph.section %}
+    <meta property="article:section" content="{{ resolved_seo.open_graph.section }}">
+    {% endif %}
+    {% for tag in resolved_seo.open_graph.tags %}
+    <meta property="article:tag" content="{{ tag }}">
+    {% endfor %}
     {% endif %}
     {% if site_seo_flags.enable_twitter_cards %}
     <meta name="twitter:card" content="{{ resolved_seo.twitter.card|default:'summary' }}">
@@ -35,6 +48,9 @@
     {% endif %}
     {% if resolved_seo.twitter.site %}
     <meta name="twitter:site" content="{{ resolved_seo.twitter.site }}">
+    {% endif %}
+    {% if resolved_seo.twitter.creator %}
+    <meta name="twitter:creator" content="{{ resolved_seo.twitter.creator }}">
     {% endif %}
     {% endif %}
     {% for json_ld_entry in resolved_seo_json_ld %}

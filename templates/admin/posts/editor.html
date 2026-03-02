@@ -31,6 +31,7 @@
           autofocus
         />
         <small class="text-3">{{ post.title|length }}/220 characters</small>
+        <div id="seo-field-title" class="seo-inline-checks"></div>
       </div>
 
       <div class="form-group">
@@ -48,6 +49,7 @@
           <button type="button" class="btn btn-secondary" id="slug-lock">Lock</button>
         </div>
         <small class="text-3">Auto-generated from title unless locked.</small>
+        <div id="seo-field-slug" class="seo-inline-checks"></div>
       </div>
 
       <div class="form-group">
@@ -115,6 +117,7 @@
           placeholder="Write your post in Markdown..."
         >{{ post.body_markdown }}</textarea>
         <small class="text-3" id="word-count">0 words</small>
+        <div id="seo-field-body_markdown" class="seo-inline-checks"></div>
       </div>
 
       <details class="editor-meta-details">
@@ -132,6 +135,7 @@
             placeholder="Auto-filled from title (50-60 chars ideal)"
           />
           <small class="text-3"><span id="meta-title-count">{{ post.meta_title|length }}</span>/70 characters <span id="meta-title-sync-hint" class="text-success"></span></small>
+          <div id="seo-field-meta_title" class="seo-inline-checks"></div>
         </div>
 
         <div class="form-group">
@@ -145,6 +149,7 @@
             placeholder="Auto-filled from excerpt (120-160 chars ideal)"
           >{{ post.meta_description }}</textarea>
           <small class="text-3"><span id="meta-desc-count">{{ post.meta_description|length }}</span>/170 characters <span id="meta-desc-sync-hint" class="text-success"></span></small>
+          <div id="seo-field-meta_description" class="seo-inline-checks"></div>
         </div>
 
         <div class="form-group">
@@ -158,6 +163,7 @@
             placeholder="Auto-generated from slug"
           />
           <small class="text-3" id="canonical-hint">Leave blank for auto-generated canonical.</small>
+          <div id="seo-field-canonical_url" class="seo-inline-checks"></div>
         </div>
       </details>
 

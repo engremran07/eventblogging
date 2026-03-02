@@ -48,25 +48,104 @@ def _organization_schema(site_settings: Any) -> dict[str, Any] | None:
     if not site_settings.organization_schema_name:
         return None
     org_url = site_settings.organization_schema_url or ""
-    return {
+    schema: dict[str, Any] = {
         "@context": "https://schema.org",
         "@type": "Organization",
         "name": site_settings.organization_schema_name,
         "url": org_url,
     }
+    logo_url = getattr(site_settings, "organization_logo_url", "") or ""
+    if logo_url:
+        schema["logo"] = logo_url
+    same_as: list[str] = []
+    for attr in ("twitter_site_handle", "facebook_url", "linkedin_url", "github_url"):
+        val = getattr(site_settings, attr, "") or ""
+        if val:
+            same_as.append(val if val.startswith("http") else f"https://twitter.com/{val.lstrip('@')}")
+    if same_as:
+        schema["sameAs"] = same_as
+    return schema
+
+
+def _website_schema(site_settings: Any, base_url: str) -> dict[str, Any]:
+    """WebSite schema with SearchAction for sitelinks search box."""
+    schema: dict[str, Any] = {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": site_settings.default_meta_title or "Blog",
+        "url": base_url.rstrip("/") + "/",
+    }
+    # SearchAction for Google sitelinks search box
+    search_url = base_url.rstrip("/") + "/search/?q={search_term_string}"
+    schema["potentialAction"] = {
+        "@type": "SearchAction",
+        "target": {"@type": "EntryPoint", "urlTemplate": search_url},
+        "query-input": "required name=search_term_string",
+    }
+    return schema
+
+
+def _breadcrumb_schema(adapter: Any, canonical: str, site_name: str) -> dict[str, Any]:
+    """BreadcrumbList schema for navigation trail."""
+    items: list[dict[str, Any]] = [
+        {
+            "@type": "ListItem",
+            "position": 1,
+            "name": site_name or "Home",
+            "item": canonical.split("//" , 1)[-1].split("/")[0] if "//" in canonical else "/",
+        }
+    ]
+    # Build breadcrumb from URL path
+    parts = [p for p in (adapter.url or "").strip("/").split("/") if p]
+    base = canonical.rsplit(adapter.url or "/", 1)[0] if adapter.url else ""
+    for i, part in enumerate(parts, start=2):
+        item: dict[str, Any] = {
+            "@type": "ListItem",
+            "position": i,
+            "name": part.replace("-", " ").title(),
+        }
+        # Only add item URL for non-terminal crumbs
+        if i <= len(parts):
+            crumb_path = "/".join(parts[:i - 1]) + "/"
+            item["item"] = f"{base}/{crumb_path}"
+        items.append(item)
+
+    return {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": items,
+    }
 
 
 def _content_schema(adapter: Any, canonical: str) -> dict[str, Any]:
+    """
+    Rich content schema — BlogPosting with author, image, keywords
+    or WebPage for pages.
+    """
     if adapter.route_type == "post":
-        return {
+        schema: dict[str, Any] = {
             "@context": "https://schema.org",
             "@type": "BlogPosting",
             "headline": adapter.meta_title or adapter.title,
             "description": adapter.meta_description,
-            "datePublished": adapter.published_at.isoformat() if adapter.published_at else None,
-            "dateModified": adapter.updated_at.isoformat() if adapter.updated_at else None,
             "url": canonical,
         }
+        if adapter.published_at:
+            schema["datePublished"] = adapter.published_at.isoformat()
+        if adapter.updated_at:
+            schema["dateModified"] = adapter.updated_at.isoformat()
+        if adapter.og_image_url:
+            schema["image"] = adapter.og_image_url
+        # Add author from the original instance (available via _original_instance)
+        author_name = getattr(adapter, "_author_name", "") or ""
+        if author_name:
+            schema["author"] = {"@type": "Person", "name": author_name}
+        # Add keywords from tags
+        keywords_str = getattr(adapter, "_keywords_csv", "") or ""
+        if keywords_str:
+            schema["keywords"] = keywords_str
+        return schema
+
     return {
         "@context": "https://schema.org",
         "@type": "WebPage",
@@ -142,22 +221,48 @@ def resolve_metadata(adapter: Any, *, request: Any = None) -> ResolvedMetadata:
         "description": description,
         "url": canonical,
         "image": image_url or "",
+        "site_name": site_seo.default_meta_title or "",
+        "locale": "en_US",
         "published_time": adapter.published_at.isoformat() if adapter.published_at else "",
         "modified_time": adapter.updated_at.isoformat() if adapter.updated_at else "",
     }
+    # Article-specific OG fields
+    if adapter.route_type == "post":
+        author_name = getattr(adapter, "_author_name", "") or ""
+        if author_name:
+            open_graph["author"] = author_name
+        section = getattr(adapter, "_section", "") or ""
+        if section:
+            open_graph["section"] = section
+        tags_list = getattr(adapter, "_tag_names", []) or []
+        if tags_list:
+            open_graph["tags"] = tags_list
+
     twitter = {
         "card": "summary_large_image" if image_url else "summary",
         "title": title,
         "description": description,
         "image": image_url or "",
         "site": site_seo.twitter_site_handle or "",
+        "creator": getattr(adapter, "_twitter_creator", "") or site_seo.twitter_site_handle or "",
     }
 
     json_ld: list[dict[str, Any]] = []
     org_schema = _organization_schema(site_seo)
     if org_schema:
         json_ld.append(org_schema)
+
+    # WebSite + SearchAction schema (always present)
+    base_url = site_seo.canonical_base_url or ""
+    if base_url:
+        json_ld.append(_website_schema(site_seo, base_url))
+
+    # Content schema (BlogPosting or WebPage)
     json_ld.append(_content_schema(adapter, canonical))
+
+    # BreadcrumbList schema
+    site_name = site_seo.default_meta_title or "Home"
+    json_ld.append(_breadcrumb_schema(adapter, canonical, site_name))
 
     # Honor manual locks where available.
     try:

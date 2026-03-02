@@ -62,9 +62,8 @@
                     {{ form.title }}
                     {% if form.title.help_text %}<small class="d-block text-body-secondary">{{ form.title.help_text }}</small>{% endif %}
                     {% if form.title.errors %}<small class="text-danger">{{ form.title.errors|join:', ' }}</small>{% endif %}
+                    <div id="seo-field-title" class="seo-inline-checks"></div>
                 </div>
-
-                {# ── Slug ── #}
                 <div>
                     <label class="form-label" for="{{ form.slug.id_for_label }}">Slug</label>
                     <div class="input-group">
@@ -75,9 +74,8 @@
                     </div>
                     {% if form.slug.help_text %}<small class="d-block text-body-secondary">{{ form.slug.help_text }}</small>{% endif %}
                     {% if form.slug.errors %}<small class="text-danger">{{ form.slug.errors|join:', ' }}</small>{% endif %}
+                    <div id="seo-field-slug" class="seo-inline-checks"></div>
                 </div>
-
-                {# ── Excerpt ── #}
                 <div>
                     <label class="form-label" for="{{ form.excerpt.id_for_label }}">Excerpt</label>
                     {{ form.excerpt }}
@@ -123,9 +121,8 @@
                     {{ form.body_markdown }}
                     <small class="d-block text-body-secondary" id="word-count">0 words</small>
                     {% if form.body_markdown.errors %}<small class="text-danger">{{ form.body_markdown.errors|join:', ' }}</small>{% endif %}
+                    <div id="seo-field-body_markdown" class="seo-inline-checks"></div>
                 </div>
-
-                {# ── Meta Overrides (collapsible) ── #}
                 <details class="border rounded p-3">
                     <summary class="fw-semibold">
                         Meta Overrides
@@ -141,6 +138,7 @@
                                 {% if form.meta_title.help_text %} &mdash; {{ form.meta_title.help_text }}{% endif %}
                             </small>
                             {% if form.meta_title.errors %}<small class="text-danger">{{ form.meta_title.errors|join:', ' }}</small>{% endif %}
+                            <div id="seo-field-meta_title" class="seo-inline-checks"></div>
                         </div>
                         <div>
                             <label class="form-label" for="{{ form.meta_description.id_for_label }}">Meta Description</label>
@@ -151,6 +149,7 @@
                                 {% if form.meta_description.help_text %} &mdash; {{ form.meta_description.help_text }}{% endif %}
                             </small>
                             {% if form.meta_description.errors %}<small class="text-danger">{{ form.meta_description.errors|join:', ' }}</small>{% endif %}
+                            <div id="seo-field-meta_description" class="seo-inline-checks"></div>
                         </div>
                         <div>
                             <label class="form-label" for="{{ form.canonical_url.id_for_label }}">Canonical URL</label>
@@ -159,9 +158,8 @@
                                 {% if form.canonical_url.help_text %}{{ form.canonical_url.help_text }}{% else %}Leave blank for auto-generated canonical.{% endif %}
                             </small>
                             {% if form.canonical_url.errors %}<small class="text-danger">{{ form.canonical_url.errors|join:', ' }}</small>{% endif %}
+                            <div id="seo-field-canonical_url" class="seo-inline-checks"></div>
                         </div>
-                    </div>
-                </details>
 
                 {# ── Publishing Controls ── #}
                 <div class="border rounded p-3">

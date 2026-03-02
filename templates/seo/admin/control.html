@@ -1,21 +1,22 @@
 {% extends "seo/admin/base.html" %}
 
 {% block admin_control_body %}
+{# ── KPI Cards ──────────────────────────────────────────────────────────── #}
 <section class="workspace-kpis">
     <article class="workspace-kpi">
         <small>Latest Score</small>
         <strong>{{ seo_overview.latest_score|default:"-" }}</strong>
-        <span>Most recent aggregate score</span>
+        <span>Aggregate audit score</span>
     </article>
     <article class="workspace-kpi">
         <small>Pending Queue</small>
         <strong>{{ queue_counts.pending }}</strong>
-        <span>Items awaiting decision</span>
+        <span>Items awaiting review</span>
     </article>
     <article class="workspace-kpi">
         <small>Needs Correction</small>
         <strong>{{ queue_counts.needs_correction }}</strong>
-        <span>Requires manual adjustment</span>
+        <span>Requires manual fix</span>
     </article>
     <article class="workspace-kpi">
         <small>Interlink Coverage</small>
@@ -24,94 +25,57 @@
     </article>
 </section>
 
+{# ── 4-Tab Navigation ──────────────────────────────────────────────────── #}
 <section class="card workspace-filter-card">
-    <ul class="nav nav-pills admin-control-tabs mb-0 gap-2" id="seo-control-tabs">
-        <li class="nav-item">
-            <a
-                class="nav-link {% if active_section == 'scan' %}active{% endif %}"
-                data-control-section="scan"
-                href="{% url 'admin_config:seo_control_canonical_section' 'scan' %}"
-                hx-get="{% url 'admin_config:seo_control_section' 'scan' %}"
-                hx-target="#seo-control-section"
-                hx-swap="innerHTML"
-                hx-push-url="true"
-            >Scan</a>
-        </li>
-        <li class="nav-item">
-            <a
-                class="nav-link {% if active_section == 'results' %}active{% endif %}"
-                data-control-section="results"
-                href="{% url 'admin_config:seo_control_canonical_section' 'results' %}"
-                hx-get="{% url 'admin_config:seo_control_section' 'results' %}"
-                hx-target="#seo-control-section"
-                hx-swap="innerHTML"
-                hx-push-url="true"
-            >Results</a>
-        </li>
-        <li class="nav-item">
-            <a
-                class="nav-link {% if active_section == 'onsite' %}active{% endif %}"
-                data-control-section="onsite"
-                href="{% url 'admin_config:seo_control_canonical_section' 'onsite' %}"
-                hx-get="{% url 'admin_config:seo_control_section' 'onsite' %}"
-                hx-target="#seo-control-section"
-                hx-swap="innerHTML"
-                hx-push-url="true"
-            >On-site SEO</a>
-        </li>
-        <li class="nav-item">
-            <a
-                class="nav-link {% if active_section == 'redirects' %}active{% endif %}"
-                data-control-section="redirects"
-                href="{% url 'admin_config:seo_control_canonical_section' 'redirects' %}"
-                hx-get="{% url 'admin_config:seo_control_section' 'redirects' %}"
-                hx-target="#seo-control-section"
-                hx-swap="innerHTML"
-                hx-push-url="true"
-            >Redirects</a>
-        </li>
-        <li class="nav-item">
-            <a
-                class="nav-link {% if active_section == 'interlinking' %}active{% endif %}"
-                data-control-section="interlinking"
-                href="{% url 'admin_config:seo_control_canonical_section' 'interlinking' %}"
-                hx-get="{% url 'admin_config:seo_control_section' 'interlinking' %}?job_id={{ selected_job.id|default:'' }}"
-                hx-target="#seo-control-section"
-                hx-swap="innerHTML"
-                hx-push-url="true"
-            >Interlinking</a>
-        </li>
-        <li class="nav-item">
-            <a
-                class="nav-link {% if active_section == 'metadata' %}active{% endif %}"
-                data-control-section="metadata"
-                href="{% url 'admin_config:seo_control_canonical_section' 'metadata' %}"
-                hx-get="{% url 'admin_config:seo_control_section' 'metadata' %}"
-                hx-target="#seo-control-section"
-                hx-swap="innerHTML"
-                hx-push-url="true"
-            >Metadata</a>
-        </li>
-        <li class="nav-item">
-            <a
-                class="nav-link {% if active_section == 'settings' %}active{% endif %}"
-                data-control-section="settings"
-                href="{% url 'admin_config:seo_control_canonical_section' 'settings' %}"
-                hx-get="{% url 'admin_config:seo_control_section' 'settings' %}"
-                hx-target="#seo-control-section"
-                hx-swap="innerHTML"
-                hx-push-url="true"
-            >Settings</a>
-        </li>
-    </ul>
+    <div class="d-flex align-items-center">
+        <ul class="nav nav-pills admin-control-tabs mb-0 gap-2 flex-grow-1" id="seo-control-tabs">
+            <li class="nav-item">
+                <a class="nav-link {% if active_section == 'discrepancies' %}active{% endif %}"
+                   data-control-section="discrepancies"
+                   href="{% url 'admin_config:seo_control_canonical_section' 'discrepancies' %}"
+                   hx-get="{% url 'admin_config:seo_control_section' 'discrepancies' %}"
+                   hx-target="#seo-control-section" hx-swap="innerHTML" hx-push-url="true"
+                >Discrepancies</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if active_section == 'interlinking' %}active{% endif %}"
+                   data-control-section="interlinking"
+                   href="{% url 'admin_config:seo_control_canonical_section' 'interlinking' %}"
+                   hx-get="{% url 'admin_config:seo_control_section' 'interlinking' %}"
+                   hx-target="#seo-control-section" hx-swap="innerHTML" hx-push-url="true"
+                >Interlinking</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if active_section == 'metadata' %}active{% endif %}"
+                   data-control-section="metadata"
+                   href="{% url 'admin_config:seo_control_canonical_section' 'metadata' %}"
+                   hx-get="{% url 'admin_config:seo_control_section' 'metadata' %}"
+                   hx-target="#seo-control-section" hx-swap="innerHTML" hx-push-url="true"
+                >Metadata</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if active_section == 'redirects' %}active{% endif %}"
+                   data-control-section="redirects"
+                   href="{% url 'admin_config:seo_control_canonical_section' 'redirects' %}"
+                   hx-get="{% url 'admin_config:seo_control_section' 'redirects' %}"
+                   hx-target="#seo-control-section" hx-swap="innerHTML" hx-push-url="true"
+                >Redirects</a>
+            </li>
+        </ul>
+        <a class="btn btn-sm btn-outline-secondary ms-2{% if active_section == 'settings' %} active{% endif %}"
+           href="{% url 'admin_config:seo_control_canonical_section' 'settings' %}"
+           hx-get="{% url 'admin_config:seo_control_section' 'settings' %}"
+           hx-target="#seo-control-section" hx-swap="innerHTML" hx-push-url="true"
+           title="SEO Settings">
+            <i class="bi bi-gear"></i>
+        </a>
+    </div>
 </section>
 
-<div
-    id="seo-control-section"
-    hx-get="{% url 'admin_config:seo_control_section' active_section %}{% if control_querystring %}?{{ control_querystring }}{% endif %}"
-    hx-trigger="load"
-    hx-swap="innerHTML"
->
+{# ── Tab Content (HTMX lazy-loaded) ────────────────────────────────────── #}
+<div id="seo-control-section"
+     hx-get="{% url 'admin_config:seo_control_section' active_section %}{% if control_querystring %}?{{ control_querystring }}{% endif %}"
+     hx-trigger="load" hx-swap="innerHTML">
     <div class="text-muted p-3">Loading section...</div>
 </div>
 {% endblock %}

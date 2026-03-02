@@ -13,31 +13,31 @@
             <div class="col-4">
                 <div class="border rounded-3 p-2">
                     <div class="small text-body-secondary">Score</div>
-                    <div class="fw-semibold">{{ live_check.score|floatformat:1 }}</div>
+                    <div class="fw-semibold {% if live_check.score >= 80 %}text-success{% elif live_check.score >= 50 %}text-warning{% else %}text-danger{% endif %}">{{ live_check.score|floatformat:0 }}</div>
                 </div>
             </div>
             <div class="col-4">
                 <div class="border rounded-3 p-2">
                     <div class="small text-body-secondary">Critical</div>
-                    <div class="fw-semibold">{{ live_check.critical_count }}</div>
+                    <div class="fw-semibold {% if live_check.critical_count %}text-danger{% endif %}">{{ live_check.critical_count }}</div>
                 </div>
             </div>
             <div class="col-4">
                 <div class="border rounded-3 p-2">
                     <div class="small text-body-secondary">Warnings</div>
-                    <div class="fw-semibold">{{ live_check.warning_count }}</div>
+                    <div class="fw-semibold {% if live_check.warning_count %}text-warning{% endif %}">{{ live_check.warning_count }}</div>
                 </div>
             </div>
         </div>
 
         <div class="small text-body-secondary mb-2">Open checks</div>
         {% if live_check.critical_count == 0 and live_check.warning_count == 0 %}
-            <div class="alert alert-success mb-0">All monitored checks passed.</div>
+            <div class="alert alert-success mb-0 py-2"><i class="bi bi-check-circle me-1"></i>All monitored checks passed.</div>
         {% else %}
             <div class="vstack gap-2">
                 {% for item in live_check.results %}
                     {% if not item.passed %}
-                        <div class="border rounded-3 p-2">
+                        <div class="border rounded-3 p-2 seo-check-item seo-check-{{ item.severity }}">
                             <div class="d-flex justify-content-between align-items-center mb-1">
                                 <div class="fw-semibold small">{{ item.key|title }}</div>
                                 {% if item.severity == "critical" %}
@@ -61,3 +61,25 @@
         {% endif %}
     {% endif %}
 </section>
+
+{# ── OOB inline field-level SEO checks ──────────────────────────────────── #}
+{# Each field gets its own OOB-swapped container showing failing checks     #}
+{% for field_name, checks in field_checks.items %}
+<div id="seo-field-{{ field_name }}" hx-swap-oob="innerHTML">
+    {% for item in checks %}
+        {% if not item.passed %}
+            <div class="seo-inline-check seo-inline-{{ item.severity }}">
+                {% if item.severity == "critical" %}
+                    <i class="bi bi-x-circle-fill"></i>
+                {% elif item.severity == "warning" %}
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                {% else %}
+                    <i class="bi bi-info-circle-fill"></i>
+                {% endif %}
+                <span>{{ item.message }}</span>
+                {% if item.suggested_fix %}<span class="seo-inline-fix"> — {{ item.suggested_fix }}</span>{% endif %}
+            </div>
+        {% endif %}
+    {% endfor %}
+</div>
+{% endfor %}

@@ -418,21 +418,13 @@ class SeoPipelineTests(TestCase):
         response = self.client.get(reverse("admin_config:seo_overview"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "SEO Overview")
-        self.assertContains(response, "Open Audit Queue")
+        self.assertContains(response, "Open SEO Dashboard")
 
-    def test_seo_queue_renders_without_redirect_and_defaults_to_onsite(self):
+    def test_seo_queue_redirects_to_control_center(self):
         self.client.login(username="seo_staff", password="strong-password")
         response = self.client.get(reverse("admin_config:seo_queue"))
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "SEO Audit Queue")
-        self.assertContains(response, 'data-control-section="onsite"')
-        self.assertContains(response, 'data-control-section="redirects"')
-
-    def test_seo_queue_preserves_page_query_for_initial_onsite_load(self):
-        self.client.login(username="seo_staff", password="strong-password")
-        response = self.client.get(reverse("admin_config:seo_queue"), {"onsite_page": "2"})
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "onsite_page=2")
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("discrepancies", response.url)
 
     def test_onsite_section_excludes_suggestions_for_content_without_open_issue(self):
         with_issue = self._create_post("Issue-backed target", "Body with issue-backed suggestion.")

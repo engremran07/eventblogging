@@ -1,6 +1,7 @@
 ﻿from __future__ import annotations
 
 import json
+from typing import Any
 
 from django.conf import settings
 from django.contrib import messages
@@ -8,7 +9,7 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.contenttypes.models import ContentType
 from django.core.paginator import Paginator
 from django.db.models import Count
-from django.http import Http404, HttpResponse, JsonResponse
+from django.http import Http404, HttpRequest, HttpResponse, HttpResponseRedirect, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_GET, require_POST
@@ -51,19 +52,23 @@ from .models import (
 )
 
 SEO_CONTROL_SECTIONS = {
+    "discrepancies",
+    "interlinking",
+    "metadata",
+    "redirects",
+    "settings",
+    # Legacy sections — aliased to new tabs.
     "scan",
     "results",
     "onsite",
-    "redirects",
-    "metadata",
-    "interlinking",
-    "settings",
-    # Legacy alias; normalized to "onsite".
     "suggestions",
 }
 SEO_CONTROL_SECTION_ALIASES = {
-    "suggestions": "onsite",
-    "seo": "onsite",
+    "suggestions": "discrepancies",
+    "seo": "discrepancies",
+    "onsite": "discrepancies",
+    "scan": "discrepancies",
+    "results": "discrepancies",
     "redirect": "redirects",
 }
 ONSITE_TASKS_PAGE_SIZE = ADMIN_PAGINATION_SIZE
@@ -100,7 +105,7 @@ def _admin_control_context(
     }
 
 
-def _normalize_control_section(section: str | None, default: str = "scan"):
+def _normalize_control_section(section: str | None, default: str = "discrepancies"):
     safe = (section or "").strip().lower()
     safe = SEO_CONTROL_SECTION_ALIASES.get(safe, safe)
     return safe if safe in SEO_CONTROL_SECTIONS else default
@@ -117,7 +122,7 @@ def _control_url(section: str = "scan", **params):
     return f"{base}{suffix}"
 
 
-def _control_redirect(section: str = "scan", **params):
+def _control_redirect(section: str = "discrepancies", **params):
     return redirect(_control_url(section=section, **params))
 
 
@@ -137,6 +142,25 @@ def _resolve_return_section(request, default: str = "onsite"):
     return _normalize_control_section(raw, default=default)
 
 
+def _workspace_admin_url(obj: object) -> str:
+    """Generate custom admin workspace edit URL instead of Django admin change URL."""
+    if isinstance(obj, Post):
+        return reverse("admin_post_editor", kwargs={"post_id": obj.pk})
+    if isinstance(obj, Page):
+        try:
+            return reverse("pages:update", kwargs={"slug": obj.slug})
+        except Exception:
+            return ""
+    # Fallback to Django admin change URL
+    try:
+        return reverse(
+            f"admin:{obj._meta.app_label}_{obj._meta.model_name}_change",  # type: ignore[union-attr]
+            args=[obj.pk],  # type: ignore[union-attr]
+        )
+    except Exception:
+        return ""
+
+
 def _suggestion_target(suggestion: SeoSuggestion):
     model = suggestion.content_type.model_class()
     if not model:
@@ -146,18 +170,11 @@ def _suggestion_target(suggestion: SeoSuggestion):
         return {"title": "Deleted content", "public_url": "", "admin_url": ""}
     title = getattr(target, "title", "") or str(target)
     public_url = ""
-    admin_url = ""
     try:
         public_url = target.get_absolute_url()
     except Exception:
         public_url = ""
-    try:
-        admin_url = reverse(
-            f"admin:{target._meta.app_label}_{target._meta.model_name}_change",
-            args=[target.pk],
-        )
-    except Exception:
-        admin_url = ""
+    admin_url = _workspace_admin_url(target)
     return {"title": title, "public_url": public_url, "admin_url": admin_url}
 
 
@@ -298,6 +315,14 @@ def _issue_task_row(issue: SeoIssue):
     suggestion_text = (issue.suggested_fix or "").strip() or "Review content and apply a manual fix, then rescan."
     evidence_url = getattr(issue.snapshot, "url", "") or ""
 
+    # Resolve admin + public URLs from the snapshot's content reference
+    ref_cache: dict[tuple[int, int], dict[str, str]] = {}
+    snapshot = issue.snapshot
+    ref = _resolve_content_ref(ref_cache, snapshot.content_type, snapshot.object_id)
+    target_title = ref["title"] or evidence_url or "Content snapshot"
+    target_admin_url = ref["admin_url"]
+    target_public_url = ref["public_url"] or evidence_url
+
     return {
         "task_kind": "issue",
         "task_ref": f"I-{issue.id}",
@@ -312,11 +337,11 @@ def _issue_task_row(issue: SeoIssue):
         "evidence": evidence_url or "Snapshot evidence available in issue feed.",
         "confidence": None,
         "created_at": issue.created_at,
-        "target_title": evidence_url or "Content snapshot",
-        "target_admin_url": "",
-        "target_public_url": evidence_url,
-        "target_content_type_id": issue.snapshot.content_type_id,
-        "target_object_id": issue.snapshot.object_id,
+        "target_title": target_title,
+        "target_admin_url": target_admin_url,
+        "target_public_url": target_public_url,
+        "target_content_type_id": snapshot.content_type_id,
+        "target_object_id": snapshot.object_id,
         "suggestion_id": None,
     }
 
@@ -336,13 +361,7 @@ def _resolve_content_ref(cache: dict, content_type, object_id: int):
         cache[cache_key] = {"title": "Deleted content", "admin_url": "", "public_url": ""}
         return cache[cache_key]
     title = getattr(obj, "title", "") or str(obj)
-    try:
-        admin_url = reverse(
-            f"admin:{obj._meta.app_label}_{obj._meta.model_name}_change",
-            args=[obj.pk],
-        )
-    except Exception:
-        admin_url = ""
+    admin_url = _workspace_admin_url(obj)
     try:
         public_url = obj.get_absolute_url()
     except Exception:
@@ -442,6 +461,30 @@ def _seo_issue_rows(limit: int = 220):
         if len(rows) >= limit:
             break
     return rows
+
+
+def _enriched_issue_feed(limit: int = 40) -> list[dict[str, Any]]:
+    """Return open issues with resolved target admin + public URLs."""
+    ref_cache: dict[tuple[int, int], dict[str, str]] = {}
+    enriched: list[dict[str, Any]] = []
+    queryset = (
+        SeoIssue.objects.select_related("snapshot", "snapshot__content_type")
+        .filter(status=SeoIssue.Status.OPEN)
+        .order_by("-created_at")[:limit]
+    )
+    for issue in queryset:
+        snapshot = issue.snapshot
+        ref = _resolve_content_ref(ref_cache, snapshot.content_type, snapshot.object_id)
+        enriched.append({
+            "severity": issue.severity,
+            "check_key": issue.check_key,
+            "message": issue.message,
+            "created_at": issue.created_at,
+            "target_title": ref["title"],
+            "target_admin_url": ref["admin_url"],
+            "target_public_url": ref["public_url"],
+        })
+    return enriched
 
 
 def _pending_tasks(limit_suggestions: int | None = 180, limit_issues: int | None = 120):
@@ -569,6 +612,206 @@ def _interlink_metrics():
         "coverage_percent": coverage_percent,
         "avg_in_degree": round(sum(in_degree.values()) / total_nodes, 3) if total_nodes else 0.0,
         "avg_out_degree": round(sum(out_degree.values()) / total_nodes, 3) if total_nodes else 0.0,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Per-tab lean context builders — only load what each tab needs
+# ---------------------------------------------------------------------------
+
+def _tab_context_discrepancies(request: HttpRequest) -> dict[str, Any]:
+    """Context for the Discrepancies tab — posts/pages with SEO issues."""
+    settings_obj = SeoEngineSettings.get_solo()
+    open_seo_issue_targets = _open_issue_target_refs(domain="seo")
+    pending_task_rows, _pending_task_summary = _pending_tasks(limit_suggestions=None, limit_issues=None)
+
+    onsite_excluded_types = [
+        SeoSuggestion.SuggestionType.METADATA,
+        SeoSuggestion.SuggestionType.INTERLINK,
+    ]
+
+    # SEO issues (discrepancies)
+    pending_seo_tasks_all = [
+        row for row in pending_task_rows
+        if row["domain"] == "seo"
+        and (row.get("target_content_type_id"), row.get("target_object_id")) in open_seo_issue_targets
+    ]
+    pending_seo_task_page_obj, pending_seo_task_rows = _paginate_rows(
+        request, pending_seo_tasks_all, param="onsite_page", page_size=ONSITE_TASKS_PAGE_SIZE,
+    )
+
+    # Suggestions for discrepancies
+    onsite_suggestion_rows_all = [
+        row for row in _suggestion_rows(exclude_suggestion_types=onsite_excluded_types, limit=None)
+        if (row.get("content_type_id"), row.get("object_id")) in open_seo_issue_targets
+    ]
+    onsite_suggestion_page_obj, onsite_suggestion_rows = _paginate_rows(
+        request, onsite_suggestion_rows_all, param="onsite_suggestion_page",
+        page_size=ONSITE_SUGGESTIONS_PAGE_SIZE,
+    )
+
+    # Scan jobs
+    scan_jobs_qs = SeoScanJob.objects.exclude(
+        job_type=SeoScanJob.JobType.INTERLINKS
+    ).order_by("-created_at")
+    scan_jobs = scan_jobs_qs[:50]
+    selected_scan_job = scan_jobs_qs.first()
+
+    return {
+        "pending_seo_task_rows": pending_seo_task_rows,
+        "pending_seo_task_page_obj": pending_seo_task_page_obj,
+        "pending_seo_task_summary": {
+            "total": len(pending_seo_tasks_all),
+            "high": sum(1 for row in pending_seo_tasks_all if row["priority"] == "high"),
+        },
+        "onsite_suggestion_rows": onsite_suggestion_rows,
+        "onsite_suggestion_page_obj": onsite_suggestion_page_obj,
+        "onsite_queue_counts": _queue_counts_from_rows(onsite_suggestion_rows_all),
+        "seo_issue_rows": _seo_issue_rows(),
+        "latest_issues": _enriched_issue_feed(),
+        "scan_jobs": scan_jobs,
+        "selected_scan_job": selected_scan_job,
+        "selected_scan_job_progress": scan_job_progress(selected_scan_job) if selected_scan_job else None,
+        "selected_scan_items": (
+            selected_scan_job.items.select_related("content_type").order_by("-id")[:180]
+            if selected_scan_job else []
+        ),
+        "job_types": [
+            (value, label) for value, label in SeoScanJob.JobType.choices
+            if value != SeoScanJob.JobType.INTERLINKS
+        ],
+        "engine_settings": settings_obj,
+        "onsite_page_query": _query_without_keys(request, "onsite_page"),
+        "onsite_suggestion_page_query": _query_without_keys(request, "onsite_suggestion_page"),
+        "control_querystring": request.GET.urlencode(),
+    }
+
+
+def _tab_context_interlinking(request: HttpRequest) -> dict[str, Any]:
+    """Context for the Interlinking tab."""
+    job_id = (request.GET.get("job_id") or "").strip()
+    interlink_jobs_qs = SeoScanJob.objects.filter(
+        job_type=SeoScanJob.JobType.INTERLINKS
+    ).order_by("-created_at")
+    interlink_jobs = interlink_jobs_qs[:50]
+    selected_interlink_job = None
+    if job_id.isdigit():
+        selected_interlink_job = SeoScanJob.objects.filter(pk=int(job_id)).first()
+    if not selected_interlink_job:
+        selected_interlink_job = interlink_jobs_qs.first()
+
+    pending_task_rows, _ = _pending_tasks(limit_suggestions=None, limit_issues=None)
+    pending_interlink_tasks = [row for row in pending_task_rows if row["domain"] == "internal_linking"][:160]
+
+    return {
+        "interlink_metrics": _interlink_metrics(),
+        "interlink_edge_rows": _interlink_edge_rows(),
+        "interlink_suggestion_rows": _interlink_suggestion_rows(),
+        "interlink_jobs": interlink_jobs,
+        "selected_interlink_job": selected_interlink_job,
+        "selected_interlink_job_progress": (
+            scan_job_progress(selected_interlink_job) if selected_interlink_job else None
+        ),
+        "selected_interlink_items": (
+            selected_interlink_job.items.select_related("content_type").order_by("-id")[:180]
+            if selected_interlink_job else []
+        ),
+        "pending_interlink_task_rows": pending_interlink_tasks,
+        "interlink_queue_counts": _queue_counts_for_suggestions(
+            suggestion_types=[SeoSuggestion.SuggestionType.INTERLINK],
+        ),
+        "engine_settings": SeoEngineSettings.get_solo(),
+        "control_querystring": request.GET.urlencode(),
+    }
+
+
+def _tab_context_metadata(request: HttpRequest) -> dict[str, Any]:
+    """Context for the Metadata tab."""
+    defaults_obj = SeoSettings.get_solo()
+    metadata_types = [SeoSuggestion.SuggestionType.METADATA]
+    pending_task_rows, _ = _pending_tasks(limit_suggestions=None, limit_issues=None)
+    pending_metadata_tasks = [row for row in pending_task_rows if row["domain"] == "metadata"][:160]
+
+    return {
+        "pending_metadata_task_rows": pending_metadata_tasks,
+        "metadata_suggestion_rows": _suggestion_rows(suggestion_types=metadata_types, limit=300),
+        "metadata_queue_counts": _queue_counts_for_suggestions(suggestion_types=metadata_types),
+        "metadata_lane_rows": {
+            "pending": _suggestion_rows(
+                statuses=[SeoSuggestion.Status.PENDING], suggestion_types=metadata_types, limit=120,
+            ),
+            "needs_correction": _suggestion_rows(
+                statuses=[SeoSuggestion.Status.NEEDS_CORRECTION], suggestion_types=metadata_types, limit=120,
+            ),
+            "approved": _suggestion_rows(
+                statuses=[SeoSuggestion.Status.APPLIED], suggestion_types=metadata_types, limit=120,
+            ),
+            "rejected": _suggestion_rows(
+                statuses=[SeoSuggestion.Status.REJECTED], suggestion_types=metadata_types, limit=120,
+            ),
+        },
+        "metadata_template_injection": {
+            "canonical": bool(defaults_obj.canonical_base_url.strip()),
+            "open_graph": bool(defaults_obj.enable_open_graph),
+            "twitter_cards": bool(defaults_obj.enable_twitter_cards),
+            "organization_schema": bool(defaults_obj.organization_schema_name.strip()),
+        },
+        "seo_defaults": defaults_obj,
+        "engine_settings": SeoEngineSettings.get_solo(),
+        "control_querystring": request.GET.urlencode(),
+    }
+
+
+def _tab_context_redirects(request: HttpRequest) -> dict[str, Any]:
+    """Context for the Redirects tab."""
+    redirect_types = [SeoSuggestion.SuggestionType.REDIRECT]
+    open_seo_issue_targets = _open_issue_target_refs(domain="seo")
+    pending_task_rows, _ = _pending_tasks(limit_suggestions=None, limit_issues=None)
+
+    redirect_suggestion_rows_all = [
+        row for row in _suggestion_rows(suggestion_types=redirect_types, limit=None)
+        if (row.get("content_type_id"), row.get("object_id")) in open_seo_issue_targets
+    ]
+    redirect_suggestion_page_obj, redirect_suggestion_rows = _paginate_rows(
+        request, redirect_suggestion_rows_all, param="redirect_page",
+        page_size=ONSITE_SUGGESTIONS_PAGE_SIZE,
+    )
+
+    pending_redirect_tasks_all = [
+        row for row in pending_task_rows
+        if row["domain"] == "seo"
+        and row["task_kind"] == "suggestion"
+        and (row.get("target_content_type_id"), row.get("target_object_id")) in open_seo_issue_targets
+    ]
+    pending_redirect_task_page_obj, pending_redirect_task_rows = _paginate_rows(
+        request, pending_redirect_tasks_all, param="redirect_task_page",
+        page_size=ONSITE_TASKS_PAGE_SIZE,
+    )
+
+    return {
+        "redirect_suggestion_rows": redirect_suggestion_rows,
+        "redirect_suggestion_page_obj": redirect_suggestion_page_obj,
+        "redirect_queue_counts": _queue_counts_from_rows(redirect_suggestion_rows_all),
+        "pending_redirect_task_rows": pending_redirect_task_rows,
+        "pending_redirect_task_page_obj": pending_redirect_task_page_obj,
+        "pending_redirect_task_summary": {
+            "total": len(pending_redirect_tasks_all),
+            "high": sum(1 for row in pending_redirect_tasks_all if row["priority"] == "high"),
+        },
+        "redirect_task_page_query": _query_without_keys(request, "redirect_task_page"),
+        "redirect_page_query": _query_without_keys(request, "redirect_page"),
+        "engine_settings": SeoEngineSettings.get_solo(),
+        "control_querystring": request.GET.urlencode(),
+    }
+
+
+def _tab_context_settings(request: HttpRequest) -> dict[str, Any]:
+    """Context for the Settings tab."""
+    return {
+        "engine_settings": SeoEngineSettings.get_solo(),
+        "seo_defaults": SeoSettings.get_solo(),
+        "synonym_groups": TaxonomySynonymGroup.objects.prefetch_related("terms").order_by("scope", "name")[:40],
+        "control_querystring": request.GET.urlencode(),
     }
 
 
@@ -865,17 +1108,18 @@ def seo_overview(request):
 @require_GET
 def seo_control_center(request, section: str | None = None):
     _ensure_admin_control_enabled()
-    active_section = _normalize_control_section(section or request.GET.get("section") or "scan")
+    active_section = _normalize_control_section(section or request.GET.get("section") or "discrepancies")
     context = _admin_control_context(
         section="seo_control",
         title="SEO Control",
-        subtitle=(
-            "Centralized scan, results, on-site SEO, redirects, interlinking, "
-            "metadata, and settings."
-        ),
+        subtitle="Discrepancies, interlinking, metadata, and redirects dashboard.",
     )
-    context.update(_control_common_context(request))
+    # Only load KPIs + top-level counts for the shell; tab content is lazily loaded via HTMX.
+    context["seo_overview"] = seo_overview_with_queue()
+    context["queue_counts"] = queue_snapshot()
+    context["interlink_metrics"] = _interlink_metrics()
     context["active_section"] = active_section
+    context["control_querystring"] = request.GET.urlencode()
     return render(request, "seo/admin/control.html", context)
 
 
@@ -944,18 +1188,41 @@ def seo_control_section(request, section: str):
     safe_section = _normalize_control_section(section, default="")
     if not safe_section:
         raise Http404("Unknown SEO section.")
+
+    # Per-tab lean context builders — only load what each tab needs
+    _TAB_CONTEXT_BUILDERS: dict[str, Any] = {
+        "discrepancies": _tab_context_discrepancies,
+        "interlinking": _tab_context_interlinking,
+        "metadata": _tab_context_metadata,
+        "redirects": _tab_context_redirects,
+        "settings": _tab_context_settings,
+    }
+    _TAB_TEMPLATES: dict[str, str] = {
+        "discrepancies": "seo/admin/partials/seo_control_discrepancies.html",
+        "interlinking": "seo/admin/partials/seo_control_interlinking.html",
+        "metadata": "seo/admin/partials/seo_control_metadata.html",
+        "redirects": "seo/admin/partials/seo_control_redirects.html",
+        "settings": "seo/admin/partials/seo_control_settings.html",
+    }
+
+    builder = _TAB_CONTEXT_BUILDERS.get(safe_section)
+    template = _TAB_TEMPLATES.get(safe_section)
+
+    if builder and template:
+        context = builder(request)
+        context["active_section"] = safe_section
+        return render(request, template, context)
+
+    # Fallback for any unmapped sections — use full common context
     context = _control_common_context(request)
     context["active_section"] = safe_section
-    template_map = {
+    fallback_map = {
         "scan": "seo/admin/partials/seo_control_scan.html",
         "results": "seo/admin/partials/seo_control_results.html",
         "onsite": "seo/admin/partials/seo_control_suggestions.html",
-        "redirects": "seo/admin/partials/seo_control_redirects.html",
-        "metadata": "seo/admin/partials/seo_control_metadata.html",
-        "interlinking": "seo/admin/partials/seo_control_interlinking.html",
-        "settings": "seo/admin/partials/seo_control_settings.html",
     }
-    return render(request, template_map[safe_section], context)
+    tpl = fallback_map.get(safe_section, "seo/admin/partials/seo_control_suggestions.html")
+    return render(request, tpl, context)
 
 
 @staff_member_required
@@ -1349,32 +1616,26 @@ def seo_interlinks(request):
 
 @staff_member_required
 @require_GET
-def seo_queue(request):
+def seo_queue(request: HttpRequest) -> HttpResponseRedirect:
+    """Legacy queue page — redirects to Discrepancies tab."""
     _ensure_admin_control_enabled()
-    context = _admin_control_context(
-        section="seo_queue",
-        title="SEO Audit Queue",
-        subtitle="Review on-site SEO, redirects, interlinking, and metadata queues in separate sections.",
-    )
-    context.update(_control_common_context(request))
-    context["active_section"] = "onsite"
-    return render(request, "seo/admin/control.html", context)
+    return _control_redirect("discrepancies")
 
 
 @staff_member_required
 @require_POST
-def seo_queue_single_action(request, suggestion_id: int, action: str):
+def seo_queue_single_action(request: HttpRequest, suggestion_id: int, action: str) -> HttpResponse:
     return seo_control_suggestion_action(request, suggestion_id=suggestion_id, action=action)
 
 
 @staff_member_required
-def seo_queue_edit(request, suggestion_id: int):
+def seo_queue_edit(request: HttpRequest, suggestion_id: int) -> HttpResponse:
     return seo_control_suggestion_edit(request, suggestion_id=suggestion_id)
 
 
 @staff_member_required
 @require_POST
-def seo_queue_bulk(request):
+def seo_queue_bulk(request: HttpRequest) -> HttpResponse:
     return seo_control_suggestion_bulk(request)
 
 

@@ -134,18 +134,18 @@
                         {% for row in interlink_edge_rows %}
                             <tr>
                                 <td>
-                                    {% if row.source_admin_url %}
-                                        <a href="{{ row.source_admin_url }}">{{ row.source_title|truncatechars:34 }}</a>
-                                    {% else %}
-                                        {{ row.source_title|truncatechars:34 }}
-                                    {% endif %}
+                                    <div class="d-flex align-items-center gap-1">
+                                        {% if row.source_admin_url %}<a href="{{ row.source_admin_url }}" title="Edit"><i class="bi bi-pencil-square"></i></a>{% endif %}
+                                        {% if row.source_public_url %}<a href="{{ row.source_public_url }}" target="_blank" rel="noopener" title="View"><i class="bi bi-box-arrow-up-right"></i></a>{% endif %}
+                                        <span>{{ row.source_title|truncatechars:34 }}</span>
+                                    </div>
                                 </td>
                                 <td>
-                                    {% if row.target_admin_url %}
-                                        <a href="{{ row.target_admin_url }}">{{ row.target_title|truncatechars:34 }}</a>
-                                    {% else %}
-                                        {{ row.target_title|truncatechars:34 }}
-                                    {% endif %}
+                                    <div class="d-flex align-items-center gap-1">
+                                        {% if row.target_admin_url %}<a href="{{ row.target_admin_url }}" title="Edit"><i class="bi bi-pencil-square"></i></a>{% endif %}
+                                        {% if row.target_public_url %}<a href="{{ row.target_public_url }}" target="_blank" rel="noopener" title="View"><i class="bi bi-box-arrow-up-right"></i></a>{% endif %}
+                                        <span>{{ row.target_title|truncatechars:34 }}</span>
+                                    </div>
                                 </td>
                                 <td>{{ row.anchor_text|truncatechars:42 }}</td>
                                 <td>{{ row.confidence|floatformat:3 }}</td>
@@ -172,20 +172,18 @@
                 {% for row in interlink_suggestion_rows %}
                     <tr>
                         <td>
-                            {% if row.source_admin_url %}
-                                <a href="{{ row.source_admin_url }}">{{ row.source_title|truncatechars:34 }}</a>
-                            {% else %}
-                                {{ row.source_title|truncatechars:34 }}
-                            {% endif %}
+                            <div class="d-flex align-items-center gap-1">
+                                {% if row.source_admin_url %}<a href="{{ row.source_admin_url }}" title="Edit"><i class="bi bi-pencil-square"></i></a>{% endif %}
+                                {% if row.source_public_url %}<a href="{{ row.source_public_url }}" target="_blank" rel="noopener" title="View"><i class="bi bi-box-arrow-up-right"></i></a>{% endif %}
+                                <span>{{ row.source_title|truncatechars:34 }}</span>
+                            </div>
                         </td>
                         <td>
-                            {% if row.target_admin_url %}
-                                <a href="{{ row.target_admin_url }}">{{ row.target_title|truncatechars:34 }}</a>
-                            {% elif row.target_public_url %}
-                                <a href="{{ row.target_public_url }}" target="_blank" rel="noopener">{{ row.target_title|truncatechars:34 }}</a>
-                            {% else %}
-                                {{ row.target_title|truncatechars:34 }}
-                            {% endif %}
+                            <div class="d-flex align-items-center gap-1">
+                                {% if row.target_admin_url %}<a href="{{ row.target_admin_url }}" title="Edit"><i class="bi bi-pencil-square"></i></a>{% endif %}
+                                {% if row.target_public_url %}<a href="{{ row.target_public_url }}" target="_blank" rel="noopener" title="View"><i class="bi bi-box-arrow-up-right"></i></a>{% endif %}
+                                <span>{{ row.target_title|truncatechars:34 }}</span>
+                            </div>
                         </td>
                         <td>{{ row.anchor_text|truncatechars:42 }}</td>
                         <td>{{ row.score|floatformat:3 }}</td>

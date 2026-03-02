@@ -14,9 +14,12 @@ from pages.models import Page
 from .models import TaxonomySynonymGroup, TaxonomySynonymTerm
 from .services import (
     audit_instance,
+    compute_content_signals,
+    compute_tfidf_signals,
     disable_gone_redirect_for_live_instance,
     handle_deleted_content,
     run_autopilot_for_instance,
+    write_back_audit_score,
 )
 from .synonyms import clear_synonym_cache
 
@@ -115,9 +118,33 @@ def _run_post_save_pipeline(post_id: int, *, trigger: str = "save") -> None:
     except Exception:
         logger.exception("Post SEO enhancement failed for post id=%s", post_id)
     try:
-        audit_instance(post, trigger=trigger)
+        snapshot = audit_instance(post, trigger=trigger)
     except Exception:
         logger.exception("SEO audit failed for post id=%s", post_id)
+        snapshot = None
+    # Compute content signals (Flesch, keyword density, heading/image counts, etc.)
+    try:
+        compute_content_signals(post)
+    except Exception:
+        logger.exception("Content signal computation failed for post id=%s", post_id)
+    # TF-IDF keyword extraction
+    try:
+        compute_tfidf_signals(post)
+    except Exception:
+        logger.exception("TF-IDF signal computation failed for post id=%s", post_id)
+    # Write audit score back to model
+    if snapshot:
+        try:
+            write_back_audit_score(post, snapshot)
+        except Exception:
+            logger.exception("Audit score write-back failed for post id=%s", post_id)
+    # Reverse interlink scan — ensure bidirectional crawl paths
+    if post.status == Post.Status.PUBLISHED:
+        try:
+            from .interlink import reverse_interlink_scan
+            reverse_interlink_scan(post)
+        except Exception:
+            logger.exception("Reverse interlink scan failed for post id=%s", post_id)
     try:
         run_autopilot_for_instance(post)
     except Exception:
@@ -133,9 +160,28 @@ def _run_page_save_pipeline(page_id: int, *, trigger: str = "save") -> None:
     except Exception:
         logger.exception("Page metadata enhancement failed for page id=%s", page_id)
     try:
-        audit_instance(page, trigger=trigger)
+        snapshot = audit_instance(page, trigger=trigger)
     except Exception:
         logger.exception("SEO audit failed for page id=%s", page_id)
+        snapshot = None
+    # Compute content signals (Flesch, keyword density, heading/image counts, etc.)
+    try:
+        compute_content_signals(page)
+    except Exception:
+        logger.exception("Content signal computation failed for page id=%s", page_id)
+    # Write audit score back to model
+    if snapshot:
+        try:
+            write_back_audit_score(page, snapshot)
+        except Exception:
+            logger.exception("Audit score write-back failed for page id=%s", page_id)
+    # Reverse interlink scan — ensure bidirectional crawl paths
+    if getattr(page, 'status', '') == 'published':
+        try:
+            from .interlink import reverse_interlink_scan
+            reverse_interlink_scan(page)
+        except Exception:
+            logger.exception("Reverse interlink scan failed for page id=%s", page_id)
     try:
         run_autopilot_for_instance(page)
     except Exception:

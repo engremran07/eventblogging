@@ -26,9 +26,9 @@
                 </div>
                 <div class="dashboard-hero-actions">
                     <span class="badge text-bg-secondary">Updated {{ admin_overview.updated_at|date:"Y-m-d H:i:s" }}</span>
-                    <a class="btn btn-primary btn-sm" href="{% url 'blog:admin_post_create' %}">New Post</a>
+                    <a class="btn btn-primary btn-sm" href="{% url 'admin_post_create' %}">New Post</a>
                     <a class="btn btn-outline-secondary btn-sm" href="{% url 'admin_config:seo_control_canonical_section' 'onsite' %}">SEO Queue</a>
-                    <a class="btn btn-outline-secondary btn-sm" href="{% url 'blog:admin_comments_list' %}">Moderate Comments</a>
+                    <a class="btn btn-outline-secondary btn-sm" href="{% url 'admin_comments_list' %}">Moderate Comments</a>
                 </div>
             </section>
 
@@ -133,7 +133,7 @@
                     <section class="card">
                         <div class="dashboard-card-head">
                             <h5 class="m-0">Top Posts by Views</h5>
-                            <a href="{% url 'blog:admin_posts_list' %}" class="btn btn-sm btn-outline-secondary">Open Posts</a>
+                            <a href="{% url 'admin_posts_list' %}" class="btn btn-sm btn-outline-secondary">Open Posts</a>
                         </div>
                         <div class="table-responsive">
                             <table class="table table-sm m-0 dashboard-table">
@@ -147,7 +147,7 @@
                                 <tbody>
                                     {% for post in admin_overview.top_posts %}
                                         <tr>
-                                            <td><a href="{% url 'blog:admin_post_editor' post.id %}">{{ post.title|truncatechars:52 }}</a></td>
+                                            <td><a href="{% url 'admin_post_editor' post.id %}">{{ post.title|truncatechars:52 }}</a></td>
                                             <td class="text-end">{{ post.views_count }}</td>
                                             <td>{{ post.published_at|date:"Y-m-d" }}</td>
                                         </tr>
@@ -162,7 +162,7 @@
                     <section class="card">
                         <div class="dashboard-card-head">
                             <h5 class="m-0">Recently Updated Posts</h5>
-                            <a href="{% url 'blog:admin_posts_list' %}" class="btn btn-sm btn-outline-secondary">Manage</a>
+                            <a href="{% url 'admin_posts_list' %}" class="btn btn-sm btn-outline-secondary">Manage</a>
                         </div>
                         <div class="table-responsive">
                             <table class="table table-sm m-0 dashboard-table">
@@ -176,7 +176,7 @@
                                 <tbody>
                                     {% for post in admin_overview.recent_posts %}
                                         <tr>
-                                            <td><a href="{% url 'blog:admin_post_editor' post.id %}">{{ post.title|truncatechars:52 }}</a></td>
+                                            <td><a href="{% url 'admin_post_editor' post.id %}">{{ post.title|truncatechars:52 }}</a></td>
                                             <td><span class="text-capitalize">{{ post.status }}</span></td>
                                             <td>{{ post.updated_at|date:"Y-m-d H:i" }}</td>
                                         </tr>
@@ -212,7 +212,7 @@
                                 <li><span>Preset</span><strong>{{ admin_overview.appearance.preset_label }}</strong></li>
                                 <li><span>Theme Mode</span><strong>{{ admin_overview.appearance.mode_label }}</strong></li>
                             </ul>
-                            <a href="{% url 'blog:admin_settings' %}?section=appearance#settings-appearance" class="btn btn-sm btn-outline-secondary w-100">Open Appearance Studio</a>
+                            <a href="{% url 'admin_settings' %}?section=appearance#settings-appearance" class="btn btn-sm btn-outline-secondary w-100">Open Appearance Studio</a>
                         </section>
                     {% endif %}
 

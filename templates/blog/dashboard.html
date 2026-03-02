@@ -122,6 +122,7 @@
                     </div>
                 </div>
 
+                <div id="post-table-wrapper">
                 <div class="workspace-table-scroll">
                     <table class="workspace-table">
                         <thead>
@@ -219,6 +220,11 @@
                                 <a
                                     class="btn btn-secondary btn-sm"
                                     href="?{% if page_query %}{{ page_query }}&{% endif %}page={{ page_obj.previous_page_number }}"
+                                    hx-get="?{% if page_query %}{{ page_query }}&{% endif %}page={{ page_obj.previous_page_number }}"
+                                    hx-target="#post-table-wrapper"
+                                    hx-select="#post-table-wrapper"
+                                    hx-swap="outerHTML"
+                                    hx-push-url="true"
                                 >
                                     Previous
                                 </a>
@@ -227,12 +233,22 @@
                                 <a
                                     class="btn btn-secondary btn-sm"
                                     href="?{% if page_query %}{{ page_query }}&{% endif %}page={{ page_obj.next_page_number }}"
+                                    hx-get="?{% if page_query %}{{ page_query }}&{% endif %}page={{ page_obj.next_page_number }}"
+                                    hx-target="#post-table-wrapper"
+                                    hx-select="#post-table-wrapper"
+                                    hx-swap="outerHTML"
+                                    hx-push-url="true"
                                 >
                                     Next
                                 </a>
                                 <a
                                     class="btn btn-secondary btn-sm"
                                     href="?{% if page_query %}{{ page_query }}&{% endif %}page={{ page_obj.paginator.num_pages }}"
+                                    hx-get="?{% if page_query %}{{ page_query }}&{% endif %}page={{ page_obj.paginator.num_pages }}"
+                                    hx-target="#post-table-wrapper"
+                                    hx-select="#post-table-wrapper"
+                                    hx-swap="outerHTML"
+                                    hx-push-url="true"
                                 >
                                     Last
                                 </a>
@@ -240,6 +256,7 @@
                         </div>
                     </div>
                 {% endif %}
+                </div>{# /post-table-wrapper #}
             </form>
         </div>
 

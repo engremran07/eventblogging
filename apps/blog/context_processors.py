@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import logging
 import subprocess
@@ -132,7 +132,7 @@ def _build_health_signals(*, site: dict, seo: dict, repo: dict, refresh: dict):
                 "level": "warning",
                 "title": "Pending moderation queue",
                 "detail": f"{site['comments_pending']} comments need review.",
-                "url": _safe_reverse("blog:admin_comments_list"),
+                "url": _safe_reverse("admin_comments_list"),
                 "action_label": "Open comments",
             }
         )
@@ -143,7 +143,7 @@ def _build_health_signals(*, site: dict, seo: dict, repo: dict, refresh: dict):
                 "level": "info",
                 "title": "Draft backlog present",
                 "detail": f"{site['posts_draft']} drafts are waiting for publishing decisions.",
-                "url": _safe_reverse("blog:admin_posts_list"),
+                "url": _safe_reverse("admin_posts_list"),
                 "action_label": "Review drafts",
             }
         )
@@ -492,7 +492,7 @@ def site_appearance(request):
             ctx = {}
         cache.set(SITE_APPEARANCE_CACHE_KEY, ctx, _APPEARANCE_CTX_TTL)
 
-    # Per-user profile — never cached (user-specific)
+    # Per-user profile  never cached (user-specific)
     current_user_profile: dict = {}
     if request.user.is_authenticated:
         try:

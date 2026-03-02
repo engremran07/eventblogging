@@ -1,6 +1,9 @@
 ﻿from __future__ import annotations
 
+from collections.abc import Callable
+
 from django.core.cache import cache
+from django.http import HttpRequest, HttpResponse
 from django.utils import timezone
 
 from .content_refresh import run_content_date_refresh
@@ -11,14 +14,14 @@ class ContentDateRefreshMiddleware:
     CHECK_EVERY_SECONDS = 300
     CACHE_KEY = "blog_content_refresh_last_check_v1"
 
-    def __init__(self, get_response):
+    def __init__(self, get_response: Callable[[HttpRequest], HttpResponse]) -> None:
         self.get_response = get_response
 
-    def __call__(self, request):
+    def __call__(self, request: HttpRequest) -> HttpResponse:
         self._maybe_run_refresh()
         return self.get_response(request)
 
-    def _maybe_run_refresh(self):
+    def _maybe_run_refresh(self) -> None:
         now = timezone.now()
         last_check = cache.get(self.CACHE_KEY)
         if last_check and (now - last_check).total_seconds() < self.CHECK_EVERY_SECONDS:

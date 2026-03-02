@@ -48,7 +48,7 @@
             <div class="card">
                 <div class="card-header">
                     <h2 class="card-title-inline">Recent Posts</h2>
-                    <a href="{% url 'blog:admin_posts_list' %}" class="btn btn-ghost btn-sm">View All</a>
+                    <a href="{% url 'admin_posts_list' %}" class="btn btn-ghost btn-sm">View All</a>
                 </div>
 
                 <table class="admin-kpi-table">
@@ -56,7 +56,7 @@
                         {% for post in recent_posts %}
                             <tr class="admin-table-row">
                                 <td class="admin-table-cell">
-                                    <a href="{% url 'blog:admin_post_editor' post.id %}" class="admin-link">
+                                    <a href="{% url 'admin_post_editor' post.id %}" class="admin-link">
                                         {{ post.title|truncatewords:5 }}
                                     </a>
                                 </td>
@@ -74,7 +74,7 @@
                         {% empty %}
                             <tr>
                                 <td class="admin-table-empty-cell">
-                                    No posts yet. <a href="{% url 'blog:admin_post_create' %}">Create one</a>
+                                    No posts yet. <a href="{% url 'admin_post_create' %}">Create one</a>
                                 </td>
                             </tr>
                         {% endfor %}
@@ -89,13 +89,13 @@
                 </div>
 
                 <div class="admin-quick-actions">
-                    <a href="{% url 'blog:admin_post_create' %}" class="btn btn-primary btn-block">
+                    <a href="{% url 'admin_post_create' %}" class="btn btn-primary btn-block">
                         <i class="fas fa-plus"></i> New Post
                     </a>
-                    <a href="{% url 'blog:admin_comments_list' %}" class="btn btn-secondary btn-block">
+                    <a href="{% url 'admin_comments_list' %}" class="btn btn-secondary btn-block">
                         <i class="fas fa-comments"></i> Moderate Comments
                     </a>
-                    <a href="{% url 'blog:admin_posts_list' %}" class="btn btn-secondary btn-block">
+                    <a href="{% url 'admin_posts_list' %}" class="btn btn-secondary btn-block">
                         <i class="fas fa-pencil"></i> Edit Drafts
                     </a>
                     {% if seo_pending_count %}
@@ -112,7 +112,7 @@
             <div class="card">
                 <div class="card-header">
                     <h2 class="card-title-inline">Pending Comments</h2>
-                    <a href="{% url 'blog:admin_comments_list' %}" class="btn btn-ghost btn-sm">View All</a>
+                    <a href="{% url 'admin_comments_list' %}" class="btn btn-ghost btn-sm">View All</a>
                 </div>
 
                 <div class="admin-comments-feed">
@@ -120,14 +120,14 @@
                         <div class="admin-comment-item">
                             <strong>{{ comment.author.username }}</strong>
                             <div class="admin-comment-meta">
-                                on <a href="{% url 'blog:admin_post_editor' comment.post.id %}">{{ comment.post.title|truncatewords:5 }}</a>
+                                on <a href="{% url 'admin_post_editor' comment.post.id %}">{{ comment.post.title|truncatewords:5 }}</a>
                             </div>
                             <p class="admin-comment-body">{{ comment.body|truncatewords:20 }}</p>
                             <div class="admin-comment-actions">
-                                <button hx-post="{% url 'blog:admin_comment_approve' comment.id %}" hx-swap="outerHTML" class="btn btn-success btn-sm">
+                                <button hx-post="{% url 'admin_comment_approve' comment.id %}" hx-swap="outerHTML" class="btn btn-success btn-sm">
                                     Approve
                                 </button>
-                                <button hx-post="{% url 'blog:admin_comment_delete' comment.id %}" hx-confirm="Delete this comment?" hx-swap="outerHTML" class="btn btn-danger btn-sm">
+                                <button hx-post="{% url 'admin_comment_delete' comment.id %}" hx-confirm="Delete this comment?" hx-swap="outerHTML" class="btn btn-danger btn-sm">
                                     Delete
                                 </button>
                             </div>

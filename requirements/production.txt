@@ -15,9 +15,6 @@ django-csp==4.0
 django-cacheops==7.2
 django-redis==6.0.0
 
-# Database pooling
-django-db-connection-pool==1.2.6
-
 # Monitoring and logging
 sentry-sdk==2.53.0
 python-json-logger==4.0.0
@@ -25,9 +22,3 @@ python-json-logger==4.0.0
 # File storage optimization (optional)
 django-storages==1.14.6
 boto3==1.42.58
-
-# API versioning and documentation
-drf-yasg==1.21.15
-
-# Environment configuration
-python-decouple==3.8

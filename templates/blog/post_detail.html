@@ -2,7 +2,7 @@
 
 {% block content %}
 <div class="reading-progress-wrap">
-    <div class="reading-progress" x-data="{ progress: 0 }" x-init="window.addEventListener('scroll', () => { const d = document.documentElement; const max = d.scrollHeight - d.clientHeight; progress = max > 0 ? ((d.scrollTop / max) * 100) : 0; });">
+    <div class="reading-progress" x-data="readingProgress()">
         <div class="reading-progress-bar" :style="`width: ${progress}%`"></div>
     </div>
 </div>

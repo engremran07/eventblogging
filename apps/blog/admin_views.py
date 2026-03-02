@@ -1,4 +1,4 @@
-﻿"""
+"""
 Custom admin content workspace views.
 """
 
@@ -203,20 +203,20 @@ def _handle_posts_bulk_action(request: HttpRequest, *, forced_action: str | None
         messages.error(request, "Invalid bulk action.")
         if request.headers.get("HX-Request"):
             return HttpResponse("Invalid bulk action.", status=400)
-        return redirect("blog:admin_posts_list")
+        return redirect("admin_posts_list")
 
     if not selected_ids:
         messages.warning(request, "Select at least one post.")
         if request.headers.get("HX-Request"):
             return HttpResponse("No posts selected.", status=400)
-        return redirect("blog:admin_posts_list")
+        return redirect("admin_posts_list")
 
     count = _execute_posts_bulk_action(action=action, selected_ids=selected_ids)
     if count == 0:
         messages.warning(request, "No matching posts found.")
         if request.headers.get("HX-Request"):
             return HttpResponse("No matching posts found.", status=404)
-        return redirect("blog:admin_posts_list")
+        return redirect("admin_posts_list")
 
     if action != "delete":
         try:
@@ -227,7 +227,7 @@ def _handle_posts_bulk_action(request: HttpRequest, *, forced_action: str | None
     messages.success(request, _bulk_action_message(action, count))
     if request.headers.get("HX-Request"):
         return HttpResponse(status=204)
-    return redirect("blog:admin_posts_list")
+    return redirect("admin_posts_list")
 
 
 def _build_comments_queryset(request: HttpRequest):
@@ -422,7 +422,7 @@ def admin_post_editor(request: HttpRequest, post_id: int | None = None) -> HttpR
             if request.headers.get("HX-Request"):
                 return HttpResponse(status=204)
             messages.success(request, "Post deleted.")
-            return redirect("blog:admin_posts_list")
+            return redirect("admin_posts_list")
 
         valid_statuses = {choice[0] for choice in Post.Status.choices}
         action_to_status = {
@@ -533,13 +533,13 @@ def admin_post_editor(request: HttpRequest, post_id: int | None = None) -> HttpR
             )
             if request.headers.get("HX-Request"):
                 return HttpResponse(status=204)
-            return redirect("blog:admin_posts_list")
+            return redirect("admin_posts_list")
 
         if request.headers.get("HX-Request"):
             return HttpResponse(status=204)
 
         messages.success(request, "Post saved successfully.")
-        return redirect("blog:admin_posts_list")
+        return redirect("admin_posts_list")
 
     return render(request, "admin/posts/editor.html", _editor_context(post))
 
@@ -653,7 +653,7 @@ def admin_comment_approve(request: HttpRequest, comment_id: int) -> HttpResponse
                 "pending_comments": pending_comments,
             },
         )
-    return redirect("blog:admin_comments_list")
+    return redirect("admin_comments_list")
 
 
 @staff_member_required
@@ -668,7 +668,7 @@ def admin_comment_delete(request: HttpRequest, comment_id: int) -> HttpResponse:
 
     if request.headers.get("HX-Request"):
         return HttpResponse(status=204)
-    return redirect("blog:admin_comments_list")
+    return redirect("admin_comments_list")
 
 
 def _yes_no_to_bool(value: str):
@@ -1231,7 +1231,7 @@ def admin_categories_bulk_action(request: HttpRequest) -> HttpResponse:
     )
 
 
-# ─── WordPress-style inline category CRUD ────────────────────────────────────
+# --- WordPress-style inline category CRUD ------------------------------------
 
 
 def _get_category_tree_model() -> type[BaseTagTreeModel]:
@@ -1250,7 +1250,7 @@ def _parent_choices(tree_model: type[BaseTagTreeModel], *, exclude_pk: int | Non
             qs = qs.exclude(pk__in=exclude_ids)
         except tree_model.DoesNotExist:
             pass
-    choices: list[tuple[str, str]] = [("", "— None (top level) —")]
+    choices: list[tuple[str, str]] = [("", " None (top level) ")]
     max_depth = get_category_max_depth()
     for cat in qs:
         if cat.level < max_depth:
@@ -1904,7 +1904,7 @@ def admin_settings(request: HttpRequest) -> HttpResponse:
         messages.success(request, "Settings saved successfully.")
         if request.headers.get("HX-Request"):
             return HttpResponse("Saved", status=200)
-        base_url = reverse("blog:admin_settings")
+        base_url = reverse("admin_settings")
         return redirect(f"{base_url}?section={active_section}")
 
     verification_checks = {

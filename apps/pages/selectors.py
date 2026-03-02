@@ -14,6 +14,7 @@ from .models import Page, PageRevision
 
 
 def get_page_by_slug(slug: str, user: User | None = None) -> Page:
+    """Return a single Page by slug, visible to the given user."""
     page = get_object_or_404(
         Page.objects.select_related("author"),
         slug=slug,
@@ -33,6 +34,7 @@ def get_page_by_slug(slug: str, user: User | None = None) -> Page:
 
 
 def get_published_pages() -> QuerySet[Page]:
+    """Return all published pages ordered by most recent first."""
     return (
         Page.objects.filter(
             status=Page.Status.PUBLISHED,
@@ -45,6 +47,7 @@ def get_published_pages() -> QuerySet[Page]:
 
 
 def get_navigation_pages(limit: int = 4) -> QuerySet[Page]:
+    """Return published pages marked for site navigation, ordered by nav_order."""
     return (
         Page.objects.filter(
             show_in_navigation=True,
@@ -58,6 +61,7 @@ def get_navigation_pages(limit: int = 4) -> QuerySet[Page]:
 
 
 def get_featured_pages() -> QuerySet[Page]:
+    """Return published pages marked as featured, newest first."""
     return (
         Page.objects.filter(
             is_featured=True,
@@ -71,6 +75,7 @@ def get_featured_pages() -> QuerySet[Page]:
 
 
 def get_user_pages(user: User) -> QuerySet[Page]:
+    """Return all pages authored by the given user, ordered by last update."""
     return (
         Page.objects.filter(author=user)
         .select_related("author")
@@ -79,6 +84,7 @@ def get_user_pages(user: User) -> QuerySet[Page]:
 
 
 def get_admin_pages(search: str = "", status: str = "") -> QuerySet[Page]:
+    """Return pages for admin management, optionally filtered by search and status."""
     pages = Page.objects.select_related("author")
 
     valid_statuses = {choice[0] for choice in Page.Status.choices}
@@ -96,6 +102,7 @@ def get_admin_pages(search: str = "", status: str = "") -> QuerySet[Page]:
 
 
 def search_pages(query: str) -> QuerySet[Page]:
+    """Full-text search across published pages by title, summary, and body."""
     clean_query = (query or "").strip()
     if not clean_query:
         return Page.objects.none()
@@ -108,11 +115,13 @@ def search_pages(query: str) -> QuerySet[Page]:
 
 
 def get_policy_pages() -> QuerySet[Page]:
+    """Return published pages matching known policy slugs."""
     policy_slugs = ["privacy-policy", "terms-of-service", "cookie-policy", "disclaimer"]
     return get_published_pages().filter(slug__in=policy_slugs)
 
 
 def get_page_revisions(page: Page) -> QuerySet[PageRevision]:
+    """Return all revisions for a page, newest first."""
     return (
         PageRevision.objects.filter(page=page)
         .select_related("editor")
@@ -121,6 +130,7 @@ def get_page_revisions(page: Page) -> QuerySet[PageRevision]:
 
 
 def get_page_revision(page: Page, revision_id: int) -> PageRevision:
+    """Return a specific revision for a page by ID."""
     return get_object_or_404(
         PageRevision.objects.select_related("editor"),
         page=page,

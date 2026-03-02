@@ -1,8 +1,16 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from django.core.cache import cache
 from django.db import models
-from django.http import HttpResponseGone, HttpResponsePermanentRedirect, HttpResponseRedirect
+from django.http import (
+    HttpRequest,
+    HttpResponse,
+    HttpResponseGone,
+    HttpResponsePermanentRedirect,
+    HttpResponseRedirect,
+)
 from django.urls import Resolver404, resolve
 from django.utils import timezone
 
@@ -13,10 +21,10 @@ class SeoRedirectMiddleware:
     CACHE_KEY_PREFIX = "seo_redirect_rule_v1"
     CACHE_TIMEOUT = 120
 
-    def __init__(self, get_response):
+    def __init__(self, get_response: Callable[[HttpRequest], HttpResponse]) -> None:
         self.get_response = get_response
 
-    def __call__(self, request):
+    def __call__(self, request: HttpRequest) -> HttpResponse:
         if request.path.startswith("/admin/") or request.path.startswith("/static/"):
             return self.get_response(request)
 

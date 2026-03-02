@@ -127,10 +127,6 @@ html[data-bs-theme="light"] .theme-icon-light {
 
 /* ======================================================================== */
 
-* {
-    box-sizing: border-box;
-}
-
 body.app-body {
     font-family: "Space Grotesk", sans-serif;
     color: var(--ink);

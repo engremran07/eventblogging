@@ -3,9 +3,9 @@
         <form
             id="admin-comments-bulk-form"
             method="post"
-            action="{% url 'blog:admin_comments_bulk_action' %}"
+            action="{% url 'admin_comments_bulk_action' %}"
             class="workspace-bulkbar"
-            hx-post="{% url 'blog:admin_comments_bulk_action' %}"
+            hx-post="{% url 'admin_comments_bulk_action' %}"
             hx-target="#comments-table-container"
             hx-swap="innerHTML"
             hx-push-url="true"

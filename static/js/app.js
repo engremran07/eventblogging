@@ -160,7 +160,7 @@
                 });
         };
 
-        window.setInterval(sync, 15000);
+        window.setInterval(sync, 120000);  // 2 min — reduces server load for anonymous visitors
         document.addEventListener("visibilitychange", function () {
             if (document.visibilityState === "visible") {
                 sync();
@@ -520,38 +520,41 @@ Alpine.store('user', {
 
 /**
  * Admin State Store
- * Contains admin-specific state and operations
+ * Contains admin-specific state and operations.
+ * Only registered on admin pages (pages with .admin-shell container).
  */
-Alpine.store('admin', {
-  panelOpen: true,
-  activeSection: null,
-  notifications: [],
-  
-  togglePanel() {
-    this.panelOpen = !this.panelOpen;
-  },
-
-  setActiveSection(section) {
-    this.activeSection = section;
-  },
-
-  addNotification(message, type = 'info', duration = 3000) {
-    const id = Math.random().toString(36).substr(2, 9);
-    this.notifications.push({ id, message, type });
+if (document.querySelector('.admin-shell')) {
+  Alpine.store('admin', {
+    panelOpen: true,
+    activeSection: null,
+    notifications: [],
     
-    if (duration > 0) {
-      window.setTimeout(() => this.removeNotification(id), duration);
-    }
-  },
+    togglePanel() {
+      this.panelOpen = !this.panelOpen;
+    },
 
-  removeNotification(id) {
-    this.notifications = this.notifications.filter(n => n.id !== id);
-  },
+    setActiveSection(section) {
+      this.activeSection = section;
+    },
 
-  clearNotifications() {
-    this.notifications = [];
-  },
-}); // end Alpine.store('admin')
+    addNotification(message, type = 'info', duration = 3000) {
+      const id = Math.random().toString(36).substr(2, 9);
+      this.notifications.push({ id, message, type });
+      
+      if (duration > 0) {
+        window.setTimeout(() => this.removeNotification(id), duration);
+      }
+    },
+
+    removeNotification(id) {
+      this.notifications = this.notifications.filter(n => n.id !== id);
+    },
+
+    clearNotifications() {
+      this.notifications = [];
+    },
+  }); // end Alpine.store('admin')
+} // end admin-shell guard
 
 // Theme state is managed by ThemeCore (runs before Alpine). No need to
 // re-set data-bs-theme here — ThemeCore already applied it synchronously.
@@ -744,16 +747,32 @@ function dispatchToast(message, type = "success", duration = 3800) {
   );
 }
 
-// Auto-fire toasts from HX-Trigger: {"showToast": {"message": "...", "type": "success"}}
+// Auto-fire toasts from HX-Trigger: {"showToast": {...}} or {"ui:feedback": {...}}
+// Consolidated handler — covers both showToast and ui:feedback formats.
 document.addEventListener("htmx:afterRequest", (e) => {
-  const header = e.detail.xhr?.getResponseHeader("HX-Trigger");
+  const xhr = e.detail.xhr;
+  if (!xhr || xhr.__uiFeedbackHandled) return;
+  const header = xhr.getResponseHeader("HX-Trigger");
   if (!header) return;
   try {
     const data = JSON.parse(header);
     if (data.showToast) {
       dispatchToast(data.showToast.message, data.showToast.type, data.showToast.duration);
     }
-  } catch (_) { /* Non-JSON trigger header â€” ignore */ }
+    if (data["ui:feedback"]) {
+      xhr.__uiFeedbackHandled = true;
+      const fb = data["ui:feedback"];
+      if (fb.toast && fb.toast.message) {
+        dispatchToast(fb.toast.message, fb.toast.level || "info");
+      }
+      if (fb.inline && fb.inline.message) {
+        const ui = window.Alpine?.store?.("ui");
+        if (ui && ui.setInline) {
+          ui.setInline(fb.inline.target || "global", fb.inline.level, fb.inline.message);
+        }
+      }
+    }
+  } catch (_) { /* Non-JSON trigger header — ignore */ }
 });
 
 /* ============================================================================
@@ -1072,6 +1091,36 @@ function formState() {
         return json;
       } finally {
         this.loading = false;
+      }
+    },
+  };
+}
+
+/* ============================================================================
+   READING PROGRESS
+   ============================================================================ */
+
+/**
+ * Track scroll progress through long-form content (e.g. blog posts).
+ * Usage: x-data="readingProgress()" on a progress bar wrapper.
+ */
+function readingProgress() {
+  return {
+    progress: 0,
+    _onScroll: null,
+
+    init() {
+      this._onScroll = () => {
+        const d = document.documentElement;
+        const max = d.scrollHeight - d.clientHeight;
+        this.progress = max > 0 ? Math.round((d.scrollTop / max) * 100) : 0;
+      };
+      window.addEventListener('scroll', this._onScroll, { passive: true });
+    },
+
+    destroy() {
+      if (this._onScroll) {
+        window.removeEventListener('scroll', this._onScroll);
       }
     },
   };

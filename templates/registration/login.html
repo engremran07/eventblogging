@@ -7,7 +7,7 @@
     <div class="col-md-5 col-xl-4">
         <section class="content-panel p-4">
             <h3 class="mb-3">Sign in</h3>
-            <form method="post" class="vstack gap-3">
+            <form method="post" class="vstack gap-3" x-data="{ loading: false, showPass: false }" @submit="loading = true">
                 {% csrf_token %}
                 {% if next %}
                     <input type="hidden" name="next" value="{{ next }}">
@@ -15,15 +15,23 @@
                 {{ form.non_field_errors }}
                 <div>
                     <label class="form-label" for="id_username">Username</label>
-                    <input class="form-control" type="text" name="username" id="id_username" required>
+                    <input class="form-control" type="text" name="username" id="id_username" autofocus required>
                 </div>
                 <div>
                     <label class="form-label" for="id_password">Password</label>
-                    <input class="form-control" type="password" name="password" id="id_password" required>
+                    <div class="input-group">
+                        <input class="form-control" :type="showPass ? 'text' : 'password'" name="password" id="id_password" required>
+                        <button type="button" class="btn btn-outline-secondary" @click="showPass = !showPass" :title="showPass ? 'Hide password' : 'Show password'">
+                            <i class="bi" :class="showPass ? 'bi-eye-slash' : 'bi-eye'"></i>
+                        </button>
+                    </div>
                 </div>
-                <button class="btn btn-primary" type="submit">Sign In</button>
+                <button class="btn btn-primary w-100" type="submit" :disabled="loading">
+                    <span x-show="loading" class="spinner-border spinner-border-sm me-1"></span>
+                    <span x-text="loading ? 'Signing in...' : 'Sign In'"></span>
+                </button>
                 {% if feature_controls.enable_user_registration %}
-                    <a class="btn btn-outline-secondary" href="{% url 'register' %}">Create account</a>
+                    <a class="btn btn-outline-secondary" href="{% url 'core:register' %}">Create account</a>
                 {% endif %}
             </form>
         </section>

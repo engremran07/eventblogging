@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import cast
-
 from django.contrib.auth.models import User
 from django.db.models import Avg, Count, Q, QuerySet
 from django.http import Http404
@@ -11,6 +9,13 @@ from django.utils import timezone
 from comments.models import Comment, PostBookmark, PostLike, PostView
 
 from .models import Post, PostQuerySet
+
+# Reaction/comment selectors consolidated in comments.selectors
+# Use: from comments.selectors import (
+#     get_post_comments, get_post_likes, user_liked_post,
+#     user_bookmarked_post, user_likes_or_bookmarks_post,
+#     get_post_reaction_counts as get_single_post_reaction_counts,
+# )
 
 # ============================================================================
 # POST SELECTORS
@@ -134,78 +139,32 @@ def get_editor_picks() -> QuerySet[Post]:
 
 
 # ============================================================================
-# COMMENT SELECTORS
+# REACTION SELECTORS (annotation-aware)
 # ============================================================================
 
-def get_post_comments(post: Post, user: User | None = None) -> QuerySet[Comment]:
+def get_post_reaction_counts(post: Post) -> dict[str, int]:
     """
-    Get comments for a post.
-    If user is post author or staff, returns all comments.
-    Otherwise, returns only approved comments.
+    Return like, bookmark, and comment counts for a single post.
+
+    Prefers pre-annotated attributes from PostQuerySet.with_reaction_counts()
+    to avoid extra queries.  Falls back to direct COUNT queries for single-post
+    detail views where the annotation is absent.
     """
-    # post.comments is the reverse FK manager from Comment.post ForeignKey.
-    # Django's reverse relations are dynamic; cast ensures correct typing for Pylance.
-    comments = cast(QuerySet[Comment], post.comments.all().select_related("author"))  # type: ignore[attr-defined]
-    
-    is_post_author = user and user.is_authenticated and user == post.author
-    is_staff = user and user.is_staff
-    
-    if is_post_author or is_staff:
-        return comments
-    
-    return comments.filter(is_approved=True)
+    if (
+        hasattr(post, "like_total")
+        and hasattr(post, "bookmark_total")
+        and hasattr(post, "comment_total")
+    ):
+        return {
+            "like_total": post.like_total,
+            "bookmark_total": post.bookmark_total,
+            "comment_total": post.comment_total,
+        }
 
-
-def get_admin_comments(search: str = "", status: str = "") -> QuerySet[Comment]:
-    """Get comments for admin with filters."""
-    comments = Comment.objects.select_related("post", "author")
-    
-    if status == "pending":
-        comments = comments.filter(is_approved=False)
-    elif status == "approved":
-        comments = comments.filter(is_approved=True)
-    
-    if search:
-        comments = comments.filter(
-            Q(author__username__icontains=search)
-            | Q(post__title__icontains=search)
-            | Q(body__icontains=search)
-        )
-    
-    return comments.order_by("-created_at")
-
-
-# ============================================================================
-# REACTION SELECTORS
-# ============================================================================
-
-def get_post_likes(post: Post) -> QuerySet[PostLike]:
-    """Get all likes for a post."""
-    return PostLike.objects.filter(post=post).select_related("user")
-
-
-def has_user_liked_post(post: Post, user: User) -> bool:
-    """Check if user has liked a post."""
-    if not user or not user.is_authenticated:
-        return False
-    return PostLike.objects.filter(post=post, user=user).exists()
-
-
-def has_user_bookmarked_post(post: Post, user: User) -> bool:
-    """Check if user has bookmarked a post."""
-    if not user or not user.is_authenticated:
-        return False
-    return PostBookmark.objects.filter(post=post, user=user).exists()
-
-
-def get_user_reaction_state(post: Post, user: User | None = None) -> dict[str, bool]:
-    """Get reaction state (likes/bookmarks) for a post and user."""
-    if not user or not user.is_authenticated:
-        return {"liked": False, "bookmarked": False}
-    
     return {
-        "liked": has_user_liked_post(post, user),
-        "bookmarked": has_user_bookmarked_post(post, user),
+        "like_total": PostLike.objects.filter(post=post).count(),
+        "bookmark_total": PostBookmark.objects.filter(post=post).count(),
+        "comment_total": Comment.objects.filter(post=post, is_approved=True).count(),
     }
 
 

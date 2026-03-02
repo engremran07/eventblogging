@@ -212,25 +212,3 @@ def get_active_newsletter_subscribers() -> QuerySet[NewsletterSubscriber]:
 def get_newsletter_subscribers_count() -> int:
     """Get count of active newsletter subscribers."""
     return NewsletterSubscriber.objects.filter(is_active=True).count()
-
-
-def bulk_subscribe_newsletter(emails: list[str]) -> tuple[int, list[str]]:
-    """
-    Bulk subscribe emails to newsletter.
-    Returns: (newly_created_count, existing_emails)
-    """
-    existing = set(
-        NewsletterSubscriber.objects
-        .filter(email__in=emails, is_active=True)
-        .values_list("email", flat=True)
-    )
-
-    new_emails = [e for e in emails if e not in existing]
-
-    if new_emails:
-        NewsletterSubscriber.objects.bulk_create(
-            [NewsletterSubscriber(email=email) for email in new_emails],
-            ignore_conflicts=True
-        )
-
-    return len(new_emails), list(existing)

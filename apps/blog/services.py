@@ -8,10 +8,12 @@ from collections import Counter
 from datetime import datetime
 from typing import Any
 
+from django.contrib.auth.models import User
 from django.contrib.postgres.search import SearchQuery, SearchRank, SearchVector
 from django.core.cache import cache
 from django.core.paginator import Paginator
-from django.db.models import Q, Sum
+from django.db.models import Q, QuerySet, Sum
+from django.http import HttpRequest
 from django.utils import timezone
 
 from comments.models import NewsletterSubscriber, PostBookmark, PostLike
@@ -88,21 +90,21 @@ AUTO_TOPIC_RULES = {
 }
 
 
-def _tokenize_text(text: str):
+def _tokenize_text(text: str) -> list[str]:
     if not text:
         return []
     tokens = [match.group(0).lower() for match in TOKEN_RE.finditer(text)]
     return [token for token in tokens if token not in STOP_WORDS]
 
 
-def _hash_to_index(token: str, dimensions: int):
+def _hash_to_index(token: str, dimensions: int) -> tuple[int, float]:
     digest = hashlib.blake2b(token.encode("utf-8"), digest_size=8).digest()
     idx = int.from_bytes(digest[:4], "little") % dimensions
     sign = 1.0 if digest[4] % 2 == 0 else -1.0
     return idx, sign
 
 
-def build_embedding_vector(text: str, dimensions: int = EMBEDDING_DIMENSIONS):
+def build_embedding_vector(text: str, dimensions: int = EMBEDDING_DIMENSIONS) -> list[float]:
     vector = [0.0] * dimensions
     tokens = _tokenize_text(text)
 
@@ -128,11 +130,11 @@ def build_embedding_vector(text: str, dimensions: int = EMBEDDING_DIMENSIONS):
     return [value / norm for value in vector]
 
 
-def cosine_similarity(vec_a, vec_b):
+def cosine_similarity(vec_a: list[float], vec_b: list[float]) -> float:
     return sum(a * b for a, b in zip(vec_a, vec_b, strict=False))
 
 
-def _post_document(post):
+def _post_document(post: Post) -> str:
     tag_names = " ".join(tag.name for tag in post.tags.all())
     category_names = " ".join(category.name for category in post.categories.all())
     topic_name = getattr(post.primary_topic, "name", "") if post.primary_topic else ""
@@ -152,7 +154,7 @@ def _post_document(post):
     )
 
 
-def _post_vector_signature(post):
+def _post_vector_signature(post: Post) -> str:
     tags = "|".join(sorted(tag.name for tag in post.tags.all()))
     categories = "|".join(sorted(category.name for category in post.categories.all()))
     topic = getattr(post.primary_topic, "name", "") if post.primary_topic else ""
@@ -166,11 +168,11 @@ def _post_vector_signature(post):
     return digest
 
 
-def _post_vector_cache_key(post):
+def _post_vector_cache_key(post: Post) -> str:
     return f"blog:post-vector:v2:{post.pk}:{_post_vector_signature(post)}"
 
 
-def _get_post_vector(post):
+def _get_post_vector(post: Post) -> list[float]:
     cache_key = _post_vector_cache_key(post)
     cached = cache.get(cache_key)
     if cached is not None:
@@ -180,7 +182,7 @@ def _get_post_vector(post):
     return vector
 
 
-def warm_post_vector_cache(post):
+def warm_post_vector_cache(post: Post) -> None:
     if not post or not post.pk:
         return
     _get_post_vector(post)
@@ -195,7 +197,7 @@ def _jaccard_similarity(left: set[str], right: set[str]) -> float:
     return len(left & right) / len(union)
 
 
-def _taxonomy_sets_for_post(post):
+def _taxonomy_sets_for_post(post: Post) -> dict[str, set[str]]:
     return {
         "tags": {tag.name for tag in post.tags.all()},
         "categories": {category.name for category in post.categories.all()},
@@ -203,7 +205,7 @@ def _taxonomy_sets_for_post(post):
     }
 
 
-def _taxonomy_overlap(anchor_taxonomy, candidate_taxonomy):
+def _taxonomy_overlap(anchor_taxonomy: dict[str, set[str]], candidate_taxonomy: dict[str, set[str]]) -> float:
     if not anchor_taxonomy:
         return 0.0
     tag_overlap = _jaccard_similarity(anchor_taxonomy["tags"], candidate_taxonomy["tags"])
@@ -389,14 +391,14 @@ def _extract_heading_text(markdown_text: str) -> str:
     return " ".join(heading for heading in headings if heading)
 
 
-def _apply_text_weights(weighted, text: str, factor: float):
+def _apply_text_weights(weighted: dict[str, float], text: str, factor: float) -> None:
     if not text:
         return
     for token in _tokenize_text(text):
         weighted[token] += factor
 
 
-def _weighted_token_profile(post):
+def _weighted_token_profile(post: Post) -> dict[str, float]:
     weighted = Counter()
 
     title = post.title or ""
@@ -516,7 +518,7 @@ def _rank_auto_terms(
     return [term for _, term in scored[:max_items]]
 
 
-def _expand_category_ancestors(categories: set[str]):
+def _expand_category_ancestors(categories: set[str]) -> set[str]:
     expanded = set()
     for category in categories:
         parts = [part for part in category.split("/") if part]
@@ -682,7 +684,7 @@ def apply_auto_taxonomy_to_post(post: Post) -> dict[str, Any]:
     }
 
 
-def apply_post_filters(queryset, params):
+def apply_post_filters(queryset: QuerySet[Post], params: dict[str, Any]) -> QuerySet[Post]:
     query = params.get("q", "").strip()
     if query:
         queryset = queryset.search(query)
@@ -738,7 +740,7 @@ def apply_post_filters(queryset, params):
     return queryset.distinct()
 
 
-def get_sidebar_data():
+def get_sidebar_data() -> dict[str, Any]:
     try:
         tag_cloud = Post.tags.tag_model.objects.weight(min=1, max=6).order_by("-count", "name")[:36]
         topic_cloud = Post.primary_topic.tag_model.objects.weight(min=1, max=6).order_by("-count", "name")[:20]
@@ -756,7 +758,7 @@ def get_sidebar_data():
     }
 
 
-def get_tagulous_live_metrics(limit=10):
+def get_tagulous_live_metrics(limit: int = 10) -> dict[str, Any]:
     def serialize_tag(tag):
         return {
             "name": tag.name,
@@ -793,7 +795,7 @@ def get_tagulous_live_metrics(limit=10):
     return metrics
 
 
-def get_home_metrics():
+def get_home_metrics() -> dict[str, Any]:
     published_qs = Post.objects.published()
     return {
         "metric_posts": published_qs.count(),
@@ -803,7 +805,7 @@ def get_home_metrics():
     }
 
 
-def get_listing_context(request, forced_filters=None, per_page=9):
+def get_listing_context(request: HttpRequest, forced_filters: dict[str, Any] | None = None, per_page: int = 9) -> dict[str, Any]:
     params = request.GET.copy()
     if forced_filters:
         for key, value in forced_filters.items():
@@ -899,7 +901,7 @@ def get_listing_context(request, forced_filters=None, per_page=9):
     }
 
 
-def get_dashboard_metrics(user):
+def get_dashboard_metrics(user: User) -> dict[str, Any]:
     scoped_posts = get_dashboard_post_queryset(user)
     published = scoped_posts.filter(status=Post.Status.PUBLISHED)
     scope = "all" if bool(user and user.is_authenticated and user.is_staff) else "mine"
@@ -916,7 +918,7 @@ def get_dashboard_metrics(user):
     }
 
 
-def get_dashboard_post_queryset(user):
+def get_dashboard_post_queryset(user: User) -> QuerySet[Post]:
     base_qs = Post.objects.all()
     if not user or not user.is_authenticated:
         return base_qs.none()
@@ -925,7 +927,7 @@ def get_dashboard_post_queryset(user):
     return base_qs.filter(author=user)
 
 
-def serialize_post_for_api(post):
+def serialize_post_for_api(post: Post) -> dict[str, Any]:
     return {
         "id": post.id,
         "title": post.title,
@@ -947,7 +949,7 @@ def serialize_post_for_api(post):
     }
 
 
-def get_search_suggestion_context(user, query: str):
+def get_search_suggestion_context(user: Any, query: str) -> dict[str, Any]:
     clean_query = (query or "").strip()
     base_qs = Post.objects.visible_to(user).select_related("author").prefetch_related("tags")
 

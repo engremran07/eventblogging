@@ -19,7 +19,7 @@ from django.contrib.auth.views import (
     PasswordResetDoneView,
     PasswordResetView,
 )
-from django.http import Http404
+from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse_lazy
 from django.views.decorators.http import require_http_methods
@@ -50,7 +50,7 @@ class CorePasswordResetConfirmView(PasswordResetConfirmView):
 
 
 @require_http_methods(["GET", "POST"])
-def core_register(request):
+def core_register(request: HttpRequest) -> HttpResponse:
     controls = FeatureControlSettings.get_solo()
     if not controls.enable_user_registration:
         raise Http404("User registration is disabled.")
@@ -71,7 +71,7 @@ def core_register(request):
 
 @login_required
 @require_http_methods(["GET", "POST"])
-def core_profile(request):
+def core_profile(request: HttpRequest) -> HttpResponse:
     profile = UserProfile.get_for_user(request.user)
     account_form = UserAccountForm(request.POST or None, instance=request.user)
     profile_form = UserProfileForm(request.POST or None, instance=profile)

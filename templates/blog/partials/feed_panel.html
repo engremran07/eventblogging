@@ -7,7 +7,6 @@
         hx-get="{{ request.path }}"
         hx-target="#feed-panel"
         hx-push-url="true"
-        x-on:input.debounce.320ms="$el.requestSubmit()"
     >
         {% if active_topic %}<input type="hidden" name="topic" value="{{ active_topic }}">{% endif %}
         {% if active_tag %}<input type="hidden" name="tag" value="{{ active_tag }}">{% endif %}
@@ -39,8 +38,7 @@
                     x-cloak
                     x-on:click="
                         $refs.searchInput.value = '';
-                        $refs.searchInput.dispatchEvent(new Event('input'));
-                        $refs.searchInput.dispatchEvent(new Event('keyup'));
+                        $refs.searchInput.dispatchEvent(new Event('search', {bubbles: true}));
                         $refs.searchInput.focus();
                     "
                 >

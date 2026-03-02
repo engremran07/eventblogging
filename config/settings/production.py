@@ -44,7 +44,14 @@ SECURE_HSTS_PRELOAD = True
 SESSION_ENGINE = "django.contrib.sessions.backends.cache"
 
 # Static files — whitenoise serves compressed, fingerprinted assets from collectstatic output.
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
 
 # Override MIDDLEWARE to insert WhiteNoise right after SecurityMiddleware.
 MIDDLEWARE = [
@@ -95,20 +102,18 @@ LOGGING = {
 
 # Cache configuration for production.
 # Falls back to local-memory cache if django-redis isn't installed in this env.
-if find_spec("django_redis"):
-    CACHES = {
-        "default": {
-            "BACKEND": "django_redis.cache.RedisCache",
-            "LOCATION": os.getenv("REDIS_URL", "redis://127.0.0.1:6379/1"),
-            "OPTIONS": {
-                "CLIENT_CLASS": "django_redis.client.DefaultClient",
-            },
-        }
+if not find_spec("django_redis"):
+    raise ImportError(
+        "django-redis is required in production. "
+        "Install it with: pip install django-redis"
+    )
+
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": os.getenv("REDIS_URL", "redis://127.0.0.1:6379/1"),
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        },
     }
-else:
-    CACHES = {
-        "default": {
-            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
-            "LOCATION": "django-blog-prod-fallback",
-        }
-    }
+}

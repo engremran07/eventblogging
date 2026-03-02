@@ -1,6 +1,6 @@
 ﻿from django.urls import path
 
-from . import admin_views, views
+from . import views
 
 app_name = "blog"
 
@@ -41,24 +41,4 @@ urlpatterns = [
     path("api/appearance-state/", views.api_appearance_state, name="api_appearance_state"),
     path("api/dashboard/stats/", views.api_dashboard_stats, name="api_dashboard_stats"),
     path("api/dashboard/stats/stream/", views.dashboard_stats_stream, name="dashboard_stats_stream"),
-
-    # ────────────────────────────────────────────────────────────────────────────────
-    # Admin Content Management (Phase 5)
-    # ────────────────────────────────────────────────────────────────────────────────
-    path("admin/", admin_views.admin_dashboard, name="admin_dashboard"),
-    path("admin/posts/", admin_views.admin_posts_list, name="admin_posts_list"),
-    path("admin/posts/bulk-action/", admin_views.admin_posts_bulk_action, name="admin_posts_bulk_action"),
-    path("admin/posts/bulk-delete/", admin_views.admin_bulk_delete_posts, name="admin_bulk_delete_posts"),
-    path("admin/posts/<int:post_id>/edit/", admin_views.admin_post_editor, name="admin_post_editor"),
-    path("admin/posts/new/", admin_views.admin_post_editor, name="admin_post_create"),
-    path("admin/comments/", admin_views.admin_comments_list, name="admin_comments_list"),
-    path("admin/comments/bulk-action/", admin_views.admin_comments_bulk_action, name="admin_comments_bulk_action"),
-    path("admin/comments/<int:comment_id>/approve/", admin_views.admin_comment_approve, name="admin_comment_approve"),
-    path("admin/comments/<int:comment_id>/delete/", admin_views.admin_comment_delete, name="admin_comment_delete"),
-    path("admin/settings/", admin_views.admin_settings, name="admin_settings"),
-    path(
-        "admin/settings/theme-toggle/",
-        admin_views.admin_settings_theme_toggle,
-        name="admin_settings_theme_toggle",
-    ),
 ]

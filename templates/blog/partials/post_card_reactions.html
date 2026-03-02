@@ -41,11 +41,11 @@
                     </button>
                 </form>
             {% else %}
-                <a class="post-reaction-btn" href="{% url 'login' %}?next={{ request.get_full_path|urlencode }}" aria-label="Sign in to like">
+                <a class="post-reaction-btn" href="{% url 'core:login' %}?next={{ request.get_full_path|urlencode }}" aria-label="Sign in to like">
                     <i class="bi bi-heart"></i>
                     <span class="post-reaction-count">{{ like_total|default:0 }}</span>
                 </a>
-                <a class="post-reaction-btn" href="{% url 'login' %}?next={{ request.get_full_path|urlencode }}" aria-label="Sign in to bookmark">
+                <a class="post-reaction-btn" href="{% url 'core:login' %}?next={{ request.get_full_path|urlencode }}" aria-label="Sign in to bookmark">
                     <i class="bi bi-bookmark"></i>
                     <span class="post-reaction-count">{{ bookmark_total|default:0 }}</span>
                 </a>

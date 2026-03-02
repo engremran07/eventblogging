@@ -4,8 +4,9 @@ import logging
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import User
 from django.core.paginator import Paginator
-from django.db.models import F, Q
+from django.db.models import F, Q, QuerySet
 from django.http import Http404, HttpRequest, HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -22,6 +23,7 @@ from comments.models import (
     PostView,
 )
 from comments.moderation import evaluate_comment_risk
+from comments.selectors import user_likes_or_bookmarks_post
 from core.integrations import emit_platform_webhook
 from core.models import FeatureControlSettings, SiteAppearanceSettings
 from core.session import SessionService
@@ -33,6 +35,7 @@ from .models import (
     Post,
     render_markdown_to_safe_html,
 )
+from .selectors import get_post_by_slug, get_post_reaction_counts
 from .services import (
     apply_auto_taxonomy_to_post,
     apply_post_filters,
@@ -56,29 +59,9 @@ DASHBOARD_SORT_CHOICES = {
 }
 
 
-def _can_access_post(post, user):
-    if user.is_authenticated and user == post.author:
-        return True
-
-    return (
-        post.status == Post.Status.PUBLISHED
-        and post.published_at is not None
-        and post.published_at <= timezone.now()
-    )
-
-
-def _get_visible_post_or_404(slug, user):
-    post = get_object_or_404(
-        Post.objects.select_related("author", "primary_topic").prefetch_related(
-            "tags",
-            "categories",
-            "comments__author",
-        ),
-        slug=slug,
-    )
-    if not _can_access_post(post, user):
-        raise Http404("Post not available")
-    return post
+def _get_visible_post_or_404(slug: str, user: User | None) -> Post:
+    """Thin wrapper around selectors.get_post_by_slug for backwards compat."""
+    return get_post_by_slug(slug, user)
 
 
 def _track_view(request: HttpRequest, post: Post) -> None:
@@ -96,32 +79,9 @@ def _track_view(request: HttpRequest, post: Post) -> None:
     SessionService.mark(request, "post_view", post.pk)
 
 
-def _reaction_state(post, user):
-    if not user.is_authenticated:
-        return {"liked": False, "bookmarked": False}
-
-    return {
-        "liked": PostLike.objects.filter(post=post, user=user).exists(),
-        "bookmarked": PostBookmark.objects.filter(post=post, user=user).exists(),
-    }
-
-
-def _reaction_counts(post):
-    # Use pre-calculated reaction counts if available (from with_reaction_counts() annotation)
-    # This avoids N+1 queries when processing multiple posts
-    if hasattr(post, 'like_total') and hasattr(post, 'bookmark_total') and hasattr(post, 'comment_total'):
-        return {
-            "like_total": post.like_total,
-            "bookmark_total": post.bookmark_total,
-            "comment_total": post.comment_total,
-        }
-
-    # Fallback to direct queries for single post views
-    return {
-        "like_total": PostLike.objects.filter(post=post).count(),
-        "bookmark_total": PostBookmark.objects.filter(post=post).count(),
-        "comment_total": post.comments.filter(is_approved=True).count(),
-    }
+def _reaction_state(post: Post, user: User) -> dict[str, bool]:
+    """Thin wrapper around comments.selectors.user_likes_or_bookmarks_post."""
+    return user_likes_or_bookmarks_post(post, user)
 
 
 def _is_card_reaction_request(request: HttpRequest) -> bool:
@@ -132,7 +92,7 @@ def _render_reaction_fragment(request: HttpRequest, post: Post, *, global_reacti
     context = {
         "post": post,
         "global_reactions_enabled": global_reactions_enabled,
-        **_reaction_counts(post),
+        **get_post_reaction_counts(post),
         **_reaction_state(post, request.user),
     }
     if _is_card_reaction_request(request):
@@ -156,13 +116,22 @@ def _can_edit_comment(comment, user):
     )
 
 
-def _get_comments_queryset_for_user(post, user):
-    comments = post.comments.select_related("author")
+def _get_comments_queryset_for_user(post: Post, user: User) -> QuerySet[Comment]:
+    """Return the visible comments queryset for a post, respecting user role.
+
+    Staff and the post author see every comment.  Authenticated users also see
+    their own unapproved comments.  Anonymous users see approved only.
+    Uses comments.selectors.get_post_comments for the base query.
+    """
+    from comments.selectors import get_post_comments as _get_post_comments
+
     if _can_manage_comments(post, user):
-        return comments
+        return _get_post_comments(post, approved_only=False)
     if user.is_authenticated:
-        return comments.filter(Q(is_approved=True) | Q(author=user))
-    return comments.filter(is_approved=True)
+        return post.comments.select_related("author").filter(
+            Q(is_approved=True) | Q(author=user)
+        )
+    return _get_post_comments(post, approved_only=True)
 
 
 def _render_listing(request: HttpRequest, forced_filters=None) -> HttpResponse:

@@ -23,3 +23,9 @@ scikit-learn==1.8.0
 
 # python-dotenv for environment variable management
 python-dotenv==1.2.1
+
+# django-solo for singleton admin settings models
+django-solo==2.4.0
+
+# django-celery-beat for periodic task scheduling
+django-celery-beat==2.7.0

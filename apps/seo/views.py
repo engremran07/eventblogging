@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import re
+from typing import Any
 
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse
+from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
@@ -26,15 +27,15 @@ from .synonyms import expand_terms
 TOKEN_RE = re.compile(r"[a-zA-Z0-9]{2,}")
 
 
-def _tokens(text: str):
+def _tokens(text: str) -> list[str]:
     return [token.lower() for token in TOKEN_RE.findall(text or "")]
 
 
-def _token_set(text: str, *, scope: str = TaxonomySynonymGroup.Scope.ALL):
+def _token_set(text: str, *, scope: str = TaxonomySynonymGroup.Scope.ALL) -> set[str]:
     return expand_terms(_tokens(text), scope=scope, include_original=True)
 
 
-def _jaccard(left: set[str], right: set[str]):
+def _jaccard(left: set[str], right: set[str]) -> float:
     if not left and not right:
         return 0.0
     union = left | right
@@ -43,7 +44,7 @@ def _jaccard(left: set[str], right: set[str]):
     return len(left & right) / len(union)
 
 
-def _clip_passages(markdown_text: str, query_terms: set[str], *, limit: int = 2):
+def _clip_passages(markdown_text: str, query_terms: set[str], *, limit: int = 2) -> list[str]:
     if not markdown_text:
         return []
     lines = [line.strip() for line in markdown_text.splitlines() if line.strip()]
@@ -63,14 +64,14 @@ def _clip_passages(markdown_text: str, query_terms: set[str], *, limit: int = 2)
     return [line for _score, line in ranked[:limit]]
 
 
-def _freshness_score(updated_at):
+def _freshness_score(updated_at: Any) -> float:
     if not updated_at:
         return 0.0
     days = max((timezone.now() - updated_at).days, 0)
     return max(0.0, 1.0 - (min(days, 365) / 365.0))
 
 
-def _safe_int(value, default: int):
+def _safe_int(value: Any, default: int = 0) -> int:
     try:
         return int(value)
     except (TypeError, ValueError):
@@ -78,13 +79,13 @@ def _safe_int(value, default: int):
 
 
 def _render_live_check_panel(
-    request,
+    request: HttpRequest,
     *,
     content_type: str,
-    payload: dict | None = None,
+    payload: dict[str, Any] | None = None,
     error: str = "",
     status: int = 200,
-):
+) -> HttpResponse:
     return render(
         request,
         "seo/partials/live_check_panel.html",
@@ -97,7 +98,7 @@ def _render_live_check_panel(
     )
 
 
-def _score_post(query_vector, query_tokens, post, max_views):
+def _score_post(query_vector: list[float], query_tokens: set[str], post: Post, max_views: int) -> dict[str, Any]:
     tag_names = [tag.name for tag in post.tags.all()]
     category_names = [category.name for category in post.categories.all()]
     topic_name = post.primary_topic.name if post.primary_topic else ""
@@ -145,7 +146,7 @@ def _score_post(query_vector, query_tokens, post, max_views):
     }
 
 
-def _score_page(query_vector, query_tokens, page):
+def _score_page(query_vector: list[float], query_tokens: set[str], page: Page) -> dict[str, Any]:
     doc_text = " ".join(
         part
         for part in [
@@ -186,7 +187,7 @@ def _score_page(query_vector, query_tokens, page):
 
 
 @require_GET
-def search_semantic(request):
+def search_semantic(request: HttpRequest) -> JsonResponse:
     query = (request.GET.get("q") or "").strip()
     if not query:
         return JsonResponse({"query": "", "count": 0, "results": []})
@@ -222,7 +223,7 @@ def search_semantic(request):
 
 
 @require_GET
-def related_semantic(request, post_id: int):
+def related_semantic(request: HttpRequest, post_id: int) -> JsonResponse:
     anchor = get_object_or_404(
         Post.objects.visible_to(request.user).select_related("author", "primary_topic"),
         pk=post_id,
@@ -259,7 +260,7 @@ def related_semantic(request, post_id: int):
 
 @login_required
 @require_POST
-def live_check_inline(request, content_type: str):
+def live_check_inline(request: HttpRequest, content_type: str) -> HttpResponse | JsonResponse:
     normalized_type = (content_type or "").strip().lower()
     if normalized_type not in {"post", "page"}:
         if request.headers.get("HX-Request"):
@@ -320,7 +321,7 @@ def live_check_inline(request, content_type: str):
 
 @staff_member_required
 @require_POST
-def reindex_post(request, post_id: int):
+def reindex_post(request: HttpRequest, post_id: int) -> JsonResponse:
     snapshot = audit_content("post", post_id, trigger="manual")
     if snapshot is None:
         return JsonResponse({"ok": False, "message": "Post not found."}, status=404)
@@ -338,7 +339,7 @@ def reindex_post(request, post_id: int):
 
 @staff_member_required
 @require_POST
-def review_approve(request, candidate_id: int):
+def review_approve(request: HttpRequest, candidate_id: int) -> JsonResponse:
     result = approve_suggestion(candidate_id, reviewer=request.user)
     status = result.pop("status", 200)
     return JsonResponse(result, status=status)
@@ -346,7 +347,7 @@ def review_approve(request, candidate_id: int):
 
 @staff_member_required
 @require_POST
-def review_reject(request, candidate_id: int):
+def review_reject(request: HttpRequest, candidate_id: int) -> JsonResponse:
     result = reject_suggestion(candidate_id)
     status = result.pop("status", 200)
     return JsonResponse(result, status=status)
@@ -354,5 +355,5 @@ def review_reject(request, candidate_id: int):
 
 @staff_member_required
 @require_GET
-def dashboard_stats(request):
+def dashboard_stats(request: HttpRequest) -> JsonResponse:
     return JsonResponse(seo_overview_metrics())

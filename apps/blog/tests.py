@@ -1,4 +1,4 @@
-﻿import json
+import json
 from datetime import timedelta
 from pathlib import Path
 from unittest.mock import patch
@@ -893,7 +893,7 @@ class BlogTests(TestCase):
         self.client.force_login(staff)
 
         response = self.client.post(
-            reverse("blog:admin_posts_bulk_action"),
+            reverse("admin_posts_bulk_action"),
             {"bulk_action": "publish", "selected_posts": [str(post.id)]},
             HTTP_HX_REQUEST="true",
         )
@@ -924,7 +924,7 @@ class BlogTests(TestCase):
         self.client.force_login(staff)
 
         response = self.client.post(
-            reverse("blog:admin_comment_approve", kwargs={"comment_id": comment.id}),
+            reverse("admin_comment_approve", kwargs={"comment_id": comment.id}),
             HTTP_HX_REQUEST="true",
         )
         self.assertEqual(response.status_code, 200)
@@ -950,7 +950,7 @@ class BlogTests(TestCase):
         self.client.force_login(staff)
 
         response = self.client.get(
-            reverse("blog:admin_comments_list"),
+            reverse("admin_comments_list"),
             {"post": str(post_one.id), "sort": "created_at"},
         )
         self.assertEqual(response.status_code, 200)
@@ -973,7 +973,7 @@ class BlogTests(TestCase):
         self.client.force_login(staff)
 
         response = self.client.post(
-            reverse("blog:admin_comments_bulk_action"),
+            reverse("admin_comments_bulk_action"),
             {
                 "bulk_action": "approve",
                 "selected_comments": [str(comment.id)],
@@ -1070,7 +1070,7 @@ class BlogTests(TestCase):
         self.client.force_login(staff)
 
         response = self.client.post(
-            reverse("blog:admin_settings"),
+            reverse("admin_settings"),
             {"allow_comments": "on", "moderate_comments": "on", "spam_threshold": "90"},
         )
         self.assertEqual(response.status_code, 302)
@@ -1088,7 +1088,7 @@ class BlogTests(TestCase):
         self.client.force_login(staff)
 
         response = self.client.post(
-            reverse("blog:admin_settings"),
+            reverse("admin_settings"),
             {
                 "theme_mode": "dark",
                 "theme_preset": "evergreen",
@@ -1166,7 +1166,7 @@ class BlogTests(TestCase):
             password="admin-pass-123",
         )
         self.client.force_login(staff)
-        response = self.client.get(reverse("blog:admin_settings"), {"section": "seo"})
+        response = self.client.get(reverse("admin_settings"), {"section": "seo"})
         self.assertEqual(response.status_code, 200)
         self.assertContains(
             response,
@@ -1189,7 +1189,7 @@ class BlogTests(TestCase):
             password="admin-pass-123",
         )
         self.client.force_login(staff)
-        response = self.client.post(reverse("blog:admin_settings_theme_toggle"))
+        response = self.client.post(reverse("admin_settings_theme_toggle"))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["mode"], "dark")
         self.assertIn("css_variables", response.json())
@@ -1494,7 +1494,7 @@ class BlogTests(TestCase):
         self.client.force_login(staff)
 
         response = self.client.post(
-            reverse("blog:admin_post_editor", kwargs={"post_id": post.id}),
+            reverse("admin_post_editor", kwargs={"post_id": post.id}),
             {
                 "title": "Workspace Draft Updated",
                 "slug": post.slug,
@@ -1536,7 +1536,7 @@ class BlogTests(TestCase):
             microsecond=0,
         )
         response = self.client.post(
-            reverse("blog:admin_post_editor", kwargs={"post_id": post.id}),
+            reverse("admin_post_editor", kwargs={"post_id": post.id}),
             {
                 "title": "Workspace Scheduled Updated",
                 "slug": post.slug,
@@ -1574,7 +1574,7 @@ class BlogTests(TestCase):
         self.client.force_login(staff)
 
         response = self.client.post(
-            reverse("blog:admin_post_editor", kwargs={"post_id": post.id}),
+            reverse("admin_post_editor", kwargs={"post_id": post.id}),
             {
                 "title": "Workspace Invalid Schedule Updated",
                 "slug": post.slug,
@@ -1597,7 +1597,7 @@ class BlogTests(TestCase):
 
         with patch("blog.admin_views.apply_auto_taxonomy_to_post", side_effect=RuntimeError("tax failure")):
             response = self.client.post(
-                reverse("blog:admin_post_editor", kwargs={"post_id": post.id}),
+                reverse("admin_post_editor", kwargs={"post_id": post.id}),
                 {
                     "title": "Workspace Taxonomy Fail Updated",
                     "slug": post.slug,
@@ -1647,7 +1647,7 @@ class BlogTests(TestCase):
         self.client.force_login(staff)
 
         response = self.client.post(
-            reverse("blog:admin_post_editor", kwargs={"post_id": post.id}),
+            reverse("admin_post_editor", kwargs={"post_id": post.id}),
             {
                 "title": "Workspace Depth Guard",
                 "slug": post.slug,

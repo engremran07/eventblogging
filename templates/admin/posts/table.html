@@ -1,4 +1,4 @@
-﻿<section class="card workspace-table-card" data-posts-bulk data-bulk-url="{% url 'blog:admin_posts_bulk_action' %}">
+<section class="card workspace-table-card" data-posts-bulk data-bulk-url="{% url 'admin_posts_bulk_action' %}">
     <div class="workspace-table-scroll">
         <table class="workspace-table">
             <thead>
@@ -28,7 +28,7 @@
                                         aria-label="Select {{ post.title }}"
                                     >
                                 </label>
-                                <a href="{% url 'blog:admin_post_editor' post.id %}" class="workspace-link">{{ post.title }}</a>
+                                <a href="{% url 'admin_post_editor' post.id %}" class="workspace-link">{{ post.title }}</a>
                             </div>
                         </td>
                         <td>
@@ -60,7 +60,7 @@
                             {% endif %}
                         </td>
                         <td>
-                            <a href="{% url 'blog:admin_post_editor' post.id %}" class="btn btn-secondary btn-sm">Edit</a>
+                            <a href="{% url 'admin_post_editor' post.id %}" class="btn btn-secondary btn-sm">Edit</a>
                         </td>
                     </tr>
                 {% empty %}
@@ -69,7 +69,7 @@
                             <div class="workspace-empty">
                                 <i class="fas fa-inbox"></i>
                                 <p>No posts found for this filter.</p>
-                                <a href="{% url 'blog:admin_post_create' %}" class="btn btn-primary btn-sm">Create a post</a>
+                                <a href="{% url 'admin_post_create' %}" class="btn btn-primary btn-sm">Create a post</a>
                             </div>
                         </td>
                     </tr>

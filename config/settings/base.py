@@ -103,6 +103,7 @@ INSTALLED_APPS = [
     "django_htmx",
     "tagulous",
     "solo",
+    "django_celery_beat",
     "core",
     "blog",
     "comments",
@@ -169,6 +170,15 @@ DATABASES = {
         "HOST": os.getenv("POSTGRES_HOST", "127.0.0.1"),  # Safe default for host only
         "PORT": os.getenv("POSTGRES_PORT", "5432"),  # Safe default for port only
         "CONN_MAX_AGE": int(os.getenv("POSTGRES_CONN_MAX_AGE", "60")),
+        "CONN_HEALTH_CHECKS": True,
+    }
+}
+
+# ── Cache ────────────────────────────────────────────────────────────────────
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "djangoblog-default",
     }
 }
 
@@ -192,6 +202,9 @@ MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10 MB
+FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10 MB
 
 LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "blog:dashboard"
@@ -246,5 +259,73 @@ CELERY_BEAT_SCHEDULE = {
     "seo-scheduled-full-scan-daily": {
         "task": "seo.tasks.seo_schedule_full_scan",
         "schedule": 60 * 60 * 24,
+    },
+}
+
+# ── Logging ──────────────────────────────────────────────────────────────────
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": "{levelname} {asctime} {name} {module} {message}",
+            "style": "{",
+        },
+        "simple": {
+            "format": "{levelname} {name}: {message}",
+            "style": "{",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "simple",
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "WARNING",
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "django.request": {
+            "handlers": ["console"],
+            "level": "WARNING",
+            "propagate": False,
+        },
+        "django.security": {
+            "handlers": ["console"],
+            "level": "WARNING",
+            "propagate": False,
+        },
+        "blog": {
+            "handlers": ["console"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
+        "seo": {
+            "handlers": ["console"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
+        "core": {
+            "handlers": ["console"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
+        "comments": {
+            "handlers": ["console"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
+        "pages": {
+            "handlers": ["console"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
     },
 }

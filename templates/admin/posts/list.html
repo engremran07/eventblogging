@@ -1,4 +1,4 @@
-﻿{% extends "admin/base_site.html" %}
+{% extends "admin/base_site.html" %}
 {% load static %}
 
 {% block title %}Posts | Admin{% endblock %}
@@ -6,7 +6,7 @@
 {% block extrahead %}{{ block.super }}{% endblock %}
 
 {% block content %}
-    <div class="workspace-shell" data-admin-workspace="posts" data-list-url="{% url 'blog:admin_posts_list' %}">
+    <div class="workspace-shell" data-admin-workspace="posts" data-list-url="{% url 'admin_posts_list' %}">
         <section class="card workspace-hero">
             <div>
                 <p class="workspace-eyebrow">Editorial Operations</p>
@@ -16,7 +16,7 @@
                 </p>
             </div>
             <div class="workspace-hero-actions">
-                <a href="{% url 'blog:admin_post_create' %}" class="btn btn-primary btn-sm">
+                <a href="{% url 'admin_post_create' %}" class="btn btn-primary btn-sm">
                     <i class="fas fa-plus"></i> New Post
                 </a>
                 <a href="{% url 'admin:index' %}" class="btn btn-secondary btn-sm">Dashboard</a>
@@ -49,12 +49,12 @@
         <section class="card workspace-filter-card">
             <form
                 method="get"
-                action="{% url 'blog:admin_posts_list' %}"
+                action="{% url 'admin_posts_list' %}"
                 class="workspace-filter-grid"
                 data-workspace-filter
-                data-filter-url="{% url 'blog:admin_posts_list' %}"
+                data-filter-url="{% url 'admin_posts_list' %}"
                 data-filter-target="#posts-table-container"
-                hx-get="{% url 'blog:admin_posts_list' %}"
+                hx-get="{% url 'admin_posts_list' %}"
                 hx-target="#posts-table-container"
                 hx-swap="innerHTML"
                 hx-push-url="true"
@@ -106,7 +106,7 @@
 
                 <div class="workspace-filter-actions">
                     <button type="submit" class="btn btn-secondary btn-sm">Apply</button>
-                    <a href="{% url 'blog:admin_posts_list' %}" class="btn btn-ghost btn-sm">Reset</a>
+                    <a href="{% url 'admin_posts_list' %}" class="btn btn-ghost btn-sm">Reset</a>
                 </div>
             </form>
         </section>
@@ -117,4 +117,4 @@
     </div>
 {% endblock %}
 
-{# admin/admin.js already loaded in base_site.html — no extrajs needed #}
+{# admin/admin.js already loaded in base_site.html  no extrajs needed #}

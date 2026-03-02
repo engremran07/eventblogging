@@ -1,4 +1,4 @@
-﻿<article class="comment-card" id="comment-{{ comment.id }}">
+<article class="comment-card" id="comment-{{ comment.id }}">
     <header class="comment-head">
         <div>
             <p class="comment-author">
@@ -13,7 +13,7 @@
                 {{ comment.author.username }}
             </p>
             <p class="comment-meta">
-                on <a href="{% url 'blog:admin_post_editor' comment.post.id %}" class="workspace-link">{{ comment.post.title|truncatechars:70 }}</a>
+                on <a href="{% url 'admin_post_editor' comment.post.id %}" class="workspace-link">{{ comment.post.title|truncatechars:70 }}</a>
             </p>
         </div>
         <div class="workspace-chip-list">
@@ -34,13 +34,13 @@
     <footer class="comment-footer">
         <div class="comment-actions">
             {% if not comment.is_approved %}
-                <form method="post" hx-post="{% url 'blog:admin_comment_approve' comment.id %}" hx-target="#comment-{{ comment.id }}" hx-swap="outerHTML">
+                <form method="post" hx-post="{% url 'admin_comment_approve' comment.id %}" hx-target="#comment-{{ comment.id }}" hx-swap="outerHTML">
                     {% csrf_token %}
                     <button type="submit" class="btn btn-primary btn-sm">Approve</button>
                 </form>
             {% endif %}
 
-            <form method="post" hx-post="{% url 'blog:admin_comment_delete' comment.id %}" hx-target="#comment-{{ comment.id }}" hx-swap="delete" hx-confirm="Delete this comment?">
+            <form method="post" hx-post="{% url 'admin_comment_delete' comment.id %}" hx-target="#comment-{{ comment.id }}" hx-swap="delete" hx-confirm="Delete this comment?">
                 {% csrf_token %}
                 <button type="submit" class="btn btn-danger btn-sm">Delete</button>
             </form>

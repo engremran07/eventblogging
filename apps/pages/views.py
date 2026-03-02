@@ -1,10 +1,11 @@
 ﻿from __future__ import annotations
 
 import logging
+from typing import Any
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.http import Http404, HttpResponseBadRequest, JsonResponse
+from django.http import Http404, HttpRequest, HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -24,7 +25,7 @@ from .services import get_related_pages_algorithmic
 
 logger = logging.getLogger(__name__)
 
-def _can_access_page(page, user):
+def _can_access_page(page: Any, user: Any) -> bool:
     if user.is_authenticated and (user == page.author or user.is_staff):
         return True
 
@@ -35,14 +36,14 @@ def _can_access_page(page, user):
     )
 
 
-def _get_visible_page_or_404(slug, user):
+def _get_visible_page_or_404(slug: str, user: Any) -> Any:
     page = get_object_or_404(Page.objects.select_related("author"), slug=slug)
     if not _can_access_page(page, user):
         raise Http404("Page not available")
     return page
 
 
-def _build_policy_entry(policy, override_page=None):
+def _build_policy_entry(policy: Any, override_page: Any = None) -> dict[str, Any]:
     if override_page:
         return {
             "slug": override_page.slug,
@@ -63,7 +64,7 @@ def _build_policy_entry(policy, override_page=None):
 
 
 @require_GET
-def page_list(request):
+def page_list(request: HttpRequest) -> HttpResponse:
     pages = Page.objects.visible_to(request.user).select_related("author")
 
     query = (request.GET.get("q") or "").strip()
@@ -100,7 +101,7 @@ def page_list(request):
 
 
 @require_GET
-def policy_index(request):
+def policy_index(request: HttpRequest) -> HttpResponse:
     controls = FeatureControlSettings.get_solo()
     if not controls.enable_policy_pages:
         raise Http404("Policy center is disabled.")
@@ -127,7 +128,7 @@ def policy_index(request):
 
 
 @require_GET
-def policy_detail(request, slug):
+def policy_detail(request: HttpRequest, slug: str) -> HttpResponse:
     controls = FeatureControlSettings.get_solo()
     if not controls.enable_policy_pages:
         raise Http404("Policy pages are disabled.")
@@ -160,7 +161,7 @@ def policy_detail(request, slug):
 
 
 @require_GET
-def page_detail(request, slug):
+def page_detail(request: HttpRequest, slug: str) -> HttpResponse:
     page = _get_visible_page_or_404(slug, request.user)
     related_pages = get_related_pages_algorithmic(
         request.user,
@@ -176,7 +177,7 @@ def page_detail(request, slug):
 
 
 @login_required
-def page_manage(request):
+def page_manage(request: HttpRequest) -> HttpResponse:
     sort_by = (request.GET.get("sort") or "-updated_at").strip()
     valid_sorts = {"-updated_at", "-created_at", "-published_at", "title"}
     if sort_by not in valid_sorts:
@@ -197,7 +198,7 @@ def page_manage(request):
 
 @login_required
 @require_POST
-def page_bulk_action(request):
+def page_bulk_action(request: HttpRequest) -> HttpResponse:
     action = (request.POST.get("bulk_action") or "").strip()
     selected_ids = request.POST.getlist("selected_pages")
 
@@ -348,7 +349,7 @@ def page_bulk_action(request):
 
 
 @login_required
-def page_create(request):
+def page_create(request: HttpRequest) -> HttpResponse:
     if request.method == "POST":
         form = PageForm(request.POST)
         if form.is_valid():
@@ -402,7 +403,7 @@ def page_create(request):
 
 
 @login_required
-def page_update(request, slug):
+def page_update(request: HttpRequest, slug: str) -> HttpResponse:
     page = get_object_or_404(Page, slug=slug)
     if not (request.user == page.author or request.user.is_staff):
         raise Http404("Page not available")
@@ -464,7 +465,7 @@ def page_update(request, slug):
 
 
 @login_required
-def page_delete(request, slug):
+def page_delete(request: HttpRequest, slug: str) -> HttpResponse:
     page = get_object_or_404(Page, slug=slug)
     if not (request.user == page.author or request.user.is_staff):
         raise Http404("Page not available")
@@ -489,7 +490,7 @@ def page_delete(request, slug):
 
 
 @login_required
-def page_revisions(request, slug):
+def page_revisions(request: HttpRequest, slug: str) -> HttpResponse:
     page = get_object_or_404(Page, slug=slug)
     if not (request.user == page.author or request.user.is_staff):
         raise Http404("Page not available")
@@ -507,7 +508,7 @@ def page_revisions(request, slug):
 
 @login_required
 @require_POST
-def markdown_preview(request):
+def markdown_preview(request: HttpRequest) -> HttpResponse:
     controls = FeatureControlSettings.get_solo()
     if not controls.enable_quick_preview:
         return HttpResponseBadRequest("Markdown preview is disabled.")
@@ -527,7 +528,7 @@ def markdown_preview(request):
 
 
 @require_GET
-def api_pages(request):
+def api_pages(request: HttpRequest) -> JsonResponse:
     controls = FeatureControlSettings.get_solo()
     if not controls.enable_public_api:
         return JsonResponse({"detail": "Public API is disabled."}, status=403)

@@ -1404,6 +1404,23 @@ python manage.py startapp [name] apps/[name]
 - `type: ignore` count in admin_views.py: 20+ → 13, all remaining are genuine gaps (8 × FileField django-stubs, 2 × tree model narrowing, 2 × Tagulous-patched save(), 1 × TextChoices comparison)
 - "38,475 code lines" in admin dashboard is the repo stat (Python + HTML + CSS + JS + migrations); actual Python-only app source is ~20,541 lines — already within 15-20k target, no code reduction needed
 - *(Claude appends new entries here each session)*
+**FROM ENTERPRISE AUDIT SESSION (Mar 2, 2026 Session 11):**
+- DJANGO_ENV-based settings routing: `os.environ.get("DJANGO_ENV", "development")` in config/settings.py determines which sub-settings to import — never hardcode the import
+- `CONN_HEALTH_CHECKS = True` in DATABASES config enables Django 4.1+ connection health verification on persistent connections — prevents stale connection errors
+- `DATA_UPLOAD_MAX_MEMORY_SIZE` and `FILE_UPLOAD_MAX_MEMORY_SIZE` cap uploads at 10MB by default — essential for production to prevent memory abuse
+- `STORAGES` dict replaces deprecated `STATICFILES_STORAGE` and `DEFAULT_FILE_STORAGE` in Django 4.2+ — use `{"default": {"BACKEND": ...}, "staticfiles": {"BACKEND": ...}}`
+- Production redis cache: use `raise ImportError(...)` instead of silent LocMemCache fallback — fail loudly in production, never silently degrade caching
+- Admin store guard in app.js: `if (document.querySelector('.admin-shell'))` prevents registering admin-only Alpine stores on public pages — avoids console errors and wasted memory
+- Theme sync interval: 120s is sufficient for multi-tab sync (was 15s = unnecessary polling) — localStorage changes dispatch `storage` events for instant cross-tab sync anyway
+- `htmx:afterRequest` handlers should be consolidated into ONE listener in app.js — multiple listeners across files (app.js + site.js) cause double-processing of HX-Trigger headers
+- `readingProgress()` Alpine component pattern: register scroll listener in `init()`, remove in `destroy()` — prevents memory leaks on HTMX page transitions where elements are swapped out
+- CSS View Transitions: `::view-transition-old(root)` and `::view-transition-new(root)` with `animation: none` prevents default cross-fade on full-page navigations — useful when HTMX handles transitions
+- CSS `*:focus-visible` ring (2px solid var(--brand) + 2px offset) provides consistent a11y focus indicators — prefer `focus-visible` over `focus` to avoid showing ring on mouse clicks
+- CSS skeleton loaders (`.skeleton`, `.skeleton-text`, `.skeleton-avatar`, `.skeleton-card`) using `linear-gradient` animation provide loading states without JS — pair with HTMX `hx-indicator`
+- Dead dependencies in requirements should be actively removed, not just commented — `drf-yasg`, `python-decouple`, `django-db-connection-pool` were vestigial from abandoned features
+- When doing mass URL namespace changes, always verify ALL references across templates + Python files — `blog:admin_*` → `admin_*` required 83 fixes across 14 files
+- `app_name = "core"` in core/urls.py is essential — without it, `{% url 'core:login' %}` raises NoReverseMatch
+- Selector dedup rule: each queryset helper lives in exactly ONE app's selectors.py; cross-app usage imports from the canonical location; NEVER copy the function to avoid drift
 **FROM UI PHASE 0-4 SESSION (Mar 2, 2026 Session 4):**
 - `color-mix(in srgb, var(--surface-1) 85%, transparent)` enables glassmorphism with CSS variables without hardcoding any rgba values — works in all major browsers (Chrome 111+, Firefox 113+, Safari 16.2+)
 - `.admin-topbar.topbar-elevated` modifier + `transition: box-shadow 200ms, background-color 200ms` on base creates smooth scroll elevation without JS transition management
@@ -1498,6 +1515,13 @@ python manage.py startapp [name] apps/[name]
 | **[HTMX CONFIG]** `<meta name="htmx-config">` placed AFTER htmx `<script>` | htmx reads meta during init — late placement means config is silently ignored | Place htmx-config meta tag BEFORE the htmx script tag |
 | **[POST CREATION]** `data-ui-confirm` on create/edit forms | site.js submit handler calls preventDefault() then tries Bootstrap Modal — if chain fails, form permanently blocked | NEVER use data-ui-confirm on content creation forms; reserve for destructive/bulk actions only |
 | **[DOUBLE JQUERY]** CDN jQuery loaded unconditionally alongside Tagulous jQuery | Two jQuery instances: plugins registered on wrong instance, event handler confusion, memory waste | Use `if(!window.jQuery) document.write(...)` to conditionally load CDN jQuery only when no jQuery present |
+| **[ENTERPRISE AUDIT]** Duplicate admin URLs in blog/urls.py AND config/urls.py | 83 template/Python refs to `blog:admin_*` broke when deduped | Admin URL patterns belong ONLY in config/urls.py; blog/urls.py is for public routes |
+| **[ENTERPRISE AUDIT]** Non-namespaced `{% url 'login' %}` in templates | Breaks when core app gains `app_name = "core"` | ALL core URLs must use `core:` namespace: `{% url 'core:login' %}`, `{% url 'core:register' %}` etc. |
+| **[ENTERPRISE AUDIT]** `DJANGO_ENV` missing from settings router | Hardcoded `from .settings.development import *` can't switch envs | Use `os.environ.get("DJANGO_ENV", "development")` to route to correct settings module |
+| **[ENTERPRISE AUDIT]** Inline reading progress `x-data="{ progress: 0 }" x-init="window.addEventListener('scroll', ..."` | Memory leak — scroll listener never removed on page navigation | Extract to `readingProgress()` Alpine component with `destroy()` cleanup |
+| **[ENTERPRISE AUDIT]** Selectors duplicated across blog/selectors.py and comments/selectors.py | `get_post_comments`, `get_post_likes`, `has_user_liked_post` existed in both | Each selector lives in ONE canonical location; cross-app imports allowed for selectors |
+| **[ENTERPRISE AUDIT]** Write operations in selectors.py | `bulk_subscribe_newsletter()` in comments/selectors.py violates reads-only contract | selectors.py = reads ONLY; write ops go in services.py |
+| **[ENTERPRISE AUDIT]** PowerShell `Set-Content` corrupts non-ASCII | `Set-Content` defaults to system encoding (CP1252 on Windows) not UTF-8 | Use Python for text replacement in files with non-ASCII characters, or `Set-Content -Encoding UTF8` |
 | *(Human corrections appended here)* | |
 
 ---
@@ -1505,49 +1529,89 @@ python manage.py startapp [name] apps/[name]
 ## 🎯 ACTIVE CONTEXT — UPDATE EVERY SESSION
 
 ```
-Last Updated:     Mar 2, 2026 (Session 10 — Post Creation Fix)
-Session Type:     BUGFIX — Post creation form submission blocked by JS confirmation dialog
-Working On:       templates/blog/post_form.html, templates/pages/page_form.html, templates/partials/summernote_assets.html
-Current App:      Blog (public frontend)
-Status:           ✅ COMPLETE — Post create/draft/publish all working end-to-end
-Blocked By:       Nothing critical
+Last Updated:     Mar 2, 2026 (Session 11 — Enterprise Audit & Full-Stack Upgrade)
+Session Type:     MAJOR — 8-phase enterprise audit + full-stack upgrade (7 parallel agents)
+Working On:       Entire repo — settings, CSS, JS, templates, types, URLs, selectors, HTMX
+Current App:      All apps (blog, core, seo, comments, pages, tags)
+Status:           ✅ COMPLETE — All 8 phases implemented, verified, committed
+Blocked By:       Nothing
 Next Steps:
   1. BaseModel migration for remaining models (Agent 1 — HIGH)
-  2. HeadlessUI partials 4-13 (Agent 3)
-  3. Test suite expansion (Agent 6)
-Open Questions:   None blocking
-Last Commit:      "fix: remove data-ui-confirm blocking post/page creation + fix double jQuery"
+  2. HeadlessUI partials 4-13 (Agent 3 — MEDIUM)
+  3. Test suite expansion (Agent 6 — MEDIUM)
+Open Questions:   None
+Last Commit:      "feat: enterprise audit — 8-phase full-stack upgrade"
 
-SESSION 10 CHANGES (Current — Post Creation Fix):
-  ROOT CAUSE: `data-ui-confirm` attribute on <form> in post_form.html and page_form.html caused
-  site.js submit handler to call event.preventDefault() then attempt to show Bootstrap Modal via
-  Alpine store. If Alpine/Bootstrap/Modal DOM chain had any issue, showConfirm() returned
-  Promise.resolve(false) → form NEVER resubmitted. Buttons appeared dead.
+SESSION 11 CHANGES (Current — Enterprise Audit & Full-Stack Upgrade):
+  TRIGGER: Frontend audit report (HTML) analyzed → 7 deep audit subagents → 54-step plan → 7 parallel write agents
 
-  FIXES APPLIED:
-    1. templates/blog/post_form.html:
-       - Removed `data-ui-confirm="Create this post now?"` from <form> element
-       - Removed ambiguous "{{ mode }} Post" third submit button
-       - Added icons to Save Draft (bi-file-earmark) and Publish Now (bi-send) buttons
-    2. templates/pages/page_form.html:
-       - Removed `data-ui-confirm="Create this page now?"` from <form> element
-    3. templates/partials/summernote_assets.html:
-       - Replaced unconditional CDN jQuery load with conditional: only loads if Tagulous hasn't
-         already provided jQuery via {{ form.media }}
-       - Uses document.write() fallback for admin editor pages that don't have {{ form.media }}
+  PHASE 1 — Production Infrastructure:
+    - config/settings.py: DJANGO_ENV-based routing (was hardcoded dev import)
+    - config/settings/base.py: CACHES (LocMemCache), LOGGING (per-app loggers), CONN_HEALTH_CHECKS, django_celery_beat
+    - config/settings/production.py: Silent LocMemCache fallback → ImportError, deprecated STATICFILES_STORAGE → STORAGES dict
+    - requirements/base.txt: +django-solo, +django-celery-beat
+    - requirements/development.txt: -black, -isort, -flake8, -pylint (replaced by ruff)
+    - requirements/production.txt: -drf-yasg, -python-decouple, -django-db-connection-pool
+    - .env.example: deduplicated (removed entire copy-pasted bottom half)
+
+  PHASE 2 — Template & JS Dedup:
+    - base.html: Removed inline toast stack + Bootstrap confirm modal (HeadlessUI partials canonical)
+    - base.html: Wrapped layout.css in {% if request.user.is_staff %} (admin-only)
+    - base.html: Fixed all non-namespaced URLs to core: namespace
+    - feed_panel.html: Removed Alpine x-on:input.debounce (HTMX is sole search mechanism)
+    - site.js: Replaced $store.ui.notify → dispatchToast(), added showModalConfirm() utility
+    - site.js: Removed duplicate htmx:afterRequest handler (consolidated into app.js)
+    - app.js: Consolidated htmx:afterRequest (handles showToast + ui:feedback), guarded admin store
+
+  PHASE 3 — Selector Dedup & Boundaries:
+    - blog/selectors.py: Removed 6 duplicate functions, added get_post_reaction_counts()
+    - blog/views.py: Refactored 4 helpers to use selectors instead of inline ORM
+    - comments/selectors.py: Removed bulk_subscribe_newsletter (write op in read-only layer)
+
+  PHASE 4 — Type Annotation Hardening (~85 annotations across 10 files):
+    - blog/models.py (10 return types), blog/services.py (23 functions), blog/middleware.py
+    - pages/views.py (15 funcs), pages/models.py (ClassVar + 9 types), pages/selectors.py (docstrings)
+    - seo/views.py (15 funcs), seo/middleware.py, comments/models.py (6 __str__), core/views.py
+
+  PHASE 5 — URL & Routing Hygiene:
+    - blog/urls.py: Removed 12 duplicate admin URL patterns (kept in config/urls.py only)
+    - seo/urls.py: Added trailing slashes to 6 paths
+    - core/urls.py: Added app_name = "core"
+    - 83 blog:admin_* references → admin_* across 14 files
+    - Non-namespaced login/logout/profile/register → core: namespace in base.html + partials
+
+  PHASE 6 — CSS Enterprise Polish:
+    - foundation.css: focus-visible ring, View Transitions CSS, dark mode body transition
+    - foundation.css: card hover effects (.card:not(.note-editor)), skeleton loader classes
+    - site/core.css: Removed duplicate box-sizing rule
+
+  PHASE 7 — Database & Model Hardening:
+    - CONN_HEALTH_CHECKS=True in DATABASES config
+    - DATA_UPLOAD_MAX_MEMORY_SIZE + FILE_UPLOAD_MAX_MEMORY_SIZE (10MB caps)
+    - Applied 21 django-celery-beat migrations
+
+  PHASE 8 — HTMX + Auth UX:
+    - post_detail.html: Inline reading progress → x-data="readingProgress()" (fixes memory leak)
+    - dashboard.html: HTMX pagination (hx-get, hx-target, hx-select, hx-swap, hx-push-url)
+    - login.html: Alpine password toggle, submit loading state, autofocus
+    - register.html: form-control classes, Alpine password toggle, submit loading state
+    - app.js: readingProgress() Alpine component with proper destroy() cleanup
 
   VERIFICATION:
-    - Backend: Model save ✅, Form validation ✅, HTTP GET 200 ✅, HTTP POST 302 ✅
-    - Template: data-ui-confirm removed ✅, Save Draft present ✅, Publish Now present ✅
-    - jQuery: conditional loading prevents double jQuery on Tagulous pages ✅
+    - Ruff: ✅ "All checks passed!" (0 violations)
+    - Django: ✅ "System check identified no issues"
+    - Server: ✅ 200 OK at http://127.0.0.1:8000/
+    - Migrations: ✅ 21 django-celery-beat migrations applied
 
-PHASE SUMMARY:
+PHASE SUMMARY (All Sessions):
   ✅ Phase 0 — Foundation: animations.css, headless.css, app.js created; base.html wired
-  ✅ Phase 1 — Zero inline styles: all 71 inline styles across 20+ templates eliminated (3 legitimate dynamic/GTM remain)
-  ✅ Phase 2 — Admin micro-interactions: topbar glassmorphism, row-remove animation, Ctrl+S, stat-card hover lift, KPI row hover
-  ✅ Phase 3 — Public micro-interactions: post-card image zoom, reading-progress glow, comment stagger, reaction spring, scroll-animate
-  ✅ Phase 4 — HeadlessUI HTML partials: modal, toast-stack, drawer (MVP set) wired into base.html
-  ✅ Phase 5 — Static consolidation: CSS 11→5, JS 8→4, templates updated, HTMX config meta tag
+  ✅ Phase 1 — Zero inline styles: all 71 inline styles across 20+ templates eliminated
+  ✅ Phase 2 — Admin micro-interactions: topbar glassmorphism, row-remove, Ctrl+S, hover states
+  ✅ Phase 3 — Public micro-interactions: image zoom, progress glow, comment stagger, reaction spring
+  ✅ Phase 4 — HeadlessUI HTML partials: modal, toast-stack, drawer (MVP set)
+  ✅ Phase 5 — Static consolidation: CSS 11→5, JS 8→4
+  ✅ Phase 6 — Post/Page creation fix + double jQuery fix
+  ✅ Phase 7 — Enterprise audit 8-phase full-stack upgrade (Session 11)
 
 RUFF STATUS: ✅ "All checks passed!" (0 violations)
 DJANGO CHECK: ✅ "System check identified no issues"
@@ -1571,7 +1635,7 @@ COMPLETED ACROSS ALL SESSIONS:
 ✅ INTERNAL_IPS in development.py
 ✅ SESSION_ENGINE=cache + whitenoise in production.py + MIDDLEWARE
 ✅ get_all_tags_with_counts() alias in tags/selectors.py
-✅ .env.example comprehensive rewrite
+✅ .env.example comprehensive rewrite + dedup
 ✅ AGENTS.md: single canonical version, onboarding guide, feature-add guides
 ✅ SECRET_KEY raises ValueError (already hardened — no fallback)
 ✅ POSTGRES_* raises ValueError (already hardened — no fallback)
@@ -1580,27 +1644,30 @@ COMPLETED ACROSS ALL SESSIONS:
 ✅ admin_views.py: cast(Any) × 7 eliminated; type:ignore[union-attr] × 8 eliminated; cast import removed
 ✅ animations.css, headless.css, app.js created (Phase 0)
 ✅ 71 inline styles across 20+ templates eliminated (Phase 1) — 3 legitimate remain
-✅ Admin micro-interactions: topbar glassmorphism, .is-removing row animation, Ctrl+S, hover states (Phase 2)
-✅ Public micro-interactions: image zoom, progress glow, comment stagger, reaction spring (Phase 3)
-✅ HeadlessUI HTML partials: _modal.html, _toast_stack.html, _drawer.html wired into base.html (Phase 4 MVP)
-✅ JS theme dedup: theme-core.js consolidates dark mode from admin/core.js + site/core.js + alpine-store.js
-✅ Meta auto-sync: editor.html, post_form.html, page_form.html — title/desc/canonical auto-generate from slug
-✅ {# #} Django comment fix → {% comment %} blocks (prevented NoReverseMatch)
-✅ Alpine CDN load order fixed — CDN last, stores in alpine:init listener
-✅ overflow-y:auto removed from .admin-content — fixed Summernote dropdown clipping
-✅ Summernote root cause fix: :not() exclusions on .card/.btn/.card-header + JS class stripping
-✅ .btn-xs specificity fix: explicit padding at .btn.btn-xs (0,2,0) to compete with :not() bump
-✅ CSRF 403 fix: .env DEBUG=True + CSRF_TRUSTED_ORIGINS populated
-✅ CSS consolidated: 11 files → 5 (foundation, components, layout, admin/admin, site/core)
-✅ JS consolidated: 8 files → 4 (app, site/site, admin/admin, summernote-bridge)
-✅ Template refs updated: base.html, base_site.html + 10 child templates cleaned
-✅ HTMX enhanced: <meta name="htmx-config"> with globalViewTransitions, scrollBehavior, settleDelay
-✅ Post/Page creation fix: removed data-ui-confirm blocking form submission
-✅ Double jQuery fix: conditional CDN jQuery load (only if Tagulous jQuery absent)
-✅ Post form UX: removed ambiguous third button, added icons to Save Draft / Publish Now
+✅ Admin micro-interactions: topbar glassmorphism, .is-removing row animation, Ctrl+S, hover states
+✅ Public micro-interactions: image zoom, progress glow, comment stagger, reaction spring
+✅ HeadlessUI HTML partials: _modal.html, _toast_stack.html, _drawer.html wired into base.html
+✅ JS theme dedup: theme-core.js consolidates dark mode
+✅ Meta auto-sync: editor.html, post_form.html, page_form.html
+✅ Summernote root cause fix: :not() exclusions + JS class stripping
+✅ CSS consolidated: 11 files → 5; JS consolidated: 8 files → 4
+✅ Post/Page creation fix: removed data-ui-confirm + double jQuery fix
+✅ DJANGO_ENV-based settings routing (config/settings.py)
+✅ CACHES + LOGGING + CONN_HEALTH_CHECKS in base.py
+✅ Production: STORAGES dict (replaces deprecated STATICFILES_STORAGE), ImportError on missing redis
+✅ Requirements: cleaned dead deps (black/isort/flake8/pylint/drf-yasg/decouple/db-pool)
+✅ CSS: focus-visible ring, View Transitions, dark mode transition, card hover, skeleton loaders
+✅ JS: admin store guarded, theme sync 15s→120s, afterRequest consolidated, readingProgress() component
+✅ Templates: base.html deduped (toast/modal removed), feed_panel search-only, HTMX pagination
+✅ Auth pages: Alpine password toggles, loading states, form-control classes
+✅ Type annotations: ~85 annotations across 10 files (models, views, services, middleware)
+✅ URL hygiene: admin URL dedup, seo trailing slashes, core app_name, 83 refs fixed
+✅ Selector dedup: 6 duplicates removed, views refactored to use selectors
+✅ Encoding fix: 4 files CP1252→UTF-8 (em-dashes)
+✅ django-celery-beat: added + 21 migrations applied
 
 REMAINING ISSUES (Known/Accepted):
-🟡 HeadlessUI components: 3/13 partials MVP'd (_modal, _toast_stack, _drawer) — remaining 10 not started (Agent 3 — MEDIUM)
+🟡 HeadlessUI components: 3/13 partials MVP'd (_modal, _toast_stack, _drawer) — remaining 10 not started
 🟠 BaseModel not inherited by all models — pending migration planning (Agent 1 — HIGH)
 3 remaining style= are all legitimate (2 dynamic server %widths + 1 GTM noscript)
 ```
@@ -1628,4 +1695,4 @@ REMAINING ISSUES (Known/Accepted):
 ---
 
 *Living document. Claude grows it every session. Team grows it. Never becomes stale.*
-*Audit: ✅ | HeadlessUI: 3/13 MVP | Last session: Mar 2 2026 — Session 10 Post Creation Fix | Model: Sonnet / Opus / Haiku*
+*Audit: ✅ | HeadlessUI: 3/13 MVP | Last session: Mar 2 2026 — Session 11 Enterprise Audit & Full-Stack Upgrade | Model: Sonnet / Opus / Haiku*

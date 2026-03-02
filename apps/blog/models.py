@@ -1,7 +1,7 @@
 ﻿from __future__ import annotations
 
 import math
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 import bleach
 import markdown
@@ -13,6 +13,9 @@ from django.urls import reverse
 from django.utils import timezone
 from django.utils.text import slugify
 from tagulous.models import SingleTagField, TagField
+
+if TYPE_CHECKING:
+    from comments.models import PostRevision
 
 try:
     from bleach.css_sanitizer import CSSSanitizer
@@ -335,18 +338,18 @@ class Post(models.Model):
             ),
         ]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.title
 
-    def get_absolute_url(self):
+    def get_absolute_url(self) -> str:
         return reverse("blog:post_detail", kwargs={"slug": self.slug})
 
     @property
-    def effective_meta_title(self):
+    def effective_meta_title(self) -> str:
         return self.meta_title or self.title
 
     @property
-    def effective_meta_description(self):
+    def effective_meta_description(self) -> str:
         if self.meta_description:
             return self.meta_description
         if self.excerpt:
@@ -373,12 +376,12 @@ class Post(models.Model):
             return False
         return user == self.author or bool(getattr(user, "is_staff", False))
 
-    def publish(self):
+    def publish(self) -> None:
         self.status = self.Status.PUBLISHED
         self.published_at = timezone.now()
         self.save(update_fields=["status", "published_at", "updated_at"])
 
-    def record_revision(self, editor=None, note=""):
+    def record_revision(self, editor=None, note="") -> PostRevision:
         from comments.models import PostRevision
 
         return PostRevision.objects.create(
@@ -393,7 +396,7 @@ class Post(models.Model):
             note=note,
         )
 
-    def _build_unique_slug(self):
+    def _build_unique_slug(self) -> str:
         base_slug = slugify(self.title)[:220] or "post"
         slug = base_slug
         suffix = 2
@@ -404,13 +407,13 @@ class Post(models.Model):
 
         return slug
 
-    def _build_word_count(self):
+    def _build_word_count(self) -> int:
         return max(len(self.body_markdown.split()), 1)
 
-    def _build_reading_time(self):
+    def _build_reading_time(self) -> int:
         return max(math.ceil(self.word_count / 220), 1)
 
-    def save(self, *args, **kwargs):
+    def save(self, *args, **kwargs) -> None:
         if not self.slug:
             self.slug = self._build_unique_slug()
 

@@ -491,21 +491,23 @@
     if (!feedback) {
       return;
     }
-    const ui = getUiStore();
-    if (!ui) {
-      return;
-    }
 
     if (feedback.toast && feedback.toast.message) {
-      ui.notify(feedback.toast.level, feedback.toast.message);
+      // Use global dispatchToast (app.js) instead of $store.ui.notify
+      if (typeof window.dispatchToast === "function") {
+        window.dispatchToast(feedback.toast.message, feedback.toast.level || "info");
+      }
     }
 
     if (feedback.inline && feedback.inline.message) {
-      ui.setInline(
-        feedback.inline.target || resolveFeedbackTarget(sourceElement),
-        feedback.inline.level,
-        feedback.inline.message
-      );
+      var ui = getUiStore();
+      if (ui) {
+        ui.setInline(
+          feedback.inline.target || resolveFeedbackTarget(sourceElement),
+          feedback.inline.level,
+          feedback.inline.message
+        );
+      }
     }
   }
 
@@ -520,6 +522,32 @@
     xhr.__uiFeedbackHandled = true;
     dispatchFeedback(feedback, sourceElement);
     return true;
+  }
+
+  /**
+   * showModalConfirm — Dispatch a confirmation dialog via HeadlessUI modal.
+   * Falls back to window.confirm() if no modal handler intercepts the event.
+   * @param {Object} options  { title, message, confirmText, cancelText }
+   * @returns {Promise<boolean>}
+   */
+  function showModalConfirm(options) {
+    var message = (options && options.message) || "Are you sure?";
+    return new Promise(function (resolve) {
+      var detail = {
+        title: (options && options.title) || "Confirm Action",
+        message: message,
+        confirmText: (options && options.confirmText) || "Confirm",
+        cancelText: (options && options.cancelText) || "Cancel",
+        resolve: resolve,
+      };
+      var evt = new CustomEvent("show-modal", { detail: detail, cancelable: true });
+      var dispatched = window.dispatchEvent(evt);
+      // If no listener called preventDefault(), no HeadlessUI modal handled it.
+      // Fall back to native confirm() so the user still gets a prompt.
+      if (dispatched) {
+        resolve(window.confirm(message));
+      }
+    });
   }
 
   function formatDashboardNumber(value) {
@@ -758,11 +786,6 @@
       return;
     }
 
-    const ui = getUiStore();
-    if (!ui) {
-      return;
-    }
-
     event.preventDefault();
     const sourceElement = event.detail.elt || event.target;
     const inlineTarget = resolveFeedbackTarget(sourceElement);
@@ -770,27 +793,24 @@
       (sourceElement && sourceElement.dataset && sourceElement.dataset.uiConfirmText) ||
       "Confirm";
 
-    ui
-      .showConfirm({
-        title: "Confirm Action",
-        message: question,
-        confirmText: confirmLabel,
-        cancelText: "Cancel",
-        inlineTarget: inlineTarget,
-      })
-      .then(function (approved) {
-        if (approved) {
-          event.detail.issueRequest(true);
-          return;
-        }
+    showModalConfirm({
+      title: "Confirm Action",
+      message: question,
+      confirmText: confirmLabel,
+      cancelText: "Cancel",
+    }).then(function (approved) {
+      if (approved) {
+        event.detail.issueRequest(true);
+        return;
+      }
+      var ui = getUiStore();
+      if (ui) {
         ui.setInline(inlineTarget, "info", "Action canceled.");
-      });
+      }
+    });
   });
 
-  document.body.addEventListener("htmx:afterRequest", function (event) {
-    const sourceElement = event.detail.elt || event.target;
-    handleFeedbackFromXhr(event.detail.xhr, sourceElement);
-  });
+  // htmx:afterRequest handler consolidated into app.js (handles both showToast and ui:feedback)
 
   document.body.addEventListener("htmx:responseError", function (event) {
     const sourceElement = event.detail.elt || event.target;
@@ -798,18 +818,19 @@
       return;
     }
 
-    const ui = getUiStore();
-    if (!ui) {
-      return;
-    }
-
     const statusCode = event.detail && event.detail.xhr ? event.detail.xhr.status : null;
     const message = statusCode
       ? `Request failed (${statusCode}). Please try again.`
       : "Request failed. Please try again.";
-    const inlineTarget = resolveFeedbackTarget(sourceElement);
-    ui.notify("error", message);
-    ui.setInline(inlineTarget, "error", message);
+    // Use global dispatchToast instead of $store.ui.notify
+    if (typeof window.dispatchToast === "function") {
+      window.dispatchToast(message, "danger");
+    }
+    var ui = getUiStore();
+    if (ui) {
+      var inlineTarget = resolveFeedbackTarget(sourceElement);
+      ui.setInline(inlineTarget, "error", message);
+    }
   });
 
   document.addEventListener(
@@ -827,11 +848,6 @@
         return;
       }
 
-      const ui = getUiStore();
-      if (!ui) {
-        return;
-      }
-
       const submitter = event.submitter || null;
       const message = resolveConfirmMessage(form, submitter);
       if (!message) {
@@ -842,27 +858,27 @@
       const inlineTarget = resolveFeedbackTarget(submitter || form);
       const confirmText = submitter ? submitter.textContent.trim() || "Confirm" : "Confirm";
 
-      ui
-        .showConfirm({
-          title: "Confirm Action",
-          message: message,
-          confirmText: confirmText,
-          cancelText: "Cancel",
-          inlineTarget: inlineTarget,
-        })
-        .then(function (approved) {
-          if (!approved) {
+      showModalConfirm({
+        title: "Confirm Action",
+        message: message,
+        confirmText: confirmText,
+        cancelText: "Cancel",
+      }).then(function (approved) {
+        if (!approved) {
+          var ui = getUiStore();
+          if (ui) {
             ui.setInline(inlineTarget, "info", "Action canceled.");
-            return;
           }
+          return;
+        }
 
-          form.dataset.uiConfirmBypass = "1";
-          if (typeof form.requestSubmit === "function") {
-            form.requestSubmit(submitter || undefined);
-          } else {
-            form.submit();
-          }
-        });
+        form.dataset.uiConfirmBypass = "1";
+        if (typeof form.requestSubmit === "function") {
+          form.requestSubmit(submitter || undefined);
+        } else {
+          form.submit();
+        }
+      });
     },
     true
   );

@@ -3,12 +3,8 @@
 
 -r base.txt
 
-# Code quality and linting
+# Code quality and linting (ruff replaces black, isort, flake8, pylint)
 ruff==0.15.4
-black==26.1.0
-isort==8.0.0
-flake8==7.3.0
-pylint==4.0.5
 
 # Testing
 pytest==9.0.2

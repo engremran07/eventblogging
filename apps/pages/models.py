@@ -1,6 +1,7 @@
 ﻿from __future__ import annotations
 
 import math
+from typing import ClassVar
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
@@ -96,7 +97,7 @@ class Page(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    objects = PageQuerySet.as_manager()
+    objects: ClassVar[PageQuerySet] = PageQuerySet.as_manager()  # type: ignore[assignment]
 
     class Meta:
         ordering = ("nav_order", "title")
@@ -107,17 +108,17 @@ class Page(models.Model):
             models.Index(fields=["updated_at"]),
         ]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.title
 
-    def get_absolute_url(self):
+    def get_absolute_url(self) -> str:
         return reverse("pages:detail", kwargs={"slug": self.slug})
 
     @property
-    def effective_nav_label(self):
+    def effective_nav_label(self) -> str:
         return self.nav_label or self.title
 
-    def _build_unique_slug(self):
+    def _build_unique_slug(self) -> str:
         base_slug = slugify(self.title)[:220] or "page"
         slug = base_slug
         suffix = 2
@@ -126,18 +127,18 @@ class Page(models.Model):
             suffix += 1
         return slug
 
-    def _build_word_count(self):
+    def _build_word_count(self) -> int:
         return max(len((self.body_markdown or "").split()), 1)
 
-    def _build_reading_time(self):
+    def _build_reading_time(self) -> int:
         return max(math.ceil(self.word_count / 220), 1)
 
-    def publish(self):
+    def publish(self) -> None:
         self.status = self.Status.PUBLISHED
         self.published_at = timezone.now()
         self.save(update_fields=["status", "published_at", "updated_at"])
 
-    def record_revision(self, editor=None, note=""):
+    def record_revision(self, editor=None, note="") -> PageRevision:
         return PageRevision.objects.create(
             page=self,
             editor=editor,
@@ -156,7 +157,7 @@ class Page(models.Model):
             raise ValidationError("Policy pages are protected and cannot be deleted.")
         return super().delete(*args, **kwargs)
 
-    def save(self, *args, **kwargs):
+    def save(self, *args, **kwargs) -> None:
         if not self.slug:
             self.slug = self._build_unique_slug()
 
@@ -197,5 +198,5 @@ class PageRevision(models.Model):
         ordering = ("-created_at",)
         indexes = [models.Index(fields=["page", "created_at"])]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"Revision {self.pk} for {self.page}"

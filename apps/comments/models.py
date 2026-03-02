@@ -31,7 +31,7 @@ class Comment(models.Model):
             models.Index(fields=["author", "created_at"]),
         ]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"Comment by {self.author} on {self.post}"
 
 
@@ -51,7 +51,7 @@ class PostLike(models.Model):
             models.Index(fields=["user", "created_at"]),
         ]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.user} likes {self.post}"
 
 
@@ -74,7 +74,7 @@ class PostBookmark(models.Model):
             models.Index(fields=["post", "created_at"]),
         ]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.user} bookmarked {self.post}"
 
 
@@ -100,7 +100,7 @@ class PostView(models.Model):
             models.Index(fields=["user", "-viewed_at"]),
         ]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"View for {self.post}"
 
 
@@ -132,7 +132,7 @@ class PostRevision(models.Model):
             models.Index(fields=["-created_at"]),
         ]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"Revision {self.pk} for {self.post}"
 
 
@@ -150,5 +150,5 @@ class NewsletterSubscriber(models.Model):
         ordering = ("-created_at",)
         indexes = [models.Index(fields=["email", "is_active"])]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.email

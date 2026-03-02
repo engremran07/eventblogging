@@ -4,7 +4,7 @@ import math
 import re
 from collections import Counter
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, cast
 
 from .models import TaxonomySynonymGroup
 from .synonyms import expand_terms
@@ -89,8 +89,9 @@ def _target_score(anchor_text: str, target: Any) -> float:
     base = overlap / union
 
     # TF-IDF boost: if target has tfidf_vector, score overlap with anchor terms
-    tfidf_vector = getattr(target, "tfidf_vector", None) or {}
-    if tfidf_vector and isinstance(tfidf_vector, dict):
+    _raw_vector: object = getattr(target, "tfidf_vector", None) or {}
+    tfidf_vector: dict[str, float] = cast("dict[str, float]", _raw_vector) if isinstance(_raw_vector, dict) else {}
+    if tfidf_vector:
         tfidf_boost = sum(
             tfidf_vector.get(tok, 0.0) for tok in anchor_tokens
         )
@@ -415,9 +416,9 @@ def repair_orphans(*, max_repairs: int = 50) -> dict[str, int]:
     ))
 
     all_content: list[tuple[str, Any]] = [
-        ("post", p) for p in all_posts
+        ("post", p) for p in all_posts  # type: ignore[misc]
     ] + [
-        ("page", p) for p in all_pages
+        ("page", p) for p in all_pages  # type: ignore[misc]
     ]
 
     for post_pk in orphans.get("posts", [])[:max_repairs]:

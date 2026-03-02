@@ -68,7 +68,7 @@ class ContentAdapter:
     _author_name: str = ""
     _keywords_csv: str = ""
     _section: str = ""
-    _tag_names: list[str] = field(default_factory=list)
+    _tag_names: list[str] = field(default_factory=lambda: list[str]())
     _twitter_creator: str = ""
 
     @property
@@ -540,11 +540,11 @@ def compute_tfidf_signals(instance: Any) -> None:
             changed_fields.append("keyword_index")
 
         if changed_fields:
-            instance._seo_skip_signal = True
+            object.__setattr__(instance, "_seo_skip_signal", True)
             try:
                 instance.save(update_fields=[*changed_fields, "updated_at"])
             finally:
-                instance._seo_skip_signal = False
+                object.__setattr__(instance, "_seo_skip_signal", False)
     except Exception:
         logger.warning(
             "TF-IDF signal computation failed for post pk=%s",

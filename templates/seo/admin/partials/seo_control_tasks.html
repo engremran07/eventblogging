@@ -1,0 +1,135 @@
+{# SEO Control Center — Tasks Tab #}
+{% load static %}
+
+<div class="card">
+  <div class="card-header d-flex align-items-center justify-content-between">
+    <h5 class="mb-0"><i class="bi bi-list-task me-2"></i>Celery SEO Tasks</h5>
+    <span class="badge bg-secondary">{{ registered_tasks|length }} tasks</span>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Task</th>
+            <th>Description</th>
+            <th class="text-center">Beat Schedule</th>
+            <th class="text-center">Last Run</th>
+            <th class="text-center" style="width: 200px;">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for task in registered_tasks %}
+          <tr x-data="{ loading: false, result: '', resultType: '' }">
+            <td>
+              <strong>{{ task.label }}</strong>
+              <br><code class="text-muted small">{{ task.name }}</code>
+            </td>
+            <td class="text-muted small">{{ task.description }}</td>
+            <td class="text-center">
+              {% if task.beat_enabled %}
+                <span class="badge bg-success-subtle text-success">
+                  <i class="bi bi-clock me-1"></i>{{ task.beat_schedule }}
+                </span>
+              {% else %}
+                <span class="badge bg-secondary-subtle text-secondary">Not scheduled</span>
+              {% endif %}
+            </td>
+            <td class="text-center small text-muted">
+              {% if task.beat_last_run %}
+                {{ task.beat_last_run|timesince }} ago
+              {% else %}
+                —
+              {% endif %}
+            </td>
+            <td class="text-center">
+              <form @submit.prevent="
+                loading = true; result = ''; resultType = '';
+                const fd = new FormData($el);
+                fetch('{% url 'admin_config:seo_task_run' %}', {
+                  method: 'POST',
+                  headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+                  body: fd
+                })
+                .then(r => r.json().then(d => ({ ok: r.ok, data: d })))
+                .then(({ ok, data }) => {
+                  loading = false;
+                  if (ok && data.ok) {
+                    result = data.message;
+                    resultType = 'success';
+                  } else {
+                    result = data.error || 'Failed';
+                    resultType = 'danger';
+                  }
+                  setTimeout(() => { result = ''; }, 5000);
+                })
+                .catch(() => { loading = false; result = 'Network error'; resultType = 'danger'; });
+              " class="d-inline-flex align-items-center gap-2">
+                <input type="hidden" name="task_name" value="{{ task.name }}">
+                {% if task.requires_arg %}
+                  <input type="number" name="task_arg"
+                         class="form-control form-control-sm"
+                         placeholder="{{ task.arg_label }}"
+                         style="width: 90px;" required>
+                {% endif %}
+                <button type="submit" class="btn btn-sm btn-outline-primary" :disabled="loading">
+                  <span x-show="!loading"><i class="bi bi-play-fill me-1"></i>Run</span>
+                  <span x-show="loading" x-cloak>
+                    <span class="spinner-border spinner-border-sm me-1"></span>Running…
+                  </span>
+                </button>
+              </form>
+              <div x-show="result" x-cloak class="mt-1">
+                <small :class="'text-' + resultType" x-text="result"></small>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{# ── Autofix Settings Summary ── #}
+<div class="card mt-3">
+  <div class="card-header">
+    <h6 class="mb-0"><i class="bi bi-gear me-2"></i>Autofix Pipeline Settings</h6>
+  </div>
+  <div class="card-body">
+    <div class="row g-3">
+      <div class="col-md-3">
+        <div class="d-flex align-items-center gap-2">
+          {% if engine_settings.auto_fix_enabled %}
+            <span class="badge bg-success">Enabled</span>
+          {% else %}
+            <span class="badge bg-danger">Disabled</span>
+          {% endif %}
+          <span class="small text-muted">Auto-fix</span>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <span class="small text-muted">Grace Period:</span>
+        <strong>{{ engine_settings.auto_fix_after_hours }}h</strong>
+      </div>
+      <div class="col-md-3">
+        <span class="small text-muted">Min Confidence:</span>
+        <strong>{{ engine_settings.autopilot_min_confidence }}</strong>
+      </div>
+      <div class="col-md-3">
+        <span class="small text-muted">Interlinks on Audit:</span>
+        {% if engine_settings.apply_interlinks_on_audit %}
+          <span class="badge bg-success-subtle text-success">Yes</span>
+        {% else %}
+          <span class="badge bg-secondary-subtle text-secondary">No</span>
+        {% endif %}
+      </div>
+    </div>
+    <p class="text-muted small mt-2 mb-0">
+      Suggestions older than <strong>{{ engine_settings.auto_fix_after_hours }} hours</strong>
+      with confidence ≥ <strong>{{ engine_settings.autopilot_min_confidence }}</strong>
+      will be auto-applied when the <code>seo_apply_due_autofixes</code> task runs.
+      Adjust these in the <em>Settings</em> tab.
+    </p>
+  </div>
+</div>

@@ -131,6 +131,7 @@ class SeoIssue(models.Model):
 
     class Status(models.TextChoices):
         OPEN = "open", "Open"
+        AUTO_FIXED = "auto_fixed", "Auto-Fixed"
         FIXED = "fixed", "Fixed"
         IGNORED = "ignored", "Ignored"
 
@@ -495,4 +496,33 @@ class SeoSuggestionRevision(models.Model):
         return f"Revision for suggestion {self.suggestion_id}"
 
 
-# Create your models here.
+class SeoChangeLog(models.Model):
+    """Tracks every autonomous SEO change for admin visibility."""
+
+    class ChangeType(models.TextChoices):
+        INTERLINK_APPLIED = "interlink_applied", "Interlink Applied"
+        META_TITLE_FIXED = "meta_title_fixed", "Meta Title Fixed"
+        META_DESC_FIXED = "meta_desc_fixed", "Meta Description Fixed"
+        CANONICAL_SET = "canonical_set", "Canonical Set"
+        CANONICAL_FIXED = "canonical_fixed", "Canonical Fixed"
+        METADATA_APPROVED = "metadata_approved", "Metadata Approved"
+
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_id = models.PositiveBigIntegerField()
+    change_type = models.CharField(max_length=30, choices=ChangeType.choices)
+    field_name = models.CharField(max_length=60)
+    old_value = models.TextField(blank=True)
+    new_value = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("-created_at",)
+        indexes = [
+            models.Index(fields=["content_type", "object_id", "created_at"]),
+            models.Index(fields=["change_type", "created_at"]),
+        ]
+        verbose_name = "SEO Change Log"
+        verbose_name_plural = "SEO Change Logs"
+
+    def __str__(self) -> str:
+        return f"{self.change_type} on {self.content_type_id}:{self.object_id}"

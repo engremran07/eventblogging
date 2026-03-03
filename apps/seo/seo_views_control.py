@@ -229,6 +229,92 @@ def _tab_context_settings(request: HttpRequest) -> dict[str, Any]:
     }
 
 
+def _tab_context_tasks(request: HttpRequest) -> dict[str, Any]:
+    """Context for the Tasks tab — Celery task registry with manual triggers."""
+    from django_celery_beat.models import PeriodicTask
+
+    registered_tasks = [
+        {
+            "name": "seo_index_post",
+            "label": "Index Post",
+            "description": "Run SEO audit on a single post by ID.",
+            "requires_arg": True,
+            "arg_label": "Post ID",
+        },
+        {
+            "name": "seo_index_page",
+            "label": "Index Page",
+            "description": "Run SEO audit on a single page by ID.",
+            "requires_arg": True,
+            "arg_label": "Page ID",
+        },
+        {
+            "name": "seo_apply_due_autofixes",
+            "label": "Apply Due Autofixes",
+            "description": "Auto-apply overdue metadata/interlink suggestions that meet the confidence threshold.",
+            "requires_arg": False,
+        },
+        {
+            "name": "seo_backfill",
+            "label": "Backfill All Content",
+            "description": "Run full SEO signal pipeline in batches across all posts and pages.",
+            "requires_arg": False,
+        },
+        {
+            "name": "seo_run_scan_job",
+            "label": "Run Scan Job",
+            "description": "Execute a specific queued scan job by ID.",
+            "requires_arg": True,
+            "arg_label": "Job ID",
+        },
+        {
+            "name": "seo_repair_orphans",
+            "label": "Repair Orphans",
+            "description": "Find content with no inbound interlinks and create link suggestions.",
+            "requires_arg": False,
+        },
+        {
+            "name": "seo_verify_graph_connectivity",
+            "label": "Verify Graph",
+            "description": "Check the interlink graph for connectivity gaps.",
+            "requires_arg": False,
+        },
+        {
+            "name": "seo_schedule_full_scan",
+            "label": "Schedule Full Scan",
+            "description": "Queue a full-site SEO scan job.",
+            "requires_arg": False,
+        },
+    ]
+
+    # Check if any periodic tasks are registered for these
+    periodic_tasks: dict[str, Any] = {}
+    try:
+        for pt in PeriodicTask.objects.filter(task__startswith="seo.tasks."):
+            short_name = pt.task.rsplit(".", 1)[-1] if "." in pt.task else pt.task
+            periodic_tasks[short_name] = {
+                "enabled": pt.enabled,
+                "interval": str(pt.interval) if pt.interval else str(pt.crontab) if pt.crontab else "—",
+                "last_run": pt.last_run_at,
+            }
+    except Exception:
+        logger.warning("Could not load periodic tasks", exc_info=True)
+
+    # Merge periodic task info into registered tasks
+    for task in registered_tasks:
+        name = str(task["name"])
+        beat_info = periodic_tasks.get(name)
+        task["beat_enabled"] = beat_info["enabled"] if beat_info else False
+        task["beat_schedule"] = str(beat_info["interval"]) if beat_info else ""
+        task["beat_last_run"] = str(beat_info["last_run"]) if beat_info and beat_info["last_run"] else ""
+
+    return {
+        "registered_tasks": registered_tasks,
+        "engine_settings": SeoEngineSettings.get_solo(),
+        "control_querystring": request.GET.urlencode(),
+    }
+
+
 # ---------------------------------------------------------------------------
 # Control center views
 # ---------------------------------------------------------------------------
@@ -273,6 +359,7 @@ def seo_control_section(request: HttpRequest, section: str) -> HttpResponse:
         "interlinking": _tab_context_interlinking,
         "metadata": _tab_context_metadata,
         "redirects": _tab_context_redirects,
+        "tasks": _tab_context_tasks,
         "settings": _tab_context_settings,
     }
     _TAB_TEMPLATES: dict[str, str] = {
@@ -280,6 +367,7 @@ def seo_control_section(request: HttpRequest, section: str) -> HttpResponse:
         "interlinking": "seo/admin/partials/seo_control_interlinking.html",
         "metadata": "seo/admin/partials/seo_control_metadata.html",
         "redirects": "seo/admin/partials/seo_control_redirects.html",
+        "tasks": "seo/admin/partials/seo_control_tasks.html",
         "settings": "seo/admin/partials/seo_control_settings.html",
     }
 

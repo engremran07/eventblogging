@@ -41,6 +41,11 @@
        hx-target="#seo-tab-content" hx-swap="innerHTML"
        hx-push-url="{% url 'admin_config:seo_control_canonical_section' 'redirects' %}"
        role="tab">Redirects</a>
+    <a class="admin-control-nav-item {% if active_section == 'tasks' %}active{% endif %}"
+       hx-get="{% url 'admin_config:seo_control_section' 'tasks' %}"
+       hx-target="#seo-tab-content" hx-swap="innerHTML"
+       hx-push-url="{% url 'admin_config:seo_control_canonical_section' 'tasks' %}"
+       role="tab"><i class="bi bi-list-task me-1"></i>Tasks</a>
     <a class="admin-control-nav-item {% if active_section == 'settings' %}active{% endif %}"
        hx-get="{% url 'admin_config:seo_control_section' 'settings' %}"
        hx-target="#seo-tab-content" hx-swap="innerHTML"

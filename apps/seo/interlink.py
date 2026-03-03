@@ -48,7 +48,25 @@ def compute_link_budget(total_docs: int, *, word_count: int, min_links: int, whi
     return max(min(raw_target, whitehat_cap), min_links)
 
 
+def _resolve_original_phrase(body: str, token_phrase: str) -> str | None:
+    """Find the original-case substring in body that matches a lowercase token phrase.
+
+    Returns the original text from body if found, or None.
+    """
+    tokens = token_phrase.split()
+    if not tokens:
+        return None
+    # Build a regex that matches each token with flexible whitespace/punctuation between
+    pattern_parts = [re.escape(tok) for tok in tokens]
+    pattern = r"\b" + r"[\s\-]+".join(pattern_parts) + r"\b"
+    match = re.search(pattern, body, re.IGNORECASE)
+    if match:
+        return match.group(0)
+    return None
+
+
 def _extract_anchor_candidates(body_markdown: str) -> list[str]:
+    """Extract anchor candidates, preserving original casing from the body."""
     headings = [match.group(1).strip() for match in HEADING_RE.finditer(body_markdown or "")]
     sentences = [segment.strip() for segment in SENTENCE_RE.findall(body_markdown or "")]
 
@@ -71,7 +89,55 @@ def _extract_anchor_candidates(body_markdown: str) -> list[str]:
             continue
         ranked.append((count + min(len(phrase.split()) * 0.2, 0.6), phrase))
     ranked.sort(reverse=True)
-    return [phrase for _, phrase in ranked[:200]]
+
+    # Resolve original-case versions from the body text
+    candidates: list[str] = []
+    seen_lower: set[str] = set()
+    for _, token_phrase in ranked[:200]:
+        original = _resolve_original_phrase(body_markdown, token_phrase)
+        anchor = original if original else token_phrase
+        key = anchor.lower()
+        if key not in seen_lower:
+            seen_lower.add(key)
+            candidates.append(anchor)
+    return candidates
+
+
+def _extract_target_title_anchors(
+    source_body: str, target_adapters: list[Any],
+) -> list[tuple[str, Any]]:
+    """Find target titles/excerpts that appear verbatim in the source body.
+
+    Returns (anchor_text, target) pairs — highest quality anchor candidates.
+    """
+    results: list[tuple[str, Any]] = []
+    body_lower = (source_body or "").lower()
+    for target in target_adapters:
+        # Try the full title
+        title = (getattr(target, "title", "") or "").strip()
+        if title and len(title) >= 8 and title.lower() in body_lower:
+            original = _resolve_original_phrase(source_body, title.lower()) or title
+            results.append((original, target))
+            continue
+        # Try excerpt/summary phrases (2-4 word chunks)
+        excerpt = (getattr(target, "excerpt_or_summary", "") or "").strip()
+        if not excerpt:
+            continue
+        excerpt_tokens = _tokens(excerpt)
+        found = False
+        for window in range(min(4, len(excerpt_tokens)), 1, -1):
+            for idx in range(len(excerpt_tokens) - window + 1):
+                phrase = " ".join(excerpt_tokens[idx : idx + window])
+                if len(phrase) < 8:
+                    continue
+                original = _resolve_original_phrase(source_body, phrase)
+                if original:
+                    results.append((original, target))
+                    found = True
+                    break
+            if found:
+                break
+    return results
 
 
 def _target_score(anchor_text: str, target: Any) -> float:
@@ -104,18 +170,49 @@ def _target_score(anchor_text: str, target: Any) -> float:
 
 def build_interlink_suggestions(source_adapter: Any, target_adapters: Any, *, max_links: int, min_score: float = 0.1) -> list[dict[str, Any]]:
     body_text = source_adapter.body_markdown or ""
-    anchor_candidates = _extract_anchor_candidates(body_text)
-    if not anchor_candidates:
-        return []
 
     used_target_ids: set[tuple[str, object]] = set()
     used_anchors: set[str] = set()
     suggestions: list[dict[str, Any]] = []
 
+    # Priority 1: Target titles/excerpts found verbatim in source body
+    target_list = list(target_adapters)
+    title_anchors = _extract_target_title_anchors(body_text, target_list)
+    for anchor, target in title_anchors:
+        target_key = (target.route_type, target.pk)
+        if target_key in used_target_ids:
+            continue
+        anchor_lower = anchor.lower()
+        if anchor_lower in used_anchors:
+            continue
+        score = _target_score(anchor, target)
+        if score < min_score:
+            continue
+        # Boost score for title-match anchors (highly relevant)
+        score = min(score + 0.15, 1.0)
+        suggestions.append(
+            {
+                "anchor_text": anchor,
+                "target_url": target.url,
+                "target_type": target.route_type,
+                "target_id": target.pk,
+                "score": round(score, 4),
+            }
+        )
+        used_target_ids.add(target_key)
+        used_anchors.add(anchor_lower)
+        if len(suggestions) >= max_links:
+            break
+
+    if len(suggestions) >= max_links:
+        return suggestions
+
+    # Priority 2: N-gram anchor candidates from source body (original-cased)
+    anchor_candidates = _extract_anchor_candidates(body_text)
     for anchor in anchor_candidates:
         best_target = None
         best_score = 0.0
-        for target in target_adapters:
+        for target in target_list:
             target_key = (target.route_type, target.pk)
             if target_key in used_target_ids:
                 continue
@@ -126,9 +223,10 @@ def build_interlink_suggestions(source_adapter: Any, target_adapters: Any, *, ma
 
         if not best_target or best_score < min_score:
             continue
-        if anchor in used_anchors:
+        anchor_lower = anchor.lower()
+        if anchor_lower in used_anchors:
             continue
-        if anchor not in body_text.lower():
+        if anchor_lower not in body_text.lower():
             continue
 
         suggestions.append(
@@ -141,7 +239,7 @@ def build_interlink_suggestions(source_adapter: Any, target_adapters: Any, *, ma
             }
         )
         used_target_ids.add((best_target.route_type, best_target.pk))
-        used_anchors.add(anchor)
+        used_anchors.add(anchor_lower)
         if len(suggestions) >= max_links:
             break
 
@@ -160,13 +258,16 @@ def apply_suggestions_to_markdown(body_markdown: str, suggestions: list[dict[str
         target_url = suggestion.get("target_url", "").strip()
         if not anchor or not target_url:
             continue
-        if f"[{anchor}](" in content:
+        # Skip if anchor is already a link (case-insensitive check)
+        if f"[{anchor}](" in content or f"[{anchor.lower()}](" in content.lower():
             continue
 
-        # Replace first standalone occurrence of anchor text with markdown link.
+        # Replace first standalone occurrence, preserving original case from body
         pattern = re.compile(rf"(?<!\[)\b{re.escape(anchor)}\b(?!\])", re.IGNORECASE)
-        content, changes = pattern.subn(f"[{anchor}]({target_url})", content, count=1)
-        if changes:
+        match = pattern.search(content)
+        if match:
+            original_text = match.group(0)  # preserve original casing
+            content = content[:match.start()] + f"[{original_text}]({target_url})" + content[match.end():]
             applied += 1
             applied_suggestions.append(suggestion)
 

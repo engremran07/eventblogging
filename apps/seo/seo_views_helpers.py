@@ -63,6 +63,7 @@ SEO_CONTROL_SECTIONS = {
     "interlinking",
     "metadata",
     "redirects",
+    "tasks",
     "settings",
     # Legacy sections — aliased to new tabs.
     "scan",

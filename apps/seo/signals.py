@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 from django.db import transaction
 from django.db.models.signals import post_delete, post_save
@@ -34,14 +35,41 @@ def _should_skip(instance, raw: bool):
     return raw or bool(getattr(instance, "_seo_skip_signal", False)) or not getattr(instance, "pk", None)
 
 
+def _log_metadata_changes(instance: Any, changes: dict[str, str]) -> None:
+    """Log autonomous metadata changes to SeoChangeLog for admin visibility."""
+    try:
+        from django.contrib.contenttypes.models import ContentType
+
+        from .models import SeoChangeLog
+        ct = ContentType.objects.get_for_model(instance.__class__)
+        rows = []
+        for field_name, old_value in changes.items():
+            new_value = str(getattr(instance, field_name, "") or "")
+            if field_name == "meta_title":
+                change_type = SeoChangeLog.ChangeType.META_TITLE_FIXED
+            elif field_name == "meta_description":
+                change_type = SeoChangeLog.ChangeType.META_DESC_FIXED
+            elif field_name == "canonical_url" and old_value:
+                change_type = SeoChangeLog.ChangeType.CANONICAL_FIXED
+            elif field_name == "canonical_url":
+                change_type = SeoChangeLog.ChangeType.CANONICAL_SET
+            else:
+                change_type = SeoChangeLog.ChangeType.METADATA_APPROVED
+            rows.append(SeoChangeLog(
+                content_type=ct,
+                object_id=instance.pk,
+                change_type=change_type,
+                field_name=field_name,
+                old_value=str(old_value),
+                new_value=new_value,
+            ))
+        if rows:
+            SeoChangeLog.objects.bulk_create(rows)
+    except Exception:
+        logger.warning("Failed to log SEO metadata changes", exc_info=True)
+
+
 def _apply_auto_seo_enhancements(post: Post) -> None:
-    """
-    Apply the canonical post SEO enhancement pipeline:
-    - Deterministic taxonomy enrichment (tags/categories/topic)
-    - Auto-generated metadata where missing
-    - JSON-LD schema generation
-    - Internal link suggestions (published posts only)
-    """
     from .interlink import suggest_internal_links
     from .metadata import apply_auto_metadata_to_instance, generate_schema_markup
 
@@ -55,11 +83,18 @@ def _apply_auto_seo_enhancements(post: Post) -> None:
 
         previous_meta_title = post.meta_title
         previous_meta_description = post.meta_description
-        apply_auto_metadata_to_instance(post)
+        previous_canonical = getattr(post, "canonical_url", "") or ""
+        metadata_changes = apply_auto_metadata_to_instance(post)
         if post.meta_title != previous_meta_title:
             changed_fields.add("meta_title")
         if post.meta_description != previous_meta_description:
             changed_fields.add("meta_description")
+        if getattr(post, "canonical_url", "") != previous_canonical:
+            changed_fields.add("canonical_url")
+
+        # Log autonomous metadata changes
+        if metadata_changes:
+            _log_metadata_changes(post, metadata_changes)
 
         schema_markup = generate_schema_markup(
             post,
@@ -94,12 +129,20 @@ def _apply_page_metadata(page: Page) -> None:
 
     before_title = page.meta_title
     before_description = page.meta_description
-    apply_auto_metadata_to_instance(page)
+    before_canonical = getattr(page, "canonical_url", "") or ""
+    metadata_changes = apply_auto_metadata_to_instance(page)
     changed_fields = []
     if page.meta_title != before_title:
         changed_fields.append("meta_title")
     if page.meta_description != before_description:
         changed_fields.append("meta_description")
+    if getattr(page, "canonical_url", "") != before_canonical:
+        changed_fields.append("canonical_url")
+
+    # Log autonomous metadata changes
+    if metadata_changes:
+        _log_metadata_changes(page, metadata_changes)
+
     if not changed_fields:
         return
     page._seo_skip_signal = True

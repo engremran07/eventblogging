@@ -26,6 +26,7 @@ from .interlink import (
 from .metadata import resolve_metadata
 from .models import (
     SeoAuditSnapshot,
+    SeoChangeLog,
     SeoEngineSettings,
     SeoIssue,
     SeoLinkEdge,
@@ -781,6 +782,20 @@ def _apply_interlinks(adapter: ContentAdapter, suggestions: list[dict[str, Any]]
     if hasattr(instance, "record_revision"):
         instance.record_revision(note=f"SEO interlink auto-update: {applied_count} links applied")
 
+    # Log interlink changes
+    try:
+        for row in applied_suggestions:
+            SeoChangeLog.objects.create(
+                content_type=adapter.content_type,
+                object_id=adapter.pk,
+                change_type=SeoChangeLog.ChangeType.INTERLINK_APPLIED,
+                field_name="body_markdown",
+                old_value=row.get("anchor_text", ""),
+                new_value=f"[{row.get('anchor_text', '')}]({row.get('target_url', '')})",
+            )
+    except Exception:
+        logger.warning("Failed to log interlink changes", exc_info=True)
+
     anchors = {row["anchor_text"] for row in applied_suggestions}
     SeoSuggestion.objects.filter(
         content_type=adapter.content_type,
@@ -1027,17 +1042,39 @@ def live_check(content_type: str, payload: dict[str, Any]) -> dict[str, Any]:
 
 
 def apply_due_autofixes() -> dict[str, Any]:
+    """Auto-apply overdue metadata suggestions that meet the confidence threshold."""
     settings = SeoEngineSettings.get_solo()
     if not settings.auto_fix_enabled:
         return {"updated": 0, "reason": "disabled"}
     cutoff = timezone.now() - timedelta(hours=max(settings.auto_fix_after_hours, 1))
-    pending_due = SeoSuggestion.objects.filter(
-        suggestion_type=SeoSuggestion.SuggestionType.METADATA,
-        status__in=[SeoSuggestion.Status.PENDING, SeoSuggestion.Status.NEEDS_CORRECTION],
-        created_at__lte=cutoff,
-    ).count()
-    # Approval-first policy: scheduled tasks only surface due suggestions, never auto-apply.
-    return {"updated": 0, "pending_due": pending_due, "reason": "approval_required"}
+    threshold = settings.autopilot_min_confidence
+
+    due_suggestions = list(
+        SeoSuggestion.objects.filter(
+            suggestion_type__in=[
+                SeoSuggestion.SuggestionType.METADATA,
+                SeoSuggestion.SuggestionType.INTERLINK,
+            ],
+            status__in=[SeoSuggestion.Status.PENDING, SeoSuggestion.Status.NEEDS_CORRECTION],
+            created_at__lte=cutoff,
+            confidence__gte=threshold,
+        ).order_by("-confidence", "created_at")[:200]
+    )
+
+    applied = 0
+    errors = 0
+    for suggestion in due_suggestions:
+        try:
+            result = approve_suggestion(suggestion.pk)
+            if result.get("ok"):
+                applied += 1
+            else:
+                errors += 1
+        except Exception:
+            logger.warning("Auto-apply failed for suggestion %s", suggestion.pk, exc_info=True)
+            errors += 1
+
+    return {"updated": applied, "errors": errors, "considered": len(due_suggestions)}
 
 
 def run_autopilot_for_instance(

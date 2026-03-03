@@ -603,3 +603,64 @@ def taxonomy_synonym_export(request: HttpRequest) -> HttpResponse:
     response = HttpResponse(body, content_type="application/json")
     response["Content-Disposition"] = 'attachment; filename="taxonomy-synonyms.json"'
     return response
+
+
+# ---------------------------------------------------------------------------
+# Celery task manual trigger
+# ---------------------------------------------------------------------------
+
+# Map of allowed task names → Celery task functions
+_ALLOWED_TASKS: dict[str, str] = {
+    "seo_index_post": "seo.tasks.seo_index_post",
+    "seo_index_page": "seo.tasks.seo_index_page",
+    "seo_apply_due_autofixes": "seo.tasks.seo_apply_due_autofixes",
+    "seo_backfill": "seo.tasks.seo_backfill",
+    "seo_run_scan_job": "seo.tasks.seo_run_scan_job",
+    "seo_repair_orphans": "seo.tasks.seo_repair_orphans",
+    "seo_verify_graph_connectivity": "seo.tasks.seo_verify_graph_connectivity",
+    "seo_schedule_full_scan": "seo.tasks.seo_schedule_full_scan",
+}
+
+
+@staff_member_required
+@require_POST
+def seo_task_run(request: HttpRequest) -> HttpResponse:
+    """Manually trigger a Celery SEO task from the Tasks tab."""
+    _ensure_admin_control_enabled()
+
+    task_name = (request.POST.get("task_name") or "").strip()
+    task_arg = (request.POST.get("task_arg") or "").strip()
+
+    if task_name not in _ALLOWED_TASKS:
+        return JsonResponse({"ok": False, "error": f"Unknown task: {task_name}"}, status=400)
+
+    try:
+        from . import tasks as seo_tasks
+
+        task_func = getattr(seo_tasks, task_name, None)
+        if task_func is None:
+            return JsonResponse({"ok": False, "error": f"Task not found: {task_name}"}, status=400)
+
+        # Send the task to Celery
+        if task_arg:
+            try:
+                arg_value = int(task_arg)
+            except ValueError:
+                return JsonResponse({"ok": False, "error": "Argument must be a number."}, status=400)
+            result = task_func.delay(arg_value)
+        else:
+            result = task_func.delay()
+
+        logger.info("SEO task %s triggered manually by %s (task_id=%s)", task_name, request.user, result.id)
+
+        # Return JSON for HTMX
+        return JsonResponse({
+            "ok": True,
+            "task_name": task_name,
+            "task_id": str(result.id),
+            "message": f"Task '{task_name}' queued successfully.",
+        })
+
+    except Exception:
+        logger.warning("Failed to trigger task %s", task_name, exc_info=True)
+        return JsonResponse({"ok": False, "error": "Failed to queue task. Is Celery running?"}, status=500)

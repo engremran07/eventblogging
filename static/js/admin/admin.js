@@ -749,11 +749,117 @@
         });
     }
 
+    // ── Media bulk select / delete ─────────────────────────────────────────
+    function getSelectedMediaIds(scope) {
+        return Array.from(scope.querySelectorAll("[data-select-media]:checked"))
+            .map((node) => node.value)
+            .filter(Boolean);
+    }
+
+    function updateMediaBulkBar(scope) {
+        const selectedIds = getSelectedMediaIds(scope);
+        const deleteBtn = scope.querySelector("[data-media-bulk-delete]");
+        if (!deleteBtn) return;
+        deleteBtn.style.display = selectedIds.length > 0 ? "" : "none";
+        deleteBtn.disabled = selectedIds.length === 0;
+        const icon = '<i class="fas fa-trash"></i> ';
+        deleteBtn.innerHTML = selectedIds.length > 0
+            ? `${icon}Delete Selected (${selectedIds.length})`
+            : `${icon}Delete Selected`;
+    }
+
+    async function executeMediaBulkDelete(scope) {
+        const selectedIds = getSelectedMediaIds(scope);
+        if (!selectedIds.length) return;
+
+        const confirmed = window.confirm(
+            `Delete ${selectedIds.length} file(s)? This cannot be undone.`
+        );
+        if (!confirmed) return;
+
+        const bulkUrl = scope.dataset.bulkUrl;
+        if (!bulkUrl) return;
+
+        const csrfToken = getCsrfToken();
+        const formData = new FormData();
+        formData.append("action", "delete");
+        selectedIds.forEach((id) => formData.append("selected", id));
+
+        try {
+            const response = await fetch(bulkUrl, {
+                method: "POST",
+                credentials: "same-origin",
+                headers: {
+                    "X-CSRFToken": csrfToken,
+                    "HX-Request": "true",
+                    "X-Requested-With": "XMLHttpRequest",
+                },
+                body: formData,
+            });
+
+            if (response.ok) {
+                // Refresh the media browser via HTMX
+                const browserTarget = document.querySelector("#media-browser-content");
+                if (browserTarget && window.htmx) {
+                    htmx.ajax("GET", window.location.href, {
+                        target: browserTarget,
+                        swap: "innerHTML",
+                    });
+                } else {
+                    window.location.reload();
+                }
+            } else {
+                console.error("Media bulk delete failed", response.status);
+            }
+        } catch (err) {
+            console.error("Media bulk delete error", err);
+        }
+    }
+
+    function initMediaBulkScope(root) {
+        const scopes = root.querySelectorAll("[data-media-bulk]");
+        scopes.forEach((scope) => {
+            if (scope.dataset.mediaBound === "true") return;
+            scope.dataset.mediaBound = "true";
+
+            const selectAll = scope.querySelector("[data-select-all-media]");
+            if (selectAll) {
+                selectAll.addEventListener("change", () => {
+                    scope.querySelectorAll("[data-select-media]").forEach((cb) => {
+                        cb.checked = selectAll.checked;
+                    });
+                    updateMediaBulkBar(scope);
+                });
+            }
+
+            scope.querySelectorAll("[data-select-media]").forEach((cb) => {
+                cb.addEventListener("change", () => {
+                    if (selectAll) {
+                        const all = scope.querySelectorAll("[data-select-media]");
+                        const checked = scope.querySelectorAll("[data-select-media]:checked");
+                        selectAll.checked = all.length > 0 && checked.length === all.length;
+                    }
+                    updateMediaBulkBar(scope);
+                });
+            });
+
+            const deleteBtn = scope.querySelector("[data-media-bulk-delete]");
+            if (deleteBtn) {
+                deleteBtn.addEventListener("click", () => {
+                    executeMediaBulkDelete(scope);
+                });
+            }
+
+            updateMediaBulkBar(scope);
+        });
+    }
+
     function initializeWorkspace(root) {
         const scope = root && root.querySelectorAll ? root : document;
         initFilterForms(scope);
         initSeoScoreMeters(scope);
         initPostsBulkScope(scope);
+        initMediaBulkScope(scope);
         initCategoriesDragAndDrop(scope);
     }
 

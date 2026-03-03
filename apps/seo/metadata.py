@@ -469,25 +469,103 @@ def generate_news_article_schema(post: Any, canonical: str) -> dict[str, Any]:
     return schema
 
 
-def apply_auto_metadata_to_instance(instance: Any) -> None:
+def apply_auto_metadata_to_instance(instance: Any) -> dict[str, str]:
     """
     Apply auto-generated metadata fields to a model instance.
-    Only sets fields that are not already manually set.
+    Now ALWAYS evaluates and fixes suboptimal values, not just empty ones.
+    Respects SeoMetadataLock — locked fields are never touched.
 
-    Args:
-        instance: Post or Page model instance
+    Returns dict of {field_name: old_value} for fields that were changed.
     """
-    # Auto-generate meta_title if not set
-    if not getattr(instance, "meta_title", None):
-        auto_title = auto_generate_meta_title(instance)
-        if auto_title and hasattr(instance, "meta_title"):
-            instance.meta_title = auto_title
+    from .models import SeoMetadataLock
 
-    # Auto-generate meta_description if not set
-    if not getattr(instance, "meta_description", None):
-        auto_desc = auto_generate_meta_description(instance)
-        if auto_desc and hasattr(instance, "meta_description"):
-            instance.meta_description = auto_desc
+    changes: dict[str, str] = {}
+    ct = None
+    try:
+        from django.contrib.contenttypes.models import ContentType
+        ct = ContentType.objects.get_for_model(instance.__class__)
+    except Exception:
+        pass
+
+    lock = None
+    if ct and getattr(instance, "pk", None):
+        lock = SeoMetadataLock.objects.filter(
+            content_type=ct, object_id=instance.pk,
+        ).first()
+
+    # ── Meta title: fill if empty OR fix if bad length ──────────────────
+    if hasattr(instance, "meta_title") and not (lock and lock.lock_title):
+        current_title = getattr(instance, "meta_title", "") or ""
+        needs_fix = False
+        if not current_title or len(current_title) > 70 or len(current_title) < 20:
+            needs_fix = True
+
+        if needs_fix:
+            auto_title = auto_generate_meta_title(instance)
+            if auto_title and auto_title != current_title:
+                changes["meta_title"] = current_title
+                instance.meta_title = auto_title
+
+    # ── Meta description: fill if empty OR fix if bad length ────────────
+    if hasattr(instance, "meta_description") and not (lock and lock.lock_description):
+        current_desc = getattr(instance, "meta_description", "") or ""
+        needs_fix = False
+        if not current_desc or len(current_desc) > 170 or len(current_desc) < 60:
+            needs_fix = True
+
+        if needs_fix:
+            auto_desc = auto_generate_meta_description(instance)
+            if auto_desc and auto_desc != current_desc:
+                changes["meta_description"] = current_desc
+                instance.meta_description = auto_desc
+
+    # ── Canonical URL: fill if empty, fix if relative ───────────────────
+    if hasattr(instance, "canonical_url") and not (lock and lock.lock_canonical):
+        current_canonical = getattr(instance, "canonical_url", "") or ""
+        needs_fix = False
+        if not current_canonical or not _is_absolute_url(current_canonical):
+            needs_fix = True
+
+        if needs_fix:
+            auto_canonical = _auto_generate_canonical(instance)
+            if auto_canonical and auto_canonical != current_canonical:
+                changes["canonical_url"] = current_canonical
+                instance.canonical_url = auto_canonical
+
+    return changes
+
+
+def _is_absolute_url(url: str) -> bool:
+    """Check if URL has scheme and netloc."""
+    from urllib.parse import urlparse
+    parsed = urlparse(url)
+    return bool(parsed.scheme and parsed.netloc)
+
+
+def _auto_generate_canonical(instance: Any) -> str:
+    """Generate absolute canonical URL from SeoSettings.canonical_base_url + get_absolute_url()."""
+    try:
+        path = instance.get_absolute_url()
+    except Exception:
+        return ""
+    if not path:
+        return ""
+
+    site_seo = SiteSeoSettings.get_solo()
+    base_url = getattr(site_seo, "canonical_base_url", "") or ""
+
+    if base_url:
+        return _canonical_from_base(base_url, path)
+
+    # Fallback: try to build from Django sites framework
+    try:
+        from django.contrib.sites.models import Site
+        current_site = Site.objects.get_current()
+        return f"https://{current_site.domain}{path}"
+    except Exception:
+        pass
+
+    return ""
 
 
 def generate_schema_markup(post: Any, canonical: str, *, schema_type: str = "BlogPosting") -> dict[str, Any]:

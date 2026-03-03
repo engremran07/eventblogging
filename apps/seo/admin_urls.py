@@ -56,6 +56,8 @@ urlpatterns = [
         views.seo_scan_job_cancel,
         name="seo_scan_job_cancel",
     ),
+    # ── Celery task manual trigger ───────────────────────────────────────
+    path("tasks/run/", views.seo_task_run, name="seo_task_run"),
     # ── Taxonomy (synonyms) ──────────────────────────────────────────────
     path("taxonomy/synonyms/", views.taxonomy_synonyms, name="taxonomy_synonyms"),
     path(

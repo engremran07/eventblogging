@@ -18,22 +18,37 @@ ALLOWED_HOSTS = os.getenv("DJANGO_ALLOWED_HOSTS", "example.com").split(",")
 
 # SECRET_KEY is already enforced in base.py - no fallback here
 
-# Production database with connection pooling
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("POSTGRES_DB"),
-        "USER": os.getenv("POSTGRES_USER"),
-        "PASSWORD": os.getenv("POSTGRES_PASSWORD"),
-        "HOST": os.getenv("POSTGRES_HOST"),
-        "PORT": os.getenv("POSTGRES_PORT", "5432"),
-        "CONN_MAX_AGE": int(os.getenv("POSTGRES_CONN_MAX_AGE", "600")),
-        "CONN_HEALTH_CHECKS": True,
-        "OPTIONS": {
-            "connect_timeout": 10,
-        },
+# Production database — supports Render/Heroku DATABASE_URL or individual POSTGRES_* vars
+_DATABASE_URL = os.getenv("DATABASE_URL", "")
+
+if _DATABASE_URL:
+    import dj_database_url
+
+    DATABASES = {
+        "default": dj_database_url.config(
+            default=_DATABASE_URL,
+            conn_max_age=int(os.getenv("POSTGRES_CONN_MAX_AGE", "600")),
+            conn_health_checks=True,
+            ssl_require=os.getenv("DATABASE_SSL", "true").lower() == "true",
+        )
     }
-}
+    DATABASES["default"].setdefault("OPTIONS", {})["connect_timeout"] = 10
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": os.getenv("POSTGRES_DB"),
+            "USER": os.getenv("POSTGRES_USER"),
+            "PASSWORD": os.getenv("POSTGRES_PASSWORD"),
+            "HOST": os.getenv("POSTGRES_HOST"),
+            "PORT": os.getenv("POSTGRES_PORT", "5432"),
+            "CONN_MAX_AGE": int(os.getenv("POSTGRES_CONN_MAX_AGE", "600")),
+            "CONN_HEALTH_CHECKS": True,
+            "OPTIONS": {
+                "connect_timeout": 10,
+            },
+        }
+    }
 
 # Security settings enabled for production
 SECURE_SSL_REDIRECT = True

@@ -94,3 +94,19 @@ def robots_txt(request):
         },
     ).content
     return HttpResponse(content, content_type="text/plain; charset=utf-8")
+
+
+@require_GET
+def healthz(request):
+    """Health check endpoint for Render / load balancers."""
+    import logging
+
+    from django.db import connection
+
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+        return HttpResponse("ok", content_type="text/plain", status=200)
+    except Exception:
+        logging.getLogger(__name__).warning("Health check failed: DB unreachable")
+        return HttpResponse("db unavailable", content_type="text/plain", status=503)

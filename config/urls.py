@@ -131,6 +131,7 @@ urlpatterns = [
         "admin/media/",
         include(("media.urls", "admin_media"), namespace="admin_media"),
     ),
+    path("healthz/", config_views.healthz, name="healthz"),
     path("auth/", include("core.urls")),
     path("admin/", admin.site.urls),
     path("api/", include("seo.urls")),

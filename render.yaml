@@ -1,0 +1,71 @@
+# =============================================================================
+# DjangoBlog — Render Blueprint (Free Tier)
+#
+# Deploy: Render Dashboard → New → Blueprint → connect your GitHub repo
+# Render reads this file and provisions all services automatically.
+#
+# Free tier limitations:
+#   - Web service spins down after 15 min of inactivity (cold starts ~30s)
+#   - PostgreSQL expires after 90 days (backup + recreate to continue)
+#   - Redis: 25 MB with auto-eviction (allkeys-lru)
+#   - No Background Workers — Celery tasks won't run on free tier
+#     Upgrade web + add a Starter worker ($7/mo) to enable SEO background tasks
+# =============================================================================
+
+databases:
+  - name: djangoblog-db
+    plan: free
+    databaseName: djangoblog
+    user: djangoblog_user
+    postgresMajorVersion: 16
+    ipAllowList: []  # only internal Render access
+
+services:
+  # ── Web Service (Free) ─────────────────────────────────────────────────────
+  - type: web
+    name: djangoblog-web
+    runtime: python
+    plan: free
+    region: oregon
+    buildCommand: "./build.sh"
+    startCommand: "gunicorn config.wsgi:application --workers 2 --bind 0.0.0.0:$PORT --timeout 120 --access-logfile - --error-logfile -"
+    healthCheckPath: /healthz/
+    autoDeploy: true
+    envVars:
+      - key: DJANGO_ENV
+        value: production
+      - key: PYTHON_VERSION
+        value: "3.14.2"
+      - key: PYTHONPATH
+        value: /opt/render/project/src/apps
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DJANGO_DEBUG
+        value: "false"
+      - key: DJANGO_ALLOWED_HOSTS
+        sync: false  # Set manually: your-app.onrender.com
+      - key: DJANGO_CSRF_TRUSTED_ORIGINS
+        sync: false  # Set manually: https://your-app.onrender.com
+      - key: DATABASE_URL
+        fromDatabase:
+          name: djangoblog-db
+          property: connectionString
+      - key: DATABASE_SSL
+        value: "true"
+      - key: REDIS_URL
+        fromService:
+          name: djangoblog-redis
+          type: redis
+          property: connectionString
+      - key: CELERY_BROKER_URL
+        fromService:
+          name: djangoblog-redis
+          type: redis
+          property: connectionString
+
+  # ── Redis (Free — 25 MB) ──────────────────────────────────────────────────
+  - type: redis
+    name: djangoblog-redis
+    plan: free
+    maxmemoryPolicy: allkeys-lru
+    ipAllowList: []

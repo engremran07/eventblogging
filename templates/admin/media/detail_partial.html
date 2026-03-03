@@ -1,0 +1,49 @@
+{# HTMX partial: Quick-view detail sidebar for a media file #}
+<div class="media-quick-view card">
+    {% if media_file.is_image and media_file.file %}
+        <img src="{{ media_file.file_url }}"
+             alt="{{ media_file.alt_text|default:media_file.original_filename }}"
+             class="media-quick-view-image">
+    {% else %}
+        <div class="media-quick-view-icon">
+            {% if media_file.file_type == "document" %}
+                <i class="fas fa-file-pdf"></i>
+            {% elif media_file.file_type == "video" %}
+                <i class="fas fa-file-video"></i>
+            {% elif media_file.file_type == "audio" %}
+                <i class="fas fa-file-audio"></i>
+            {% else %}
+                <i class="fas fa-file"></i>
+            {% endif %}
+        </div>
+    {% endif %}
+    <div class="media-quick-view-body">
+        <h3 class="media-quick-view-title">{{ media_file.title|default:media_file.original_filename }}</h3>
+        <dl class="media-info-list">
+            <dt>Type</dt>
+            <dd>{{ media_file.mime_type }}</dd>
+            <dt>Size</dt>
+            <dd>{{ media_file.file_size|filesizeformat }}</dd>
+            {% if media_file.width and media_file.height %}
+                <dt>Dimensions</dt>
+                <dd>{{ media_file.width }} &times; {{ media_file.height }} px</dd>
+            {% endif %}
+            {% if media_file.alt_text %}
+                <dt>Alt Text</dt>
+                <dd>{{ media_file.alt_text }}</dd>
+            {% endif %}
+            {% if media_file.folder %}
+                <dt>Folder</dt>
+                <dd>{{ media_file.folder }}</dd>
+            {% endif %}
+        </dl>
+        <div class="media-quick-view-actions">
+            <a href="{% url 'admin_media:edit' media_file.pk %}" class="btn btn-primary btn-xs">
+                <i class="fas fa-pen"></i> Edit
+            </a>
+            <a href="{{ media_file.file_url }}" class="btn btn-ghost btn-xs" target="_blank" rel="noopener">
+                <i class="fas fa-external-link-alt"></i> Open
+            </a>
+        </div>
+    </div>
+</div>

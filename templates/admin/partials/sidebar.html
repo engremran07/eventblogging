@@ -94,6 +94,11 @@
                 <span class="nav-icon"><i class="fas fa-file-lines"></i></span>
                 <span class="nav-label">Pages</span>
             </a>
+
+            <a href="{% url 'admin_media:list' %}" class="nav-item {% if 'admin_media' in request.resolver_match.namespace %}active{% endif %}">
+                <span class="nav-icon"><i class="fas fa-photo-film"></i></span>
+                <span class="nav-label">Media</span>
+            </a>
         </div>
         
         <!-- SEO SECTION -->

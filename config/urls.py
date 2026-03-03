@@ -127,6 +127,10 @@ urlpatterns = [
         blog_admin_views.admin_settings_theme_toggle,
         name="admin_settings_theme_toggle",
     ),
+    path(
+        "admin/media/",
+        include(("media.urls", "admin_media"), namespace="admin_media"),
+    ),
     path("auth/", include("core.urls")),
     path("admin/", admin.site.urls),
     path("api/", include("seo.urls")),

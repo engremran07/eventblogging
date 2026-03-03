@@ -1,0 +1,59 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block title %}Upload Media | Admin{% endblock %}
+
+{% block content %}
+    <div class="workspace-shell" data-admin-workspace="media">
+        <section class="card workspace-hero">
+            <div>
+                <p class="workspace-eyebrow">Asset Management</p>
+                <h1 class="workspace-title">Upload Media</h1>
+                <p class="workspace-subtitle">
+                    Upload images, documents, and other files to the media library.
+                </p>
+            </div>
+            <div class="workspace-hero-actions">
+                <a href="{% url 'admin_media:list' %}" class="btn btn-secondary btn-sm">
+                    <i class="fas fa-arrow-left"></i> Back to Library
+                </a>
+            </div>
+        </section>
+
+        <section class="card media-upload-card">
+            <form method="post" action="{% url 'admin_media:upload' %}" enctype="multipart/form-data" class="media-upload-form">
+                {% csrf_token %}
+
+                <div class="media-dropzone" id="media-dropzone">
+                    <i class="fas fa-cloud-arrow-up media-dropzone-icon"></i>
+                    <p class="media-dropzone-text">
+                        Drag and drop files here, or click to browse
+                    </p>
+                    <p class="media-dropzone-hint">
+                        Supports images, PDFs, documents, video, and audio files.
+                    </p>
+                    {{ form.file }}
+                </div>
+
+                <div class="media-upload-options">
+                    <div class="mb-3">
+                        <label for="id_folder" class="form-label">Folder (optional)</label>
+                        {{ form.folder }}
+                        <small class="form-text text-muted">Organize files into virtual folders, e.g. "blog/covers"</small>
+                    </div>
+                    <div class="form-check mb-3">
+                        {{ form.is_public }}
+                        <label for="id_is_public" class="form-check-label">Publicly accessible</label>
+                    </div>
+                </div>
+
+                <div class="media-upload-actions">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-upload"></i> Upload
+                    </button>
+                    <a href="{% url 'admin_media:list' %}" class="btn btn-ghost">Cancel</a>
+                </div>
+            </form>
+        </section>
+    </div>
+{% endblock %}

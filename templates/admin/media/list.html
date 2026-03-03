@@ -1,0 +1,118 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block title %}Media Library | Admin{% endblock %}
+
+{% block extrahead %}{{ block.super }}{% endblock %}
+
+{% block content %}
+    <div class="workspace-shell" data-admin-workspace="media" data-list-url="{% url 'admin_media:list' %}">
+        <section class="card workspace-hero">
+            <div>
+                <p class="workspace-eyebrow">Asset Management</p>
+                <h1 class="workspace-title">Media Library</h1>
+                <p class="workspace-subtitle">
+                    Upload, organize, and manage all images, documents, and media files.
+                </p>
+            </div>
+            <div class="workspace-hero-actions">
+                <a href="{% url 'admin_media:upload' %}" class="btn btn-primary btn-sm">
+                    <i class="fas fa-upload"></i> Upload Files
+                </a>
+                <a href="{% url 'admin:index' %}" class="btn btn-secondary btn-sm">Dashboard</a>
+            </div>
+        </section>
+
+        <section class="workspace-kpis">
+            <article class="workspace-kpi">
+                <small>Total</small>
+                <strong>{{ stats.total }}</strong>
+                <span>All media files</span>
+            </article>
+            <article class="workspace-kpi">
+                <small>Images</small>
+                <strong>{{ stats.image }}</strong>
+                <span>Photos &amp; graphics</span>
+            </article>
+            <article class="workspace-kpi">
+                <small>Documents</small>
+                <strong>{{ stats.document }}</strong>
+                <span>PDFs, docs, sheets</span>
+            </article>
+            <article class="workspace-kpi">
+                <small>Other</small>
+                <strong>{{ stats.video|add:stats.audio|add:stats.other }}</strong>
+                <span>Video, audio &amp; misc</span>
+            </article>
+        </section>
+
+        <section class="card workspace-filter-card">
+            <form
+                method="get"
+                action="{% url 'admin_media:list' %}"
+                class="workspace-filter-grid"
+                data-workspace-filter
+                data-filter-url="{% url 'admin_media:list' %}"
+                data-filter-target="#media-grid-container"
+                hx-get="{% url 'admin_media:list' %}"
+                hx-target="#media-grid-container"
+                hx-swap="innerHTML"
+                hx-push-url="true"
+            >
+                <div class="workspace-field workspace-field--status">
+                    <label for="media-type">Type</label>
+                    <select id="media-type" name="file_type">
+                        <option value="">All types</option>
+                        <option value="image" {% if file_type == "image" %}selected{% endif %}>Images</option>
+                        <option value="document" {% if file_type == "document" %}selected{% endif %}>Documents</option>
+                        <option value="video" {% if file_type == "video" %}selected{% endif %}>Video</option>
+                        <option value="audio" {% if file_type == "audio" %}selected{% endif %}>Audio</option>
+                        <option value="other" {% if file_type == "other" %}selected{% endif %}>Other</option>
+                    </select>
+                </div>
+
+                <div class="workspace-field workspace-field--category">
+                    <label for="media-folder">Folder</label>
+                    <select id="media-folder" name="folder">
+                        <option value="">All folders</option>
+                        {% for f in folders %}
+                            <option value="{{ f }}" {% if folder == f %}selected{% endif %}>{{ f }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="workspace-field workspace-field--sort">
+                    <label for="media-sort">Sort</label>
+                    <select id="media-sort" name="sort">
+                        <option value="-created_at" {% if sort_by == "-created_at" %}selected{% endif %}>Newest first</option>
+                        <option value="created_at" {% if sort_by == "created_at" %}selected{% endif %}>Oldest first</option>
+                        <option value="-file_size" {% if sort_by == "-file_size" %}selected{% endif %}>Largest first</option>
+                        <option value="file_size" {% if sort_by == "file_size" %}selected{% endif %}>Smallest first</option>
+                        <option value="title" {% if sort_by == "title" %}selected{% endif %}>Title A-Z</option>
+                    </select>
+                </div>
+
+                <div class="workspace-field workspace-field--search">
+                    <label for="media-search">Search</label>
+                    <input
+                        id="media-search"
+                        type="search"
+                        name="q"
+                        value="{{ search }}"
+                        placeholder="Search filename, title"
+                        data-filter-live
+                    >
+                </div>
+
+                <div class="workspace-filter-actions">
+                    <button type="submit" class="btn btn-secondary btn-sm">Apply</button>
+                    <a href="{% url 'admin_media:list' %}" class="btn btn-ghost btn-sm">Reset</a>
+                </div>
+            </form>
+        </section>
+
+        <div id="media-grid-container">
+            {% include "admin/media/grid.html" %}
+        </div>
+    </div>
+{% endblock %}

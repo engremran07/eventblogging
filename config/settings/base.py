@@ -110,6 +110,7 @@ INSTALLED_APPS = [
     "tags",
     "seo",
     "pages",
+    "media",
 ]
 
 TEST_RUNNER = "config.test_runner.FirstPartyDiscoverRunner"
@@ -323,6 +324,11 @@ LOGGING = {
             "propagate": False,
         },
         "pages": {
+            "handlers": ["console"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
+        "media": {
             "handlers": ["console"],
             "level": "DEBUG",
             "propagate": False,

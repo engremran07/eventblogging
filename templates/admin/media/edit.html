@@ -1,0 +1,115 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block title %}Edit Media | Admin{% endblock %}
+
+{% block content %}
+    <div class="workspace-shell" data-admin-workspace="media">
+        <section class="card workspace-hero">
+            <div>
+                <p class="workspace-eyebrow">Asset Management</p>
+                <h1 class="workspace-title">Edit Media File</h1>
+                <p class="workspace-subtitle">
+                    {{ media_file.original_filename }}
+                </p>
+            </div>
+            <div class="workspace-hero-actions">
+                <a href="{% url 'admin_media:list' %}" class="btn btn-secondary btn-sm">
+                    <i class="fas fa-arrow-left"></i> Back to Library
+                </a>
+            </div>
+        </section>
+
+        <div class="media-edit-layout">
+            {# Preview Panel #}
+            <section class="card media-preview-card">
+                {% if media_file.is_image and media_file.file %}
+                    <img src="{{ media_file.file_url }}"
+                         alt="{{ media_file.alt_text|default:media_file.original_filename }}"
+                         class="media-preview-image">
+                {% else %}
+                    <div class="media-preview-icon">
+                        {% if media_file.file_type == "document" %}
+                            <i class="fas fa-file-pdf"></i>
+                        {% elif media_file.file_type == "video" %}
+                            <i class="fas fa-file-video"></i>
+                        {% elif media_file.file_type == "audio" %}
+                            <i class="fas fa-file-audio"></i>
+                        {% else %}
+                            <i class="fas fa-file"></i>
+                        {% endif %}
+                    </div>
+                {% endif %}
+                <div class="media-file-info">
+                    <dl class="media-info-list">
+                        <dt>Filename</dt>
+                        <dd>{{ media_file.original_filename }}</dd>
+                        <dt>Type</dt>
+                        <dd>{{ media_file.mime_type }}</dd>
+                        <dt>Size</dt>
+                        <dd>{{ media_file.file_size|filesizeformat }}</dd>
+                        {% if media_file.width and media_file.height %}
+                            <dt>Dimensions</dt>
+                            <dd>{{ media_file.width }} &times; {{ media_file.height }} px</dd>
+                        {% endif %}
+                        <dt>Uploaded</dt>
+                        <dd>{{ media_file.created_at|date:"N j, Y g:i A" }}</dd>
+                        {% if media_file.uploaded_by %}
+                            <dt>By</dt>
+                            <dd>{{ media_file.uploaded_by }}</dd>
+                        {% endif %}
+                        <dt>URL</dt>
+                        <dd>
+                            <a href="{{ media_file.file_url }}" target="_blank" rel="noopener" class="workspace-link">
+                                {{ media_file.file_url }}
+                            </a>
+                        </dd>
+                    </dl>
+                </div>
+            </section>
+
+            {# Edit Form Panel #}
+            <section class="card media-edit-form-card">
+                <h2 class="media-form-heading">Metadata</h2>
+                <form method="post" action="{% url 'admin_media:edit' media_file.pk %}">
+                    {% csrf_token %}
+
+                    <div class="mb-3">
+                        <label for="id_title" class="form-label">Title</label>
+                        {{ form.title }}
+                    </div>
+                    <div class="mb-3">
+                        <label for="id_alt_text" class="form-label">Alt Text</label>
+                        {{ form.alt_text }}
+                        <small class="form-text text-muted">Describes the image for screen readers and SEO.</small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="id_caption" class="form-label">Caption</label>
+                        {{ form.caption }}
+                    </div>
+                    <div class="mb-3">
+                        <label for="id_folder" class="form-label">Folder</label>
+                        {{ form.folder }}
+                    </div>
+                    <div class="form-check mb-3">
+                        {{ form.is_public }}
+                        <label for="id_is_public" class="form-check-label">Publicly accessible</label>
+                    </div>
+
+                    <div class="media-edit-actions">
+                        <button type="submit" class="btn btn-primary btn-sm">
+                            <i class="fas fa-save"></i> Save Changes
+                        </button>
+                        <form method="post" action="{% url 'admin_media:delete' media_file.pk %}" class="d-inline">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-danger btn-sm"
+                                    onclick="return confirm('Delete this file?')">
+                                <i class="fas fa-trash"></i> Delete
+                            </button>
+                        </form>
+                    </div>
+                </form>
+            </section>
+        </div>
+    </div>
+{% endblock %}

@@ -1,0 +1,106 @@
+<section class="card workspace-table-card" data-media-bulk data-bulk-url="{% url 'admin_media:bulk_action' %}">
+    {% if page_obj.object_list %}
+        <div class="media-grid-actions">
+            <label class="media-select-all-label">
+                <input type="checkbox" data-select-all-media aria-label="Select all media">
+                <span>Select all</span>
+            </label>
+            <button type="button" class="btn btn-danger btn-xs" data-media-bulk-delete style="display:none" disabled>
+                <i class="fas fa-trash"></i> Delete Selected
+            </button>
+        </div>
+
+        <div class="media-grid">
+            {% for media in page_obj %}
+                <div class="media-card" id="media-{{ media.pk }}">
+                    <div class="media-card-select">
+                        <input type="checkbox" value="{{ media.pk }}" data-select-media aria-label="Select {{ media.original_filename }}">
+                    </div>
+                    <div class="media-card-thumb">
+                        {% if media.is_image and media.file %}
+                            <img src="{{ media.file_url }}" alt="{{ media.alt_text|default:media.original_filename }}" loading="lazy">
+                        {% else %}
+                            <div class="media-card-icon">
+                                {% if media.file_type == "document" %}
+                                    <i class="fas fa-file-pdf"></i>
+                                {% elif media.file_type == "video" %}
+                                    <i class="fas fa-file-video"></i>
+                                {% elif media.file_type == "audio" %}
+                                    <i class="fas fa-file-audio"></i>
+                                {% else %}
+                                    <i class="fas fa-file"></i>
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="media-card-body">
+                        <div class="media-card-name" title="{{ media.original_filename }}">
+                            {{ media.title|default:media.original_filename|truncatechars:30 }}
+                        </div>
+                        <div class="media-card-meta">
+                            <span class="badge badge-muted workspace-status">{{ media.file_type }}</span>
+                            <span class="workspace-muted">{{ media.file_size|filesizeformat }}</span>
+                        </div>
+                    </div>
+                    <div class="media-card-actions">
+                        <a href="{% url 'admin_media:edit' media.pk %}" class="btn btn-ghost btn-xs" title="Edit">
+                            <i class="fas fa-pen"></i>
+                        </a>
+                        {% if media.is_image and media.file %}
+                            <button type="button"
+                                    class="btn btn-ghost btn-xs"
+                                    hx-get="{% url 'admin_media:detail_partial' media.pk %}"
+                                    hx-target="#media-detail-drawer"
+                                    hx-swap="innerHTML"
+                                    title="Quick view">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        {% endif %}
+                        <a href="{{ media.file_url }}" class="btn btn-ghost btn-xs" target="_blank" rel="noopener" title="Open file">
+                            <i class="fas fa-external-link-alt"></i>
+                        </a>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+
+        {# Pagination #}
+        {% if page_obj.has_other_pages %}
+            <div class="workspace-pagination">
+                <div class="workspace-pagination-info">
+                    Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                    ({{ page_obj.paginator.count }} total)
+                </div>
+                <div class="workspace-pagination-buttons">
+                    {% if page_obj.has_previous %}
+                        <a href="?page={{ page_obj.previous_page_number }}&q={{ search }}&file_type={{ file_type }}&folder={{ folder }}&sort={{ sort_by }}"
+                           class="btn btn-ghost btn-xs"
+                           hx-get="{% url 'admin_media:list' %}?page={{ page_obj.previous_page_number }}&q={{ search }}&file_type={{ file_type }}&folder={{ folder }}&sort={{ sort_by }}"
+                           hx-target="#media-grid-container"
+                           hx-swap="innerHTML">
+                            <i class="fas fa-chevron-left"></i> Prev
+                        </a>
+                    {% endif %}
+                    {% if page_obj.has_next %}
+                        <a href="?page={{ page_obj.next_page_number }}&q={{ search }}&file_type={{ file_type }}&folder={{ folder }}&sort={{ sort_by }}"
+                           class="btn btn-ghost btn-xs"
+                           hx-get="{% url 'admin_media:list' %}?page={{ page_obj.next_page_number }}&q={{ search }}&file_type={{ file_type }}&folder={{ folder }}&sort={{ sort_by }}"
+                           hx-target="#media-grid-container"
+                           hx-swap="innerHTML">
+                            Next <i class="fas fa-chevron-right"></i>
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
+    {% else %}
+        <div class="workspace-empty">
+            <i class="fas fa-photo-film workspace-empty-icon"></i>
+            <p>No media files found.</p>
+            <a href="{% url 'admin_media:upload' %}" class="btn btn-primary btn-sm">Upload Files</a>
+        </div>
+    {% endif %}
+</section>
+
+{# Drawer target for quick-view detail #}
+<div id="media-detail-drawer"></div>

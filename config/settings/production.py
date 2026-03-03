@@ -22,11 +22,18 @@ ALLOWED_HOSTS = os.getenv("DJANGO_ALLOWED_HOSTS", "example.com").split(",")
 _DATABASE_URL = os.getenv("DATABASE_URL", "")
 
 if _DATABASE_URL:
+    from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
+
     import dj_database_url
+
+    # Strip query params that dj-database-url doesn't handle (e.g. channel_binding)
+    _parsed = urlparse(_DATABASE_URL)
+    _clean_qs = {k: v for k, v in parse_qs(_parsed.query).items() if k == "sslmode"}
+    _clean_url = urlunparse(_parsed._replace(query=urlencode(_clean_qs, doseq=True)))
 
     DATABASES = {
         "default": dj_database_url.config(
-            default=_DATABASE_URL,
+            default=_clean_url,
             conn_max_age=int(os.getenv("POSTGRES_CONN_MAX_AGE", "600")),
             conn_health_checks=True,
             ssl_require=os.getenv("DATABASE_SSL", "true").lower() == "true",

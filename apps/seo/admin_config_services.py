@@ -4,7 +4,10 @@ import json
 from copy import deepcopy
 from datetime import timedelta
 from time import monotonic
+from typing import Any
 
+from django.contrib.auth.base_user import AbstractBaseUser
+from django.contrib.auth.models import AnonymousUser
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 from django.db.models import Count
@@ -27,7 +30,7 @@ from .services import approve_suggestion, audit_content, reject_suggestion, seo_
 from .synonyms import clear_synonym_cache, normalize_term
 
 
-def _target_queryset_for_job_type(job_type: str):
+def _target_queryset_for_job_type(job_type: str) -> tuple[Any, Any]:
     if job_type == SeoScanJob.JobType.POSTS:
         return Post.objects.order_by("id"), Page.objects.none()
     if job_type == SeoScanJob.JobType.PAGES:
@@ -44,7 +47,7 @@ def _target_queryset_for_job_type(job_type: str):
     return Post.objects.order_by("id"), Page.objects.order_by("id")
 
 
-def _build_scan_items(job: SeoScanJob):
+def _build_scan_items(job: SeoScanJob) -> list[SeoScanJobItem]:
     post_qs, page_qs = _target_queryset_for_job_type(job.job_type)
     post_ct = ContentType.objects.get_for_model(Post)
     page_ct = ContentType.objects.get_for_model(Page)
@@ -69,14 +72,20 @@ def _build_scan_items(job: SeoScanJob):
     return items
 
 
-def _engine_snapshot():
+def _engine_snapshot() -> dict[str, Any]:
     settings = SeoEngineSettings.get_solo()
     field_names = [field.name for field in settings._meta.fields if field.name not in {"id"}]
     return model_to_dict(settings, fields=field_names)
 
 
 @transaction.atomic
-def create_scan_job(*, job_type: str, started_by=None, trigger: str = SeoScanJob.Trigger.MANUAL, notes: str = ""):
+def create_scan_job(
+    *,
+    job_type: str,
+    started_by: AbstractBaseUser | AnonymousUser | None = None,
+    trigger: str = SeoScanJob.Trigger.MANUAL,
+    notes: str = "",
+) -> SeoScanJob:
     job = SeoScanJob.objects.create(
         job_type=job_type,
         status=SeoScanJob.Status.QUEUED,
@@ -93,7 +102,7 @@ def create_scan_job(*, job_type: str, started_by=None, trigger: str = SeoScanJob
     return job
 
 
-def _complete_job(job: SeoScanJob, *, status: str, last_error: str = ""):
+def _complete_job(job: SeoScanJob, *, status: str, last_error: str = "") -> None:
     job.status = status
     job.finished_at = timezone.now()
     if last_error:
@@ -101,7 +110,7 @@ def _complete_job(job: SeoScanJob, *, status: str, last_error: str = ""):
     job.save(update_fields=["status", "finished_at", "last_error", "updated_at"])
 
 
-def run_scan_job(job_id: int):
+def run_scan_job(job_id: int) -> dict[str, Any]:
     job = SeoScanJob.objects.filter(pk=job_id).first()
     if not job:
         return {"ok": False, "reason": "missing_job", "job_id": job_id}
@@ -192,7 +201,7 @@ def run_scan_job(job_id: int):
     }
 
 
-def enqueue_scan_job(job_id: int):
+def enqueue_scan_job(job_id: int) -> dict[str, Any]:
     from .tasks import seo_run_scan_job
 
     try:
@@ -204,7 +213,7 @@ def enqueue_scan_job(job_id: int):
         return result
 
 
-def scan_job_progress(job: SeoScanJob):
+def scan_job_progress(job: SeoScanJob) -> dict[str, Any]:
     summary = {
         "job_id": job.id,
         "job_type": job.job_type,
@@ -230,7 +239,7 @@ def scan_job_progress(job: SeoScanJob):
     return summary
 
 
-def cancel_scan_job(job: SeoScanJob):
+def cancel_scan_job(job: SeoScanJob) -> bool:
     if job.status not in {SeoScanJob.Status.QUEUED, SeoScanJob.Status.RUNNING}:
         return False
     job.canceled_requested = True
@@ -238,7 +247,7 @@ def cancel_scan_job(job: SeoScanJob):
     return True
 
 
-def queue_snapshot():
+def queue_snapshot() -> dict[str, int]:
     suggestion_counts = (
         SeoSuggestion.objects.values("status")
         .annotate(total=Count("id"))
@@ -254,7 +263,13 @@ def queue_snapshot():
 
 
 @transaction.atomic
-def edit_suggestion_payload(*, suggestion: SeoSuggestion, payload: dict, edited_by=None, note: str = ""):
+def edit_suggestion_payload(
+    *,
+    suggestion: SeoSuggestion,
+    payload: dict[str, Any],
+    edited_by: AbstractBaseUser | AnonymousUser | None = None,
+    note: str = "",
+) -> SeoSuggestion:
     old_payload = deepcopy(suggestion.payload_json or {})
     suggestion.payload_json = payload
     suggestion.status = SeoSuggestion.Status.NEEDS_CORRECTION
@@ -269,7 +284,9 @@ def edit_suggestion_payload(*, suggestion: SeoSuggestion, payload: dict, edited_
     return suggestion
 
 
-def apply_suggestion_decision(*, suggestion_id: int, action: str, reviewer=None):
+def apply_suggestion_decision(
+    *, suggestion_id: int, action: str, reviewer: AbstractBaseUser | AnonymousUser | None = None
+) -> dict[str, Any]:
     if action == "approve":
         return approve_suggestion(suggestion_id, reviewer=reviewer)
     if action == "reject":
@@ -277,7 +294,9 @@ def apply_suggestion_decision(*, suggestion_id: int, action: str, reviewer=None)
     return {"ok": False, "message": "Unsupported action.", "status": 400}
 
 
-def apply_suggestion_bulk(*, action: str, ids, reviewer=None):
+def apply_suggestion_bulk(
+    *, action: str, ids: list[str], reviewer: AbstractBaseUser | AnonymousUser | None = None
+) -> dict[str, int]:
     success = 0
     skipped = 0
     for raw_id in ids:
@@ -298,7 +317,7 @@ def apply_suggestion_bulk(*, action: str, ids, reviewer=None):
     return {"success": success, "skipped": skipped}
 
 
-def export_synonyms_payload():
+def export_synonyms_payload() -> list[dict[str, Any]]:
     rows = []
     groups = TaxonomySynonymGroup.objects.prefetch_related("terms").order_by("scope", "name")
     for group in groups:
@@ -326,7 +345,7 @@ def export_synonyms_payload():
 
 
 @transaction.atomic
-def import_synonyms_payload(payload):
+def import_synonyms_payload(payload: list[dict[str, Any]]) -> dict[str, int]:
     created_groups = 0
     created_terms = 0
     for raw_group in payload:
@@ -386,7 +405,7 @@ def import_synonyms_payload(payload):
     return {"created_groups": created_groups, "created_terms": created_terms}
 
 
-def seo_overview_with_queue():
+def seo_overview_with_queue() -> dict[str, Any]:
     payload = seo_overview_metrics()
     payload["queue"] = queue_snapshot()
     payload["recent_jobs"] = list(
@@ -406,11 +425,16 @@ def seo_overview_with_queue():
     return payload
 
 
-def dump_synonyms_json():
+def dump_synonyms_json() -> str:
     return json.dumps(export_synonyms_payload(), indent=2, sort_keys=True)
 
 
-def start_full_scan(*, started_by=None, notes: str = "", run_immediately: bool = True):
+def start_full_scan(
+    *,
+    started_by: AbstractBaseUser | AnonymousUser | None = None,
+    notes: str = "",
+    run_immediately: bool = True,
+) -> SeoScanJob:
     job = create_scan_job(
         job_type=SeoScanJob.JobType.FULL,
         started_by=started_by,
@@ -425,7 +449,12 @@ def start_full_scan(*, started_by=None, notes: str = "", run_immediately: bool =
     return job
 
 
-def auto_approve_safe_suggestions(*, reviewer=None, min_confidence: float = 0.82, limit: int = 300):
+def auto_approve_safe_suggestions(
+    *,
+    reviewer: AbstractBaseUser | AnonymousUser | None = None,
+    min_confidence: float = 0.82,
+    limit: int = 300,
+) -> dict[str, int | float]:
     queryset = (
         SeoSuggestion.objects.filter(
             status__in=[SeoSuggestion.Status.PENDING, SeoSuggestion.Status.NEEDS_CORRECTION],

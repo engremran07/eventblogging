@@ -41,7 +41,7 @@ class MediaFile(BaseModel):
     folder = models.CharField(max_length=260, blank=True, db_index=True)
     is_public = models.BooleanField(default=True)
 
-    class Meta:
+    class Meta(BaseModel.Meta):
         ordering = ["-created_at"]
         indexes = [
             models.Index(fields=["file_type", "is_active"]),

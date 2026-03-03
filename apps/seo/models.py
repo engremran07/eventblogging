@@ -1,10 +1,16 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, Any
+
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils import timezone
+
+if TYPE_CHECKING:
+    from django.db.models.manager import RelatedManager
+
 
 User = get_user_model()
 
@@ -152,6 +158,8 @@ class SeoIssue(models.Model):
 
 
 class SeoSuggestion(models.Model):
+    id: int  # auto-generated BigAutoField PK
+
     class SuggestionType(models.TextChoices):
         METADATA = "metadata", "Metadata"
         INTERLINK = "interlink", "Interlink"
@@ -285,6 +293,9 @@ class SeoMetadataLock(models.Model):
 
 
 class SeoScanJob(models.Model):
+    id: int  # auto-generated BigAutoField PK
+    items: RelatedManager[SeoScanJobItem]  # reverse FK from SeoScanJobItem.job
+
     class JobType(models.TextChoices):
         FULL = "full", "Full"
         POSTS = "posts", "Posts"
@@ -347,6 +358,8 @@ class SeoScanJob(models.Model):
 
 
 class SeoScanJobItem(models.Model):
+    id: int  # auto-generated BigAutoField PK
+
     class Status(models.TextChoices):
         PENDING = "pending", "Pending"
         RUNNING = "running", "Running"
@@ -388,6 +401,8 @@ class SeoScanJobItem(models.Model):
 
 
 class TaxonomySynonymGroup(models.Model):
+    id: int  # auto-generated BigAutoField PK
+
     class Scope(models.TextChoices):
         TAGS = "tags", "Tags"
         TOPICS = "topics", "Topics"
@@ -414,6 +429,8 @@ class TaxonomySynonymGroup(models.Model):
 
 
 class TaxonomySynonymTerm(models.Model):
+    id: int  # auto-generated BigAutoField PK
+
     group = models.ForeignKey(
         TaxonomySynonymGroup,
         on_delete=models.CASCADE,
@@ -445,7 +462,7 @@ class TaxonomySynonymTerm(models.Model):
     def __str__(self):
         return self.term
 
-    def save(self, *args, **kwargs):
+    def save(self, *args: Any, **kwargs: Any) -> None:
         self.normalized_term = " ".join((self.term or "").lower().split()).strip()
         super().save(*args, **kwargs)
 

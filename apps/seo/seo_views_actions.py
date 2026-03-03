@@ -67,7 +67,7 @@ def seo_control_run(request: HttpRequest) -> HttpResponseRedirect:
     _ensure_admin_control_enabled()
     notes = (request.POST.get("notes") or "").strip()
     job = start_full_scan(started_by=request.user, notes=notes, run_immediately=True)
-    if job.status == SeoScanJob.Status.COMPLETED:
+    if job.status == SeoScanJob.Status.COMPLETED.value:
         messages.success(
             request,
             (
@@ -328,7 +328,7 @@ def seo_control_suggestion_action(request: HttpRequest, suggestion_id: int, acti
         reviewer=request.user,
     )
     level = messages.SUCCESS if result.get("ok") else messages.WARNING
-    messages.add_message(request, level, result.get("message", "Action completed."))
+    messages.add_message(request, level, str(result.get("message", "Action completed.")))
     return _control_redirect(return_section)
 
 
@@ -406,14 +406,14 @@ def seo_scan_start(request: HttpRequest) -> HttpResponseRedirect | JsonResponse:
     """Start a new SEO scan job."""
     _ensure_admin_control_enabled()
     raw_job_type = (request.POST.get("job_type") or SeoScanJob.JobType.FULL).strip()
-    if raw_job_type == SeoScanJob.JobType.INTERLINKS:
+    if raw_job_type == SeoScanJob.JobType.INTERLINKS.value:
         return seo_interlink_scan_start(request)
     job_type = raw_job_type if raw_job_type in SeoScanJob.JobType.values else SeoScanJob.JobType.FULL
     notes = (request.POST.get("notes") or "").strip()
     job = create_scan_job(job_type=job_type, started_by=request.user, notes=notes)
     result = run_scan_job(job.id)
     job.refresh_from_db()
-    if request.htmx:
+    if getattr(request, "htmx", None):
         return JsonResponse(
             {
                 "ok": bool(result.get("ok", False)),
@@ -426,7 +426,7 @@ def seo_scan_start(request: HttpRequest) -> HttpResponseRedirect | JsonResponse:
                 "redirect": _control_url("scan", job_id=job.id),
             }
         )
-    if job.status == SeoScanJob.Status.COMPLETED:
+    if job.status == SeoScanJob.Status.COMPLETED.value:
         messages.success(
             request,
             (
@@ -458,7 +458,7 @@ def seo_interlink_scan_start(request: HttpRequest) -> HttpResponseRedirect | Jso
     )
     result = run_scan_job(job.id)
     job.refresh_from_db()
-    if request.htmx:
+    if getattr(request, "htmx", None):
         return JsonResponse(
             {
                 "ok": bool(result.get("ok", False)),
@@ -471,7 +471,7 @@ def seo_interlink_scan_start(request: HttpRequest) -> HttpResponseRedirect | Jso
                 "redirect": _control_url("interlinking", job_id=job.id),
             }
         )
-    if job.status == SeoScanJob.Status.COMPLETED:
+    if job.status == SeoScanJob.Status.COMPLETED.value:
         messages.success(
             request,
             (
@@ -500,7 +500,7 @@ def seo_scan_job_cancel(request: HttpRequest, job_id: int) -> HttpResponseRedire
         return JsonResponse({"ok": False, "message": "Superuser required."}, status=403)
     job = get_object_or_404(SeoScanJob, pk=job_id)
     ok = cancel_scan_job(job)
-    if request.htmx:
+    if getattr(request, "htmx", None):
         return JsonResponse({"ok": ok, "job_id": job.id})
     if ok:
         messages.warning(request, f"Scan job #{job.id} cancel requested.")

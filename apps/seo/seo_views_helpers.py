@@ -7,6 +7,7 @@ Split from admin_config_views.py for maintainability.
 from __future__ import annotations
 
 import logging
+from collections.abc import Sequence
 from typing import Any, cast
 
 from django.conf import settings
@@ -24,6 +25,34 @@ from pages.models import Page
 from .models import SeoIssue, SeoLinkEdge, SeoSuggestion
 
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Public API — suppress "not accessed" warnings for cross-module imports
+# ---------------------------------------------------------------------------
+__all__ = [
+    "ONSITE_SUGGESTIONS_PAGE_SIZE",
+    "ONSITE_TASKS_PAGE_SIZE",
+    "SEO_CONTROL_SECTIONS",
+    "SEO_CONTROL_SECTION_ALIASES",
+    "_admin_control_context",
+    "_control_redirect",
+    "_control_url",
+    "_enriched_issue_feed",
+    "_ensure_admin_control_enabled",
+    "_interlink_edge_rows",
+    "_interlink_metrics",
+    "_interlink_suggestion_rows",
+    "_normalize_control_section",
+    "_open_issue_target_refs",
+    "_paginate_rows",
+    "_pending_tasks",
+    "_query_without_keys",
+    "_queue_counts_for_suggestions",
+    "_queue_counts_from_rows",
+    "_resolve_return_section",
+    "_seo_issue_rows",
+    "_suggestion_rows",
+]
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -160,9 +189,9 @@ def _suggestion_target(suggestion: SeoSuggestion) -> dict[str, str]:
 
 def _suggestion_rows(
     *,
-    statuses: list[str] | None = None,
-    suggestion_types: list[str] | None = None,
-    exclude_suggestion_types: list[str] | None = None,
+    statuses: Sequence[str] | None = None,
+    suggestion_types: Sequence[str] | None = None,
+    exclude_suggestion_types: Sequence[str] | None = None,
     limit: int | None = 250,
 ) -> list[dict[str, Any]]:
     queryset = SeoSuggestion.objects.select_related("content_type").order_by("-created_at")
@@ -522,8 +551,8 @@ def _pending_tasks(
 
 def _queue_counts_for_suggestions(
     *,
-    suggestion_types: list[str] | None = None,
-    exclude_suggestion_types: list[str] | None = None,
+    suggestion_types: Sequence[str] | None = None,
+    exclude_suggestion_types: Sequence[str] | None = None,
 ) -> dict[str, int]:
     queryset = SeoSuggestion.objects.all()
     if suggestion_types:

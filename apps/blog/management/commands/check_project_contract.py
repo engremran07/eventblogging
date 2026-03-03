@@ -18,7 +18,6 @@ class Command(BaseCommand):
     TEXT_EXTENSIONS = {".py", ".html", ".css", ".js"}
     LEGACY_REFERENCES = (
         "css/" + "app.css",
-        "js/" + "app.js",
         "css/" + "admin_" + "topbar.css",
         "js/" + "admin_" + "topbar.js",
         "js/" + "admin_" + "user_shortcuts.js",

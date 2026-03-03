@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.contrib.sessions.middleware import SessionMiddleware
+from django.core.cache import cache
 from django.test import Client, RequestFactory, TestCase
 from django.urls import reverse
 
@@ -22,7 +23,7 @@ class AdminAppearanceRoutingTests(TestCase):
         self.client.force_login(admin_user)
         response = self.client.get(reverse("admin:index"))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "js/admin/core.js")
+        self.assertContains(response, "js/admin/admin.js")
 
     def test_admin_shell_uses_post_logout_forms(self):
         User = get_user_model()
@@ -114,12 +115,12 @@ class CoreAuthRoutingTests(TestCase):
         self.client = Client(HTTP_HOST="127.0.0.1")
 
     def test_login_logout_urls_are_centralized_under_auth_prefix(self):
-        self.assertEqual(reverse("login"), "/auth/login/")
-        self.assertEqual(reverse("logout"), "/auth/logout/")
-        self.assertEqual(reverse("profile"), "/auth/profile/")
-        self.assertEqual(reverse("register"), "/auth/register/")
-        self.assertEqual(reverse("password_reset"), "/auth/password-reset/")
-        self.assertEqual(reverse("password_change"), "/auth/password-change/")
+        self.assertEqual(reverse("core:login"), "/auth/login/")
+        self.assertEqual(reverse("core:logout"), "/auth/logout/")
+        self.assertEqual(reverse("core:profile"), "/auth/profile/")
+        self.assertEqual(reverse("core:register"), "/auth/register/")
+        self.assertEqual(reverse("core:password_reset"), "/auth/password-reset/")
+        self.assertEqual(reverse("core:password_change"), "/auth/password-change/")
 
     def test_non_staff_user_can_login_via_core_login(self):
         user = get_user_model().objects.create_user(
@@ -127,7 +128,7 @@ class CoreAuthRoutingTests(TestCase):
             password="strong-password",
         )
         response = self.client.post(
-            reverse("login"),
+            reverse("core:login"),
             {"username": user.username, "password": "strong-password"},
             follow=False,
         )
@@ -149,6 +150,9 @@ class CoreAuthRoutingTests(TestCase):
 
 
 class UserProfileTests(TestCase):
+    def setUp(self):
+        cache.clear()
+
     def test_profile_is_auto_created_for_new_user(self):
         user = get_user_model().objects.create_user(
             username="profile_auto_user",
@@ -164,7 +168,7 @@ class UserProfileTests(TestCase):
             email="profile_page_user@example.com",
         )
         self.client.force_login(user)
-        response = self.client.get(reverse("profile"))
+        response = self.client.get(reverse("core:profile"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Profile Settings")
 
@@ -173,7 +177,7 @@ class UserProfileTests(TestCase):
         controls.enable_user_registration = False
         controls.save(update_fields=["enable_user_registration", "updated_at"])
 
-        response = self.client.get(reverse("register"))
+        response = self.client.get(reverse("core:register"))
         self.assertEqual(response.status_code, 404)
 
     def test_register_creates_account_when_enabled(self):
@@ -182,7 +186,7 @@ class UserProfileTests(TestCase):
         controls.save(update_fields=["enable_user_registration", "updated_at"])
 
         response = self.client.post(
-            reverse("register"),
+            reverse("core:register"),
             {
                 "username": "new_registered_user",
                 "email": "new_registered_user@example.com",
@@ -200,6 +204,9 @@ class UserProfileTests(TestCase):
 
 
 class PlatformGuardMiddlewareTests(TestCase):
+    def setUp(self):
+        cache.clear()
+
     def test_maintenance_mode_blocks_non_staff(self):
         controls = FeatureControlSettings.get_solo()
         controls.maintenance_mode = True

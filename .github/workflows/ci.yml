@@ -106,7 +106,7 @@ jobs:
         run: python manage.py migrate --noinput
 
       - name: Run tests
-        run: python manage.py test apps/ --verbosity=2
+        run: python manage.py test --verbosity=2
 
   # ── Docker build ──────────────────────────────────────────────────────────
   docker-build:

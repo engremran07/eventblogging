@@ -41,15 +41,15 @@ class CoreLogoutView(LogoutView):
 
 
 class CorePasswordChangeView(PasswordChangeView):
-    success_url = reverse_lazy("password_change_done")
+    success_url = reverse_lazy("core:password_change_done")
 
 
 class CorePasswordResetView(PasswordResetView):
-    success_url = reverse_lazy("password_reset_done")
+    success_url = reverse_lazy("core:password_reset_done")
 
 
 class CorePasswordResetConfirmView(PasswordResetConfirmView):
-    success_url = reverse_lazy("password_reset_complete")
+    success_url = reverse_lazy("core:password_reset_complete")
 
 
 @require_http_methods(["GET", "POST"])
@@ -85,7 +85,7 @@ def core_profile(request: HttpRequest) -> HttpResponse:
             account_form.save()
             profile_form.save()
             messages.success(request, "Profile updated successfully.")
-            return redirect("profile")
+            return redirect("core:profile")
         messages.error(request, "Unable to update profile.")
 
     metrics: dict[str, Any] = {

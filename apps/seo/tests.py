@@ -416,9 +416,8 @@ class SeoPipelineTests(TestCase):
     def test_seo_overview_renders_as_distinct_page(self):
         self.client.login(username="seo_staff", password="strong-password")
         response = self.client.get(reverse("admin_config:seo_overview"))
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "SEO Overview")
-        self.assertContains(response, "Open SEO Dashboard")
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("control", response.url)
 
     def test_seo_queue_redirects_to_control_center(self):
         self.client.login(username="seo_staff", password="strong-password")
@@ -471,7 +470,8 @@ class SeoPipelineTests(TestCase):
 
         self.client.login(username="seo_staff", password="strong-password")
         response = self.client.get(
-            reverse("admin_config:seo_control_section", kwargs={"section": "onsite"})
+            reverse("admin_config:seo_control_section", kwargs={"section": "onsite"}),
+            HTTP_HX_REQUEST="true",
         )
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, f"S-{issue_backed.id}")
@@ -513,6 +513,7 @@ class SeoPipelineTests(TestCase):
         first_page = self.client.get(
             reverse("admin_config:seo_control_section", kwargs={"section": "onsite"}),
             {"onsite_page": "1"},
+            HTTP_HX_REQUEST="true",
         )
         self.assertEqual(first_page.status_code, 200)
         self.assertContains(first_page, "Page 1 of 2")
@@ -520,6 +521,7 @@ class SeoPipelineTests(TestCase):
         second_page = self.client.get(
             reverse("admin_config:seo_control_section", kwargs={"section": "onsite"}),
             {"onsite_page": "2"},
+            HTTP_HX_REQUEST="true",
         )
         self.assertEqual(second_page.status_code, 200)
         self.assertContains(second_page, "Page 2 of 2")
@@ -556,10 +558,11 @@ class SeoPipelineTests(TestCase):
 
         self.client.login(username="seo_staff", password="strong-password")
         response = self.client.get(
-            reverse("admin_config:seo_control_section", kwargs={"section": "redirects"})
+            reverse("admin_config:seo_control_section", kwargs={"section": "redirects"}),
+            HTTP_HX_REQUEST="true",
         )
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Redirect Queue Board")
+        self.assertContains(response, "Redirect Backlog")
         self.assertContains(response, f"S-{suggestion.id}")
 
     def test_scan_job_start_and_progress_endpoint(self):
@@ -596,6 +599,20 @@ class SeoPipelineTests(TestCase):
     def test_onsite_section_shows_descriptive_pending_task_backlog(self):
         post = self._create_post("Task backlog target", "Body text for backlog.")
         ct = ContentType.objects.get_for_model(Post)
+        snapshot = SeoAuditSnapshot.objects.create(
+            content_type=ct,
+            object_id=post.id,
+            url=post.get_absolute_url(),
+            route_type=SeoAuditSnapshot.RouteType.POST,
+            score=45.0,
+        )
+        SeoIssue.objects.create(
+            snapshot=snapshot,
+            check_key="missing_meta_description",
+            severity=SeoIssue.Severity.WARNING,
+            status=SeoIssue.Status.OPEN,
+            message="Meta description missing.",
+        )
         SeoSuggestion.objects.create(
             content_type=ct,
             object_id=post.id,
@@ -610,11 +627,12 @@ class SeoPipelineTests(TestCase):
         )
         self.client.login(username="seo_staff", password="strong-password")
         response = self.client.get(
-            reverse("admin_config:seo_control_section", kwargs={"section": "onsite"})
+            reverse("admin_config:seo_control_section", kwargs={"section": "onsite"}),
+            HTTP_HX_REQUEST="true",
         )
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "On-site SEO Backlog")
-        self.assertContains(response, "Recommended Fix")
+        self.assertContains(response, "Task Backlog")
+        self.assertContains(response, "Description")
 
     def test_metadata_section_shows_template_injection_workspace(self):
         post = self._create_post("Metadata section target", "Body text for metadata section.")
@@ -633,11 +651,12 @@ class SeoPipelineTests(TestCase):
         )
         self.client.login(username="seo_staff", password="strong-password")
         response = self.client.get(
-            reverse("admin_config:seo_control_section", kwargs={"section": "metadata"})
+            reverse("admin_config:seo_control_section", kwargs={"section": "metadata"}),
+            HTTP_HX_REQUEST="true",
         )
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Metadata Queue")
-        self.assertContains(response, "Metadata Injection Status")
+        self.assertContains(response, "Injection Status")
 
     def test_queue_edit_creates_revision_and_marks_needs_correction(self):
         post = self._create_post("Queue edit target", "Queue edit content.")
@@ -712,7 +731,8 @@ class SeoPipelineTests(TestCase):
     def test_seo_control_settings_section_renders_global_seo_fields(self):
         self.client.login(username="seo_staff", password="strong-password")
         response = self.client.get(
-            reverse("admin_config:seo_control_section", kwargs={"section": "settings"})
+            reverse("admin_config:seo_control_section", kwargs={"section": "settings"}),
+            HTTP_HX_REQUEST="true",
         )
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'name="default_meta_title"')

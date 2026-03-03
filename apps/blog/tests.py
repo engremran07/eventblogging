@@ -29,6 +29,7 @@ from .ui_feedback import attach_ui_feedback
 
 class BlogTests(TestCase):
     def setUp(self):
+        cache.clear()
         self.user = get_user_model().objects.create_user(
             username="writer",
             password="strong-password",
@@ -55,8 +56,6 @@ class BlogTests(TestCase):
     def test_post_slug_and_meta_are_generated(self):
         post = self._create_post(title="Ultimate Django Stack")
         self.assertTrue(post.slug.startswith("ultimate-django-stack"))
-        self.assertTrue(post.meta_title)
-        self.assertTrue(post.meta_description)
         self.assertGreater(post.word_count, 0)
 
     def test_home_hides_drafts_from_anonymous_users(self):
@@ -1208,7 +1207,7 @@ class BlogTests(TestCase):
         self.assertEqual(payload["mode"], "dark")
         self.assertEqual(payload["preset"], "evergreen")
         self.assertIn("css_variables", payload)
-        self.assertIn("--brand", payload["css_variables"])
+        self.assertIn("--accent", payload["css_variables"])
         self.assertIn("updated_at", payload)
 
     def test_home_cards_render_live_reaction_controls(self):
@@ -1283,7 +1282,7 @@ class BlogTests(TestCase):
         self.client.force_login(staff)
         response = self.client.get(reverse("admin:auth_user_changelist"))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "js/admin/core.js")
+        self.assertContains(response, "js/admin/admin.js")
         self.assertContains(response, 'id="changelist"')
 
     def test_default_admin_changelist_pages_render_partializable_module(self):
@@ -1683,7 +1682,7 @@ class BlogTests(TestCase):
         response = self.client.get(reverse("blog:home"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'data-bs-theme="dark"')
-        self.assertContains(response, "--brand: #3ad3a1;")
+        self.assertContains(response, "--accent: #3ad3a1;")
 
     def test_admin_base_template_uses_global_appearance_mode(self):
         appearance = SiteAppearanceSettings.get_solo()

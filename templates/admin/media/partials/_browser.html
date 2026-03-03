@@ -39,7 +39,7 @@
            hx-target="#media-browser-content"
            hx-swap="innerHTML"
            hx-push-url="true"
-           title="{{ folder.path }}{% if folder.post %} — {{ folder.post.title }}{% endif %}">
+           title="{{ folder.path }}{% if folder.content %} — {{ folder.content.title }}{% endif %}">
             <div class="media-folder-card-icon">
                 <i class="fas {% if folder.has_children %}fa-folder-open{% else %}fa-folder{% endif %}"></i>
             </div>
@@ -51,9 +51,10 @@
                     {% elif folder.file_count %}
                         {{ folder.file_count }} file{{ folder.file_count|pluralize }}
                     {% endif %}
-                    {% if folder.post %}
-                        <span class="media-folder-post-link" title="{{ folder.post.title }}">
-                            <i class="fas fa-link"></i> {{ folder.post.title|truncatechars:20 }}
+                    {% if folder.content %}
+                        <span class="media-folder-content-link" title="{{ folder.content.type|title }}: {{ folder.content.title }}">
+                            <i class="fas {% if folder.content.type == 'page' %}fa-file-alt{% else %}fa-link{% endif %}"></i>
+                            {{ folder.content.title|truncatechars:20 }}
                         </span>
                     {% endif %}
                 </div>

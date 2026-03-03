@@ -87,6 +87,16 @@ class Page(models.Model):
     nav_order = models.PositiveSmallIntegerField(default=100)
     is_featured = models.BooleanField(default=False)
 
+    cover_media = models.ForeignKey(
+        "media.MediaFile",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="cover_for_pages",
+        help_text="Managed media file for the cover image.",
+    )
+    cover_media_id: int | None
+
     meta_title = models.CharField(max_length=70, blank=True)
     meta_description = models.CharField(max_length=170, blank=True)
     canonical_url = models.URLField(blank=True)

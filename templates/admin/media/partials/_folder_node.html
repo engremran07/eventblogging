@@ -22,15 +22,15 @@
            hx-target="#media-browser-content"
            hx-swap="innerHTML"
            hx-push-url="true"
-           title="{{ node.path }}{% if node.post %} — {{ node.post.title }}{% endif %}">
+           title="{{ node.path }}{% if node.content %} — {{ node.content.title }}{% endif %}">
             <i class="fas {% if node.has_children %}fa-folder-open{% else %}fa-folder{% endif %}"></i>
             <span class="media-folder-label">{{ node.name|truncatechars:28 }}</span>
             {% if node.total_file_count %}
                 <span class="media-folder-count">{{ node.total_file_count }}</span>
             {% endif %}
-            {% if node.post %}
-                <span class="media-folder-post-badge" title="Linked to: {{ node.post.title }}">
-                    <i class="fas fa-link"></i>
+            {% if node.content %}
+                <span class="media-folder-content-badge" title="{{ node.content.type|title }}: {{ node.content.title }}">
+                    <i class="fas {% if node.content.type == 'page' %}fa-file-alt{% else %}fa-link{% endif %}"></i>
                 </span>
             {% endif %}
         </a>

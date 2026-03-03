@@ -115,18 +115,21 @@ def _count_files_by_folder() -> dict[str, int]:
     return {row["folder"]: row["cnt"] for row in rows}
 
 
-def _post_by_folder(folder_paths: set[str]) -> dict[str, dict[str, Any]]:
+def _content_by_folder(folder_paths: set[str]) -> dict[str, dict[str, Any]]:
     """
-    Return {folder_path: {id, title, slug}} for post-linked folders.
+    Return {folder_path: {id, title, slug, type}} for content-linked folders.
 
-    Only maps folders present in *folder_paths* to avoid querying all posts.
+    Maps both blog posts (``posts/…``) and pages (``pages/…``).
+    Only maps folders present in *folder_paths* to avoid querying all records.
     """
     from blog.models import Post
+    from pages.models import Page
 
     result: dict[str, dict[str, Any]] = {}
     if not folder_paths:
         return result
 
+    # Map posts
     for post in Post.objects.only("id", "title", "slug").prefetch_related("categories"):
         try:
             from media.services import generate_post_media_folder
@@ -137,11 +140,31 @@ def _post_by_folder(folder_paths: set[str]) -> dict[str, dict[str, Any]]:
                     "id": post.pk,
                     "title": str(post.title),
                     "slug": str(post.slug),
+                    "type": "post",
                 }
         except Exception:
             logger.warning(
                 "Failed to generate folder for post pk=%s", post.pk, exc_info=True
             )
+
+    # Map pages
+    for page in Page.objects.only("id", "title", "slug"):
+        try:
+            from media.services import generate_page_media_folder
+
+            folder = generate_page_media_folder(page)
+            if folder in folder_paths:
+                result[folder] = {
+                    "id": page.pk,
+                    "title": str(page.title),
+                    "slug": str(page.slug),
+                    "type": "page",
+                }
+        except Exception:
+            logger.warning(
+                "Failed to generate folder for page pk=%s", page.pk, exc_info=True
+            )
+
     return result
 
 
@@ -178,7 +201,7 @@ def get_folder_tree() -> list[dict[str, Any]]:
         all_paths.add(folder_path)
         all_paths.update(_ancestor_paths(folder_path))
 
-    post_map = _post_by_folder(all_paths)
+    content_map = _content_by_folder(all_paths)
 
     # Build an intermediate nested dict → then convert to node list
     tree: dict[str, Any] = {}
@@ -205,7 +228,7 @@ def get_folder_tree() -> list[dict[str, Any]]:
                 "children": children,
                 "file_count": direct_count,
                 "total_file_count": total_count,
-                "post": post_map.get(path),
+                "content": content_map.get(path),
                 "has_children": bool(children),
             })
         return nodes
@@ -267,11 +290,11 @@ def get_children_of_path(path: str) -> list[dict[str, Any]]:
     if not child_meta:
         return []
 
-    # Collect all child paths for post-map lookup
+    # Collect all child paths for content-map lookup
     child_paths: set[str] = set()
     for name in child_meta:
         child_paths.add(f"{prefix}{name}" if prefix else name)
-    post_map = _post_by_folder(child_paths)
+    content_map = _content_by_folder(child_paths)
 
     children: list[dict[str, Any]] = []
     for name in sorted(child_meta.keys()):
@@ -287,7 +310,7 @@ def get_children_of_path(path: str) -> list[dict[str, Any]]:
             "path": child_path,
             "file_count": file_counts.get(child_path, 0),
             "total_file_count": total_files,
-            "post": post_map.get(child_path),
+            "content": content_map.get(child_path),
             "has_children": child_meta[name],
         })
 

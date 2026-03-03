@@ -15,6 +15,7 @@ from .models import FileType, MediaFile
 
 if TYPE_CHECKING:
     from blog.models import Post
+    from pages.models import Page
 
 logger = logging.getLogger(__name__)
 
@@ -251,4 +252,98 @@ def upload_post_cover(
     from blog.models import Post as PostModel
 
     PostModel.objects.filter(pk=post.pk).update(cover_media=media_file)
+    return media_file
+
+
+# ── Page media integration ──────────────────────────────────────────────────
+
+
+def generate_page_media_folder(page: Page) -> str:
+    """
+    Build a folder path for a page's media.
+
+    Structure: ``pages/{page_slug}``
+
+    Examples:
+        - ``pages/about-us``
+        - ``pages/privacy-policy``
+        - ``pages/untitled``
+    """
+    raw_slug = page.slug or _slugify_path_segment(page.title or "untitled")
+    slug = raw_slug[:80]
+    return f"pages/{slug}"
+
+
+def ensure_all_page_folders(*, dry_run: bool = False) -> list[str]:
+    """
+    Pre-build media folders for ALL pages in the database.
+
+    Creates the physical directory on disk and returns the list of folder
+    paths that were created (or would be created in dry-run mode).
+    """
+    import os
+
+    from django.conf import settings as django_settings
+
+    from pages.models import Page as PageModel
+
+    media_root = str(django_settings.MEDIA_ROOT)
+    pages = PageModel.objects.all()
+    created: list[str] = []
+
+    for page in pages:
+        folder = generate_page_media_folder(page)
+        full_path = os.path.join(media_root, folder)
+        if not os.path.exists(full_path):
+            if not dry_run:
+                os.makedirs(full_path, exist_ok=True)
+            created.append(folder)
+
+    return created
+
+
+def sync_page_media_folder(page: Page) -> int:
+    """
+    Update the ``folder`` field on all MediaFile records linked to *page*
+    via ``page.cover_media``.  Returns the number of records updated.
+
+    Call this after a page's slug changes.
+    """
+    folder = generate_page_media_folder(page)
+    updated = 0
+
+    cover_media = getattr(page, "cover_media", None)
+    if cover_media and isinstance(cover_media, MediaFile):
+        if cover_media.folder != folder:
+            cover_media.folder = folder
+            cover_media.save(update_fields=["folder", "updated_at"])
+            updated += 1
+
+    return updated
+
+
+def upload_page_cover(
+    *,
+    page: Page,
+    file: UploadedFile,
+    uploaded_by: AbstractBaseUser | None = None,
+) -> MediaFile:
+    """
+    Upload a cover image for a page, automatically placing it
+    in the page's folder and linking it as ``cover_media``.
+    """
+    folder = generate_page_media_folder(page)
+
+    media_file = upload_media_file(
+        file=file,
+        uploaded_by=uploaded_by,
+        folder=folder,
+        title=f"Cover: {page.title}",
+        alt_text=page.title or "",
+    )
+
+    # Link to page
+    from pages.models import Page as PageModel
+
+    PageModel.objects.filter(pk=page.pk).update(cover_media=media_file)
     return media_file

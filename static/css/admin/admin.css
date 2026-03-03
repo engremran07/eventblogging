@@ -1978,7 +1978,7 @@ tr:focus-within .wp-cat-row-actions {
     text-align: center;
 }
 
-.media-folder-post-badge {
+.media-folder-content-badge {
     flex-shrink: 0;
     font-size: 0.7rem;
     color: var(--accent);
@@ -2082,7 +2082,7 @@ a.media-breadcrumb-item:hover {
     margin-top: 2px;
 }
 
-.media-folder-post-link {
+.media-folder-content-link {
     display: inline-flex;
     align-items: center;
     gap: 3px;

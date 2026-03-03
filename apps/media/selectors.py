@@ -46,8 +46,10 @@ def get_media_list(
         qs = qs.filter(file_type=file_type)
 
     if path:
-        # Show files whose folder exactly matches the path (direct children)
-        qs = qs.filter(folder=path)
+        # Show files in this folder and all descendant folders.
+        # Exact match (folder == path) catches files at this level;
+        # startswith catches all nested subfolders.
+        qs = qs.filter(Q(folder=path) | Q(folder__startswith=f"{path}/"))
     elif folder:
         qs = qs.filter(folder=folder)
 

@@ -1,13 +1,19 @@
 """Django admin interface for comments and reactions."""
 
-from django.contrib import admin
+from __future__ import annotations
 
-from core.constants import ADMIN_PAGINATION_SIZE
+from typing import Any
+
+from django.contrib import admin
+from django.db.models import QuerySet
+from django.http import HttpRequest
+
+from core.utils import ADMIN_PAGINATION_SIZE
 
 from .models import Comment, NewsletterSubscriber, PostBookmark, PostLike, PostRevision, PostView
 
 
-class CommentInline(admin.TabularInline):
+class CommentInline(admin.TabularInline):  # type: ignore[type-arg]
     model = Comment
     extra = 0
     readonly_fields = ("created_at", "updated_at")
@@ -15,7 +21,7 @@ class CommentInline(admin.TabularInline):
 
 
 @admin.register(Comment)
-class CommentAdmin(admin.ModelAdmin):
+class CommentAdmin(admin.ModelAdmin):  # type: ignore[type-arg]
     list_display = (
         "author",
         "post",
@@ -39,22 +45,22 @@ class CommentAdmin(admin.ModelAdmin):
     )
 
     @admin.display(description="Status")
-    def approval_status(self, obj):
+    def approval_status(self, obj: Comment) -> str:
         return "Approved" if obj.is_approved else "Pending"
 
     @admin.action(description="Approve selected comments")
-    def approve_selected(self, request, queryset):
+    def approve_selected(self, request: HttpRequest, queryset: QuerySet[Any]) -> None:
         count = queryset.update(is_approved=True)
         self.message_user(request, f"{count} comments approved.")
 
     @admin.action(description="Unapprove selected comments")
-    def unapprove_selected(self, request, queryset):
+    def unapprove_selected(self, request: HttpRequest, queryset: QuerySet[Any]) -> None:
         count = queryset.update(is_approved=False)
         self.message_user(request, f"{count} comments moved to pending.")
 
 
 @admin.register(PostLike)
-class PostLikeAdmin(admin.ModelAdmin):
+class PostLikeAdmin(admin.ModelAdmin):  # type: ignore[type-arg]
     list_display = ("user", "post", "created_at")
     list_filter = ("created_at",)
     search_fields = ("user__username", "post__title")
@@ -63,7 +69,7 @@ class PostLikeAdmin(admin.ModelAdmin):
 
 
 @admin.register(PostBookmark)
-class PostBookmarkAdmin(admin.ModelAdmin):
+class PostBookmarkAdmin(admin.ModelAdmin):  # type: ignore[type-arg]
     list_display = ("user", "post", "created_at")
     list_filter = ("created_at",)
     search_fields = ("user__username", "post__title")
@@ -72,7 +78,7 @@ class PostBookmarkAdmin(admin.ModelAdmin):
 
 
 @admin.register(PostView)
-class PostViewAdmin(admin.ModelAdmin):
+class PostViewAdmin(admin.ModelAdmin):  # type: ignore[type-arg]
     list_display = ("post", "user", "session_fingerprint", "viewed_at")
     list_filter = ("viewed_at",)
     search_fields = ("post__title", "user__username", "session_key")
@@ -80,7 +86,7 @@ class PostViewAdmin(admin.ModelAdmin):
     list_per_page = ADMIN_PAGINATION_SIZE
 
     @admin.display(description="Session Fingerprint")
-    def session_fingerprint(self, obj):
+    def session_fingerprint(self, obj: PostView) -> str:
         if not obj.session_key:
             return ""
         if len(obj.session_key) <= 20:
@@ -89,7 +95,7 @@ class PostViewAdmin(admin.ModelAdmin):
 
 
 @admin.register(PostRevision)
-class PostRevisionAdmin(admin.ModelAdmin):
+class PostRevisionAdmin(admin.ModelAdmin):  # type: ignore[type-arg]
     list_display = ("post", "editor", "status", "created_at")
     list_filter = ("status", "created_at")
     search_fields = ("post__title", "title", "editor__username")
@@ -104,7 +110,7 @@ class PostRevisionAdmin(admin.ModelAdmin):
 
 
 @admin.register(NewsletterSubscriber)
-class NewsletterSubscriberAdmin(admin.ModelAdmin):
+class NewsletterSubscriberAdmin(admin.ModelAdmin):  # type: ignore[type-arg]
     list_display = ("email", "full_name", "is_active", "source", "created_at")
     list_filter = ("is_active", "source", "created_at")
     search_fields = ("email", "full_name")
@@ -118,9 +124,9 @@ class NewsletterSubscriberAdmin(admin.ModelAdmin):
     actions = ["activate_subscribers", "deactivate_subscribers"]
 
     @admin.action(description="Activate selected subscribers")
-    def activate_subscribers(self, request, queryset):
+    def activate_subscribers(self, request: HttpRequest, queryset: QuerySet[Any]) -> None:
         queryset.update(is_active=True)
 
     @admin.action(description="Deactivate selected subscribers")
-    def deactivate_subscribers(self, request, queryset):
+    def deactivate_subscribers(self, request: HttpRequest, queryset: QuerySet[Any]) -> None:
         queryset.update(is_active=False)

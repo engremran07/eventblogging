@@ -82,7 +82,7 @@ def emit_webhook_on_publish(sender: type[Any], instance: Any, created: bool, raw
 
     def _fire():
         try:
-            from core.integrations import emit_platform_webhook
+            from core.services import emit_platform_webhook
 
             emit_platform_webhook(
                 event="post.published",
@@ -142,7 +142,7 @@ def trigger_comment_moderation(sender: type[Any], instance: Any, created: bool, 
         return
 
     try:
-        from comments.moderation import evaluate_comment_risk
+        from comments.services import evaluate_comment_risk
 
         result = evaluate_comment_risk(instance.body)
         score = int(result.get("score", 0))  # type: ignore[arg-type]

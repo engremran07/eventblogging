@@ -3,7 +3,7 @@ from django.contrib import admin, messages
 from django.utils import timezone
 from tagulous import admin as tag_admin
 
-from core.constants import ADMIN_PAGINATION_SIZE
+from core.utils import ADMIN_PAGINATION_SIZE
 from seo.services import audit_content_batch
 
 from .content_refresh import run_content_date_refresh
@@ -268,4 +268,4 @@ tag_admin.register(Post.tags, GenericTagAdmin)
 tag_admin.register(Post.categories, CategoryTagAdmin)
 
 # Ensure custom auth user admin with double-verification deletion is registered.
-from . import user_admin  # noqa: F401,E402
+# Registration now lives in core/admin.py and is auto-discovered by Django.

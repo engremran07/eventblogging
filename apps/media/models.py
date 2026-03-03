@@ -1,7 +1,11 @@
 from __future__ import annotations
 
+import uuid
+from pathlib import PurePosixPath
+
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 
 from core.models import BaseModel
 
@@ -14,10 +18,31 @@ class FileType(models.TextChoices):
     OTHER = "other", "Other"
 
 
+def media_upload_path(instance: MediaFile, filename: str) -> str:
+    """
+    Generate upload path based on the ``folder`` field.
+
+    Path structure:
+        - If folder is set:  ``{folder}/{unique_name}``
+        - Otherwise:         ``uploads/{YYYY}/{MM}/{unique_name}``
+
+    A short UUID prefix ensures uniqueness while preserving the original extension.
+    """
+    ext = PurePosixPath(filename).suffix.lower()
+    unique_name = f"{uuid.uuid4().hex[:12]}{ext}"
+
+    folder = (instance.folder or "").strip().strip("/")
+    if folder:
+        return f"{folder}/{unique_name}"
+
+    now = timezone.now()
+    return f"uploads/{now.year}/{now.month:02d}/{unique_name}"
+
+
 class MediaFile(BaseModel):
     """A managed media file (image, document, video, audio, or other)."""
 
-    file = models.FileField(upload_to="media/%Y/%m/")
+    file = models.FileField(upload_to=media_upload_path, max_length=512)
     original_filename = models.CharField(max_length=260)
     title = models.CharField(max_length=260, blank=True)
     alt_text = models.CharField(max_length=260, blank=True)

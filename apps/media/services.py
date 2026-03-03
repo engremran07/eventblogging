@@ -5,12 +5,16 @@ import mimetypes
 import uuid
 from io import BytesIO
 from pathlib import PurePosixPath
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from django.contrib.auth.models import AbstractBaseUser
 from django.core.files.uploadedfile import UploadedFile
+from django.utils.text import slugify
 
 from .models import FileType, MediaFile
+
+if TYPE_CHECKING:
+    from blog.models import Post
 
 logger = logging.getLogger(__name__)
 
@@ -124,3 +128,126 @@ def delete_media_file(*, media_file: MediaFile) -> None:
 def bulk_delete_media(*, pks: list[uuid.UUID]) -> int:
     """Bulk soft-delete media files. Returns the number of rows updated."""
     return MediaFile.objects.filter(pk__in=pks, is_active=True).update(is_active=False)  # type: ignore[return-value]
+
+
+# ── Auto-folder generation ──────────────────────────────────────────────────
+
+
+def _slugify_path_segment(segment: str) -> str:
+    """Slugify a single path segment, preserving hierarchy separators."""
+    return slugify(segment.strip()) or "untitled"
+
+
+def generate_post_media_folder(post: Post) -> str:
+    """
+    Build a hierarchical folder path for a blog post's media.
+
+    Structure: ``posts/{deepest_category_path}/{post_slug}``
+
+    Uses the **deepest** (most specific) category from the post's Tagulous
+    tree tags.  For example, if a post has categories ``['technology',
+    'technology/django', 'technology/frontend/design-systems']``, the deepest
+    is ``technology/frontend/design-systems`` (level 3).
+
+    Falls back to ``posts/uncategorized/{post_slug}`` when no categories.
+
+    Examples:
+        - ``posts/technology/frontend/design-systems/my-first-post``
+        - ``posts/operations/devops/seed-post-01``
+        - ``posts/uncategorized/untitled-post``
+    """
+    raw_slug = post.slug or _slugify_path_segment(post.title or "untitled")
+    # Truncate long slugs to keep total file path under FileField.max_length
+    slug = raw_slug[:80]
+
+    # Categories are Tagulous tree tags — paths like "technology/frontend/htmx"
+    category_path = "uncategorized"
+    try:
+        categories = list(post.categories.all())
+        if categories:
+            # Pick the deepest (most specific) category by counting "/" depth
+            deepest = max(categories, key=lambda c: (getattr(c, "path", "") or getattr(c, "name", "")).count("/"))
+            raw_path = getattr(deepest, "path", "") or getattr(deepest, "name", "")
+            if raw_path:
+                segments = [_slugify_path_segment(s) for s in raw_path.split("/") if s.strip()]
+                if segments:
+                    category_path = "/".join(segments)
+    except Exception:
+        logger.warning("generate_post_media_folder: failed to read categories for post pk=%s", post.pk, exc_info=True)
+
+    return f"posts/{category_path}/{slug}"
+
+
+def ensure_all_post_folders(*, dry_run: bool = False) -> list[str]:
+    """
+    Pre-build media folders for ALL posts in the database.
+
+    Creates the physical directory on disk and returns the list of folder
+    paths that were created (or would be created in dry-run mode).
+    """
+    import os
+    from django.conf import settings as django_settings
+
+    from blog.models import Post as PostModel
+
+    media_root = str(django_settings.MEDIA_ROOT)
+    posts = PostModel.objects.all().prefetch_related("categories")
+    created: list[str] = []
+
+    for post in posts:
+        folder = generate_post_media_folder(post)
+        full_path = os.path.join(media_root, folder)
+        if not os.path.exists(full_path):
+            if not dry_run:
+                os.makedirs(full_path, exist_ok=True)
+            created.append(folder)
+
+    return created
+
+
+def sync_post_media_folder(post: Post) -> int:
+    """
+    Update the ``folder`` field on all MediaFile records linked to *post*
+    via ``post.cover_media``.  Returns the number of records updated.
+
+    Call this after a post's slug or categories change.
+    """
+    folder = generate_post_media_folder(post)
+    updated = 0
+
+    # Update cover media if linked
+    cover_media = getattr(post, "cover_media", None)
+    if cover_media and isinstance(cover_media, MediaFile):
+        if cover_media.folder != folder:
+            cover_media.folder = folder
+            cover_media.save(update_fields=["folder", "updated_at"])
+            updated += 1
+
+    return updated
+
+
+def upload_post_cover(
+    *,
+    post: Post,
+    file: UploadedFile,
+    uploaded_by: AbstractBaseUser | None = None,
+) -> MediaFile:
+    """
+    Upload a cover image for a blog post, automatically placing it
+    in the post's hierarchical folder and linking it as ``cover_media``.
+    """
+    folder = generate_post_media_folder(post)
+
+    media_file = upload_media_file(
+        file=file,
+        uploaded_by=uploaded_by,
+        folder=folder,
+        title=f"Cover: {post.title}",
+        alt_text=post.title or "",
+    )
+
+    # Link to post
+    from blog.models import Post as PostModel
+
+    PostModel.objects.filter(pk=post.pk).update(cover_media=media_file)
+    return media_file

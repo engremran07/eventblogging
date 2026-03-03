@@ -19,7 +19,7 @@ from django.shortcuts import redirect
 from django.urls import reverse
 
 from blog.models import Post
-from core.constants import ADMIN_PAGINATION_SIZE
+from core.utils import ADMIN_PAGINATION_SIZE
 from pages.models import Page
 
 from .models import SeoIssue, SeoLinkEdge, SeoSuggestion

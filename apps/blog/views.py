@@ -22,12 +22,12 @@ from comments.models import (
     PostLike,
     PostView,
 )
-from comments.moderation import evaluate_comment_risk
 from comments.selectors import user_likes_or_bookmarks_post
-from core.integrations import emit_platform_webhook
+from comments.services import evaluate_comment_risk
 from core.models import FeatureControlSettings, SiteAppearanceSettings
+from core.services import emit_platform_webhook
 from core.session import SessionService
-from core.utils import cache_feature_control_settings, rate_limit
+from core.utils import attach_ui_feedback, cache_feature_control_settings, rate_limit
 from seo.services import audit_content_batch, seo_context_for_instance, seo_context_for_route
 
 from .forms import CommentForm, MarkdownPreviewForm, NewsletterForm, PostForm
@@ -46,7 +46,6 @@ from .services import (
     get_search_suggestion_context,
     serialize_post_for_api,
 )
-from .ui_feedback import attach_ui_feedback
 
 logger = logging.getLogger(__name__)
 DASHBOARD_POSTS_PER_PAGE = 12

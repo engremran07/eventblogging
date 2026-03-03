@@ -1,4 +1,4 @@
-"""Shared constants used across admin and frontend modules."""
+"""Backward-compat shim — canonical location is core.utils."""
+from core.utils import ADMIN_PAGINATION_SIZE
 
-# Unified page size for all custom admin workspace list views and queue tables.
-ADMIN_PAGINATION_SIZE = 20
+__all__ = ["ADMIN_PAGINATION_SIZE"]

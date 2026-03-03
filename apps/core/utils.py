@@ -1,8 +1,9 @@
 """
 Utility functions for core app.
-Includes rate limiting, caching, and common helpers.
+Includes rate limiting, caching, common helpers, HTMX utilities, and shared constants.
 """
 
+import json
 import logging
 from collections.abc import Callable
 from functools import wraps
@@ -12,6 +13,61 @@ from django.core.cache import cache
 from django.http import HttpRequest, HttpResponse, JsonResponse
 
 logger = logging.getLogger(__name__)
+
+# ── Shared constants ────────────────────────────────────────────────────────
+
+# Unified page size for all custom admin workspace list views and queue tables.
+ADMIN_PAGINATION_SIZE = 20
+
+
+# ── HTMX utilities ─────────────────────────────────────────────────────────
+
+
+def _parse_hx_trigger_header(raw_header: str) -> dict[str, Any]:
+    """Parse an existing HX-Trigger header value into a dict."""
+    if not raw_header:
+        return {}
+
+    try:
+        parsed = json.loads(raw_header)
+        if isinstance(parsed, dict):
+            return parsed
+    except (TypeError, ValueError):
+        pass
+
+    event_map: dict[str, Any] = {}
+    for item in raw_header.split(","):
+        event_name = item.strip()
+        if event_name:
+            event_map[event_name] = True
+    return event_map
+
+
+def attach_ui_feedback(
+    response: HttpResponse,
+    toast: dict[str, Any] | None = None,
+    inline: dict[str, Any] | None = None,
+) -> HttpResponse:
+    """
+    Attach structured UI feedback to an HTMX response via ``HX-Trigger`` header.
+
+    Supports toast notifications and inline feedback payloads.
+    """
+    payload: dict[str, Any] = {}
+    if toast:
+        payload["toast"] = toast
+    if inline:
+        payload["inline"] = inline
+    if not payload:
+        return response
+
+    existing = _parse_hx_trigger_header(response.headers.get("HX-Trigger", ""))
+    existing["ui:feedback"] = payload
+    response.headers["HX-Trigger"] = json.dumps(existing)
+    return response
+
+
+# ── Rate limiting ───────────────────────────────────────────────────────────
 
 
 def rate_limit(

@@ -28,7 +28,6 @@ from django_htmx.http import HttpResponseClientRedirect
 from tagulous.models import BaseTagModel, BaseTagTreeModel
 
 from comments.models import Comment
-from core.constants import ADMIN_PAGINATION_SIZE
 from core.models import (
     APPEARANCE_PRESET_CHOICES,
     FeatureControlSettings,
@@ -37,6 +36,7 @@ from core.models import (
     SiteAppearanceSettings,
     SiteIdentitySettings,
 )
+from core.utils import ADMIN_PAGINATION_SIZE
 from pages.models import Page
 from pages.policies import POLICY_SLUGS
 from seo.services import audit_content_batch

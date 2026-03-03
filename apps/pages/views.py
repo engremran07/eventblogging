@@ -13,9 +13,9 @@ from django.views.decorators.http import require_GET, require_POST
 from django_htmx.http import HttpResponseClientRedirect
 
 from blog.models import render_markdown_to_safe_html
-from blog.ui_feedback import attach_ui_feedback
-from core.integrations import emit_platform_webhook
 from core.models import FeatureControlSettings
+from core.services import emit_platform_webhook
+from core.utils import attach_ui_feedback
 from seo.services import audit_content_batch, seo_context_for_instance, seo_context_for_route
 
 from .forms import PageForm, PageMarkdownPreviewForm

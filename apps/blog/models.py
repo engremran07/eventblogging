@@ -176,6 +176,15 @@ class Post(models.Model):
     body_html = models.TextField(blank=True, editable=False)
     search_vector = SearchVectorField(null=True, blank=True, editable=False, help_text="PostgreSQL FTS vector")
     cover_image = models.ImageField(upload_to="post-covers/", blank=True)
+    cover_media = models.ForeignKey(
+        "media.MediaFile",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="cover_for_posts",
+        help_text="Managed media file for the cover image (single source of truth).",
+    )
+    cover_media_id: int | None
 
     meta_title = models.CharField(max_length=70, blank=True)
     meta_description = models.CharField(max_length=170, blank=True)
@@ -300,6 +309,15 @@ class Post(models.Model):
 
     def get_absolute_url(self) -> str:
         return reverse("blog:post_detail", kwargs={"slug": self.slug})
+
+    @property
+    def cover_url(self) -> str:
+        """Return cover image URL from managed media (preferred) or legacy field."""
+        if self.cover_media_id and self.cover_media:
+            return self.cover_media.file_url
+        if self.cover_image:
+            return self.cover_image.url  # type: ignore[return-value]
+        return ""
 
     @property
     def effective_meta_title(self) -> str:

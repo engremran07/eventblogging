@@ -25,36 +25,42 @@ ITEMS_PER_PAGE = 24
 @staff_member_required  # type: ignore[type-var]
 @require_GET
 def admin_media_list(request: HttpRequest) -> HttpResponse:
-    """Media library grid view with filters, search, and KPIs."""
+    """Media library with folder tree navigation, search, and KPIs."""
     search = request.GET.get("q", "").strip()
     file_type = request.GET.get("file_type", "").strip()
-    folder = request.GET.get("folder", "").strip()
+    path = request.GET.get("path", "").strip().strip("/")
     sort_by = request.GET.get("sort", "-created_at")
 
     qs = selectors.get_media_list(
         search=search,
         file_type=file_type,
-        folder=folder,
+        path=path,
         sort_by=sort_by,
     )
 
     paginator = Paginator(qs, ITEMS_PER_PAGE)
     page_obj = paginator.get_page(request.GET.get("page", 1))
     stats = selectors.get_media_stats()
-    folders = selectors.get_folder_list()
+
+    # Folder navigation
+    child_folders = selectors.get_children_of_path(path)
+    breadcrumbs = selectors.get_breadcrumbs(path)
+    folder_tree = selectors.get_folder_tree()
 
     context = {
         "page_obj": page_obj,
         "stats": stats,
-        "folders": folders,
+        "child_folders": child_folders,
+        "breadcrumbs": breadcrumbs,
+        "folder_tree": folder_tree,
+        "current_path": path,
         "search": search,
         "file_type": file_type,
-        "folder": folder,
         "sort_by": sort_by,
     }
 
     if request.headers.get("HX-Request"):
-        return render(request, "admin/media/grid.html", context)
+        return render(request, "admin/media/partials/_browser.html", context)
     return render(request, "admin/media/list.html", context)
 
 

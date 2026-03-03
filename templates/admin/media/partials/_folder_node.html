@@ -1,0 +1,28 @@
+{# Recursive folder tree node — included from list.html and self-referencing #}
+{% load media_tags %}
+
+<div class="media-folder-group" style="--depth: {{ depth }}">
+    <a href="{% url 'admin_media:list' %}?path={{ node.path }}"
+       class="media-folder-node {% if current_path == node.path %}active{% endif %}"
+       hx-get="{% url 'admin_media:list' %}?path={{ node.path }}"
+       hx-target="#media-browser-content"
+       hx-swap="innerHTML"
+       hx-push-url="true"
+       title="{{ node.path }}{% if node.post %} — {{ node.post.title }}{% endif %}">
+        <i class="fas {% if node.has_children %}fa-folder-open{% else %}fa-folder{% endif %}"></i>
+        <span class="media-folder-label">{{ node.name|truncatechars:28 }}</span>
+        {% if node.total_file_count %}
+            <span class="media-folder-count">{{ node.total_file_count }}</span>
+        {% endif %}
+        {% if node.post %}
+            <span class="media-folder-post-badge" title="Linked to: {{ node.post.title }}">
+                <i class="fas fa-link"></i>
+            </span>
+        {% endif %}
+    </a>
+    {% if node.children %}
+        {% for child in node.children %}
+            {% include "admin/media/partials/_folder_node.html" with node=child depth=depth|add_int:1 %}
+        {% endfor %}
+    {% endif %}
+</div>

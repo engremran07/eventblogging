@@ -1805,6 +1805,261 @@ tr:focus-within .wp-cat-row-actions {
    MEDIA LIBRARY
    ============================================================================ */
 
+/* ── Folder Browser Layout ─────────────────────────────────────────────────── */
+.media-browser {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 0;
+    min-height: 600px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    background: var(--surface-1);
+}
+
+.media-folder-sidebar {
+    border-right: 1px solid var(--border);
+    background: var(--surface-2);
+    overflow-y: auto;
+    max-height: calc(100vh - 180px);
+    position: sticky;
+    top: 80px;
+}
+
+.media-folder-sidebar .card-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-4);
+    font-weight: var(--fw-semibold);
+    font-size: var(--text-sm);
+    border-bottom: 1px solid var(--border);
+    background: var(--surface-2);
+    position: sticky;
+    top: 0;
+    z-index: 2;
+}
+
+.media-folder-tree {
+    padding: var(--space-2) 0;
+}
+
+.media-folder-root-link {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-4);
+    color: var(--text-secondary);
+    font-size: var(--text-sm);
+    font-weight: var(--fw-medium);
+    text-decoration: none;
+    transition: background 120ms ease, color 120ms ease;
+    border-left: 3px solid transparent;
+}
+
+.media-folder-root-link:hover {
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    color: var(--text-primary);
+}
+
+.media-folder-root-link.active {
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    color: var(--accent);
+    border-left-color: var(--accent);
+    font-weight: var(--fw-semibold);
+}
+
+/* ── Folder Tree Nodes ─────────────────────────────────────────────────────── */
+.media-folder-group {
+    padding-left: calc(var(--depth, 0) * 16px);
+}
+
+.media-folder-node {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 5px var(--space-3) 5px var(--space-4);
+    color: var(--text-secondary);
+    font-size: var(--text-sm);
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 120ms ease, color 120ms ease;
+    border-left: 3px solid transparent;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.media-folder-node:hover {
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    color: var(--text-primary);
+}
+
+.media-folder-node.active {
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    color: var(--accent);
+    border-left-color: var(--accent);
+    font-weight: var(--fw-semibold);
+}
+
+.media-folder-node i.fa-folder,
+.media-folder-node i.fa-folder-open {
+    font-size: 0.85rem;
+    width: 16px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.media-folder-node .folder-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+    min-width: 0;
+}
+
+.media-folder-count {
+    font-size: 0.7rem;
+    background: var(--surface-1);
+    color: var(--text-muted);
+    padding: 1px 6px;
+    border-radius: 999px;
+    flex-shrink: 0;
+    min-width: 20px;
+    text-align: center;
+}
+
+.media-folder-post-badge {
+    flex-shrink: 0;
+    font-size: 0.7rem;
+    color: var(--accent);
+    opacity: 0.7;
+}
+
+/* ── Browser Content Area ──────────────────────────────────────────────────── */
+.media-browser-content {
+    overflow-y: auto;
+    max-height: calc(100vh - 180px);
+    padding: var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+/* ── Breadcrumbs ───────────────────────────────────────────────────────────── */
+.media-breadcrumbs {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+    flex-wrap: wrap;
+}
+
+.media-breadcrumb-item {
+    color: var(--text-secondary);
+    text-decoration: none;
+    transition: color 120ms ease;
+}
+
+a.media-breadcrumb-item:hover {
+    color: var(--accent);
+}
+
+.media-breadcrumb-item.active {
+    color: var(--text-primary);
+    font-weight: var(--fw-semibold);
+}
+
+.media-breadcrumb-sep {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+}
+
+/* ── Child Folder Cards ────────────────────────────────────────────────────── */
+.media-child-folders {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: var(--space-3);
+}
+
+.media-folder-card {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface-2);
+    text-decoration: none;
+    color: var(--text-primary);
+    transition: border-color 200ms ease, box-shadow 200ms ease, background 200ms ease;
+}
+
+.media-folder-card:hover {
+    border-color: var(--accent);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    background: color-mix(in srgb, var(--accent) 4%, var(--surface-2));
+    color: var(--text-primary);
+}
+
+.media-folder-card-icon {
+    font-size: 1.5rem;
+    color: var(--accent);
+    width: 32px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.media-folder-card-info {
+    min-width: 0;
+    flex: 1;
+}
+
+.media-folder-card-name {
+    font-size: var(--text-sm);
+    font-weight: var(--fw-semibold);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.media-folder-card-meta {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-top: 2px;
+}
+
+.media-folder-post-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    color: var(--accent);
+    font-size: var(--text-xs);
+}
+
+/* ── Filter compact (inside browser) ───────────────────────────────────────── */
+.media-filter-compact {
+    margin: 0;
+    border: 1px solid var(--border);
+}
+
+.media-filter-compact .workspace-filter-grid {
+    padding: var(--space-3) var(--space-4);
+}
+
+/* ── Responsive: collapse sidebar on mobile ────────────────────────────────── */
+@media (max-width: 992px) {
+    .media-browser {
+        grid-template-columns: 1fr;
+    }
+    .media-folder-sidebar {
+        display: none;
+    }
+}
+
 /* ── Grid ──────────────────────────────────────────────────────────────────── */
 .media-grid {
     display: grid;

@@ -186,6 +186,7 @@ def ensure_all_post_folders(*, dry_run: bool = False) -> list[str]:
     paths that were created (or would be created in dry-run mode).
     """
     import os
+
     from django.conf import settings as django_settings
 
     from blog.models import Post as PostModel

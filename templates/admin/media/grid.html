@@ -73,19 +73,19 @@
                 </div>
                 <div class="workspace-pagination-buttons">
                     {% if page_obj.has_previous %}
-                        <a href="?page={{ page_obj.previous_page_number }}&q={{ search }}&file_type={{ file_type }}&folder={{ folder }}&sort={{ sort_by }}"
+                        <a href="?page={{ page_obj.previous_page_number }}&q={{ search }}&file_type={{ file_type }}&path={{ current_path }}&sort={{ sort_by }}"
                            class="btn btn-ghost btn-xs"
-                           hx-get="{% url 'admin_media:list' %}?page={{ page_obj.previous_page_number }}&q={{ search }}&file_type={{ file_type }}&folder={{ folder }}&sort={{ sort_by }}"
-                           hx-target="#media-grid-container"
+                           hx-get="{% url 'admin_media:list' %}?page={{ page_obj.previous_page_number }}&q={{ search }}&file_type={{ file_type }}&path={{ current_path }}&sort={{ sort_by }}"
+                           hx-target="#media-browser-content"
                            hx-swap="innerHTML">
                             <i class="fas fa-chevron-left"></i> Prev
                         </a>
                     {% endif %}
                     {% if page_obj.has_next %}
-                        <a href="?page={{ page_obj.next_page_number }}&q={{ search }}&file_type={{ file_type }}&folder={{ folder }}&sort={{ sort_by }}"
+                        <a href="?page={{ page_obj.next_page_number }}&q={{ search }}&file_type={{ file_type }}&path={{ current_path }}&sort={{ sort_by }}"
                            class="btn btn-ghost btn-xs"
-                           hx-get="{% url 'admin_media:list' %}?page={{ page_obj.next_page_number }}&q={{ search }}&file_type={{ file_type }}&folder={{ folder }}&sort={{ sort_by }}"
-                           hx-target="#media-grid-container"
+                           hx-get="{% url 'admin_media:list' %}?page={{ page_obj.next_page_number }}&q={{ search }}&file_type={{ file_type }}&path={{ current_path }}&sort={{ sort_by }}"
+                           hx-target="#media-browser-content"
                            hx-swap="innerHTML">
                             Next <i class="fas fa-chevron-right"></i>
                         </a>

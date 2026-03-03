@@ -1,28 +1,52 @@
-{# Recursive folder tree node — included from list.html and self-referencing #}
+{# Recursive folder tree node — expand/collapse via Alpine #}
 {% load media_tags %}
 
-<div class="media-folder-group" style="--depth: {{ depth }}">
-    <a href="{% url 'admin_media:list' %}?path={{ node.path }}"
-       class="media-folder-node {% if current_path == node.path %}active{% endif %}"
-       hx-get="{% url 'admin_media:list' %}?path={{ node.path }}"
-       hx-target="#media-browser-content"
-       hx-swap="innerHTML"
-       hx-push-url="true"
-       title="{{ node.path }}{% if node.post %} — {{ node.post.title }}{% endif %}">
-        <i class="fas {% if node.has_children %}fa-folder-open{% else %}fa-folder{% endif %}"></i>
-        <span class="media-folder-label">{{ node.name|truncatechars:28 }}</span>
-        {% if node.total_file_count %}
-            <span class="media-folder-count">{{ node.total_file_count }}</span>
+{% with child_depth=depth|add_int:1 %}
+<div class="media-folder-group" style="--depth: {{ depth }}"
+     {% if node.children %}x-data="{ open: '{{ current_path|default:'' }}'.startsWith('{{ node.path }}/') || '{{ current_path|default:'' }}' === '{{ node.path }}' }"{% endif %}>
+    <div class="media-folder-row">
+        {% if node.children %}
+            <button type="button"
+                    class="media-folder-toggle"
+                    @click.stop="open = !open"
+                    :aria-expanded="open"
+                    aria-label="Toggle {{ node.name }}">
+                <i class="fas fa-chevron-right" :class="{ 'fa-rotate-90': open }"></i>
+            </button>
+        {% else %}
+            <span class="media-folder-toggle-spacer"></span>
         {% endif %}
-        {% if node.post %}
-            <span class="media-folder-post-badge" title="Linked to: {{ node.post.title }}">
-                <i class="fas fa-link"></i>
-            </span>
-        {% endif %}
-    </a>
+        <a href="{% url 'admin_media:list' %}?path={{ node.path }}"
+           class="media-folder-node {% if current_path == node.path %}active{% endif %}"
+           hx-get="{% url 'admin_media:list' %}?path={{ node.path }}"
+           hx-target="#media-browser-content"
+           hx-swap="innerHTML"
+           hx-push-url="true"
+           title="{{ node.path }}{% if node.post %} — {{ node.post.title }}{% endif %}">
+            <i class="fas {% if node.has_children %}fa-folder-open{% else %}fa-folder{% endif %}"></i>
+            <span class="media-folder-label">{{ node.name|truncatechars:28 }}</span>
+            {% if node.total_file_count %}
+                <span class="media-folder-count">{{ node.total_file_count }}</span>
+            {% endif %}
+            {% if node.post %}
+                <span class="media-folder-post-badge" title="Linked to: {{ node.post.title }}">
+                    <i class="fas fa-link"></i>
+                </span>
+            {% endif %}
+        </a>
+    </div>
     {% if node.children %}
-        {% for child in node.children %}
-            {% include "admin/media/partials/_folder_node.html" with node=child depth=depth|add_int:1 %}
-        {% endfor %}
+        <div class="media-folder-children" x-show="open" x-cloak
+             x-transition:enter="media-tree-enter"
+             x-transition:enter-start="media-tree-enter-start"
+             x-transition:enter-end="media-tree-enter-end"
+             x-transition:leave="media-tree-leave"
+             x-transition:leave-start="media-tree-leave-start"
+             x-transition:leave-end="media-tree-leave-end">
+            {% for child in node.children %}
+                {% include "admin/media/partials/_folder_node.html" with node=child depth=child_depth %}
+            {% endfor %}
+        </div>
     {% endif %}
 </div>
+{% endwith %}

@@ -1,11 +1,9 @@
 from __future__ import annotations
 
 import logging
-import os
 import uuid
 from typing import Any
 
-from django.conf import settings
 from django.db.models import Count, Q, QuerySet
 from django.shortcuts import get_object_or_404
 
@@ -103,7 +101,7 @@ def get_folder_list() -> list[str]:
     )
 
 
-# ── Folder tree from disk + DB ──────────────────────────────────────────────
+# ── Folder tree from DB ──────────────────────────────────────────────────────
 
 
 def _count_files_by_folder() -> dict[str, int]:
@@ -117,84 +115,102 @@ def _count_files_by_folder() -> dict[str, int]:
     return {row["folder"]: row["cnt"] for row in rows}
 
 
-def _post_by_folder() -> dict[str, dict[str, Any]]:
-    """Return {folder_path: {id, title, slug}} for post-linked folders."""
+def _post_by_folder(folder_paths: set[str]) -> dict[str, dict[str, Any]]:
+    """
+    Return {folder_path: {id, title, slug}} for post-linked folders.
+
+    Only maps folders present in *folder_paths* to avoid querying all posts.
+    """
     from blog.models import Post
 
     result: dict[str, dict[str, Any]] = {}
+    if not folder_paths:
+        return result
+
     for post in Post.objects.only("id", "title", "slug").prefetch_related("categories"):
         try:
             from media.services import generate_post_media_folder
 
             folder = generate_post_media_folder(post)
-            result[folder] = {
-                "id": post.pk,
-                "title": str(post.title),
-                "slug": str(post.slug),
-            }
+            if folder in folder_paths:
+                result[folder] = {
+                    "id": post.pk,
+                    "title": str(post.title),
+                    "slug": str(post.slug),
+                }
         except Exception:
-            logger.warning("Failed to generate folder for post pk=%s", post.pk, exc_info=True)
+            logger.warning(
+                "Failed to generate folder for post pk=%s", post.pk, exc_info=True
+            )
     return result
+
+
+def _ancestor_paths(folder: str) -> list[str]:
+    """
+    Return all ancestor path segments for a folder path.
+
+    Example: ``posts/tech/frontend/my-post`` →
+        [``posts``, ``posts/tech``, ``posts/tech/frontend``]
+    """
+    parts = folder.split("/")
+    return ["/".join(parts[: i + 1]) for i in range(len(parts) - 1)]
 
 
 def get_folder_tree() -> list[dict[str, Any]]:
     """
-    Build a hierarchical folder tree from the physical ``media/`` directory.
+    Build a hierarchical folder tree from **DB records only**.
 
-    Each node: ``{name, path, children, file_count, post}``
-    Only includes directories under ``media/posts/`` (the managed area).
+    Only folders that contain active media files (or have descendants that do)
+    appear in the tree.  Empty physical directories are hidden.
+
+    Each node: ``{name, path, children, file_count, total_file_count, post,
+    has_children}``
     """
-    media_root = str(settings.MEDIA_ROOT)
-    posts_root = os.path.join(media_root, "posts")
-
-    if not os.path.isdir(posts_root):
+    file_counts = _count_files_by_folder()
+    if not file_counts:
         return []
 
-    file_counts = _count_files_by_folder()
-    post_map = _post_by_folder()
+    # Collect every folder path that should appear in the tree:
+    # - leaf folders with actual files
+    # - all ancestor segments (so the hierarchy is navigable)
+    all_paths: set[str] = set()
+    for folder_path in file_counts:
+        all_paths.add(folder_path)
+        all_paths.update(_ancestor_paths(folder_path))
 
-    def _build_node(abs_path: str, rel_path: str) -> dict[str, Any]:
-        name = os.path.basename(abs_path)
-        children: list[dict[str, Any]] = []
+    post_map = _post_by_folder(all_paths)
 
-        try:
-            entries = sorted(os.listdir(abs_path))
-        except OSError:
-            entries = []
+    # Build an intermediate nested dict → then convert to node list
+    tree: dict[str, Any] = {}
+    for path in all_paths:
+        parts = path.split("/")
+        current = tree
+        for part in parts:
+            if part not in current:
+                current[part] = {}
+            current = current[part]
 
-        for entry in entries:
-            child_abs = os.path.join(abs_path, entry)
-            if os.path.isdir(child_abs):
-                child_rel = f"{rel_path}/{entry}" if rel_path else entry
-                children.append(_build_node(child_abs, child_rel))
+    def _to_nodes(subtree: dict[str, Any], prefix: str) -> list[dict[str, Any]]:
+        nodes: list[dict[str, Any]] = []
+        for name in sorted(subtree.keys()):
+            path = f"{prefix}/{name}" if prefix else name
+            children = _to_nodes(subtree[name], path)
+            direct_count = file_counts.get(path, 0)
+            total_count = direct_count + sum(
+                c["total_file_count"] for c in children
+            )
+            nodes.append({
+                "name": name,
+                "path": path,
+                "children": children,
+                "file_count": direct_count,
+                "total_file_count": total_count,
+                "post": post_map.get(path),
+                "has_children": bool(children),
+            })
+        return nodes
 
-        # Count files in this folder and all descendant folders
-        direct_count = file_counts.get(rel_path, 0)
-        total_count = direct_count + sum(c.get("total_file_count", 0) for c in children)
-
-        return {
-            "name": name,
-            "path": rel_path,
-            "children": children,
-            "file_count": direct_count,
-            "total_file_count": total_count,
-            "post": post_map.get(rel_path),
-            "has_children": bool(children),
-        }
-
-    # Build the tree starting from media/posts/
-    root_children: list[dict[str, Any]] = []
-    try:
-        top_entries = sorted(os.listdir(posts_root))
-    except OSError:
-        top_entries = []
-
-    for entry in top_entries:
-        entry_abs = os.path.join(posts_root, entry)
-        if os.path.isdir(entry_abs):
-            root_children.append(_build_node(entry_abs, f"posts/{entry}"))
-
-    return root_children
+    return _to_nodes(tree, "")
 
 
 def get_breadcrumbs(path: str) -> list[dict[str, str]]:
@@ -222,36 +238,57 @@ def get_breadcrumbs(path: str) -> list[dict[str, str]]:
 
 def get_children_of_path(path: str) -> list[dict[str, Any]]:
     """
-    Return immediate child folders of a given path, with file counts and post linkage.
-    """
-    media_root = str(settings.MEDIA_ROOT)
-    target_dir = os.path.join(media_root, path) if path else os.path.join(media_root, "posts")
+    Return immediate child folder segments of *path* that contain media
+    (directly or in any descendant).
 
-    if not os.path.isdir(target_dir):
+    Built entirely from DB records — empty physical directories are hidden.
+    """
+    file_counts = _count_files_by_folder()
+    if not file_counts:
         return []
 
-    file_counts = _count_files_by_folder()
-    post_map = _post_by_folder()
+    prefix = f"{path}/" if path else ""
+
+    # Discover unique next-level child names + whether they have deeper children
+    child_meta: dict[str, bool] = {}  # child_name → has_deeper_children
+    for folder in file_counts:
+        if prefix and not folder.startswith(prefix):
+            continue
+        remainder = folder[len(prefix):] if prefix else folder
+        if not remainder:
+            continue
+        parts = remainder.split("/")
+        child_name = parts[0]
+        if child_name not in child_meta:
+            child_meta[child_name] = len(parts) > 1
+        elif len(parts) > 1:
+            child_meta[child_name] = True
+
+    if not child_meta:
+        return []
+
+    # Collect all child paths for post-map lookup
+    child_paths: set[str] = set()
+    for name in child_meta:
+        child_paths.add(f"{prefix}{name}" if prefix else name)
+    post_map = _post_by_folder(child_paths)
 
     children: list[dict[str, Any]] = []
-    try:
-        entries = sorted(os.listdir(target_dir))
-    except OSError:
-        return []
-
-    for entry in entries:
-        child_abs = os.path.join(target_dir, entry)
-        if os.path.isdir(child_abs):
-            child_rel = f"{path}/{entry}" if path else f"posts/{entry}"
-            children.append({
-                "name": entry,
-                "path": child_rel,
-                "file_count": file_counts.get(child_rel, 0),
-                "post": post_map.get(child_rel),
-                "has_children": any(
-                    os.path.isdir(os.path.join(child_abs, e))
-                    for e in os.listdir(child_abs)
-                ) if os.path.isdir(child_abs) else False,
-            })
+    for name in sorted(child_meta.keys()):
+        child_path = f"{prefix}{name}" if prefix else name
+        # Sum files in this folder and all its descendants
+        total_files = sum(
+            count
+            for folder, count in file_counts.items()
+            if folder == child_path or folder.startswith(f"{child_path}/")
+        )
+        children.append({
+            "name": name,
+            "path": child_path,
+            "file_count": file_counts.get(child_path, 0),
+            "total_file_count": total_files,
+            "post": post_map.get(child_path),
+            "has_children": child_meta[name],
+        })
 
     return children

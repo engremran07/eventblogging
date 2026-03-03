@@ -46,10 +46,10 @@
             <div class="media-folder-card-info">
                 <div class="media-folder-card-name">{{ folder.name|truncatechars:32 }}</div>
                 <div class="media-folder-card-meta">
-                    {% if folder.file_count %}
+                    {% if folder.total_file_count %}
+                        {{ folder.total_file_count }} file{{ folder.total_file_count|pluralize }}
+                    {% elif folder.file_count %}
                         {{ folder.file_count }} file{{ folder.file_count|pluralize }}
-                    {% else %}
-                        Empty
                     {% endif %}
                     {% if folder.post %}
                         <span class="media-folder-post-link" title="{{ folder.post.title }}">

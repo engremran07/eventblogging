@@ -1,4 +1,4 @@
-{# HTMX partial: folder browser content (breadcrumbs + child folders + filters + file grid) #}
+{# HTMX partial: folder browser content (breadcrumbs + toolbar + unified grid) #}
 
 {# ── Breadcrumbs ──────────────────────────────────────────────────────────── #}
 {% if breadcrumbs %}
@@ -29,59 +29,21 @@
 </nav>
 {% endif %}
 
-{# ── Child Folders (clickable folder cards) ───────────────────────────────── #}
-{% if child_folders %}
-<section class="media-child-folders">
-    {% for folder in child_folders %}
-        <a href="{% url 'admin_media:list' %}?path={{ folder.path }}"
-           class="media-folder-card"
-           hx-get="{% url 'admin_media:list' %}?path={{ folder.path }}"
-           hx-target="#media-browser-content"
-           hx-swap="innerHTML"
-           hx-push-url="true"
-           title="{{ folder.path }}{% if folder.content %} — {{ folder.content.title }}{% endif %}">
-            <div class="media-folder-card-icon">
-                <i class="fas {% if folder.has_children %}fa-folder-open{% else %}fa-folder{% endif %}"></i>
-            </div>
-            <div class="media-folder-card-info">
-                <div class="media-folder-card-name">{{ folder.name|truncatechars:32 }}</div>
-                <div class="media-folder-card-meta">
-                    {% if folder.total_file_count %}
-                        {{ folder.total_file_count }} file{{ folder.total_file_count|pluralize }}
-                    {% elif folder.file_count %}
-                        {{ folder.file_count }} file{{ folder.file_count|pluralize }}
-                    {% endif %}
-                    {% if folder.content %}
-                        <span class="media-folder-content-link" title="{{ folder.content.type|title }}: {{ folder.content.title }}">
-                            <i class="fas {% if folder.content.type == 'page' %}fa-file-alt{% else %}fa-link{% endif %}"></i>
-                            {{ folder.content.title|truncatechars:20 }}
-                        </span>
-                    {% endif %}
-                </div>
-            </div>
-        </a>
-    {% endfor %}
-</section>
-{% endif %}
-
-{# ── Filters ──────────────────────────────────────────────────────────────── #}
-<section class="card workspace-filter-card media-filter-compact">
-    <form
-        method="get"
-        action="{% url 'admin_media:list' %}"
-        class="workspace-filter-grid"
-        hx-get="{% url 'admin_media:list' %}"
-        hx-target="#media-browser-content"
-        hx-swap="innerHTML"
-        hx-push-url="true"
-    >
+{# ── Compact Toolbar (filters inline) ─────────────────────────────────────── #}
+<div class="media-toolbar">
+    <form method="get"
+          action="{% url 'admin_media:list' %}"
+          class="media-toolbar-form"
+          hx-get="{% url 'admin_media:list' %}"
+          hx-target="#media-browser-content"
+          hx-swap="innerHTML"
+          hx-push-url="true">
         {% if current_path %}
             <input type="hidden" name="path" value="{{ current_path }}">
         {% endif %}
 
-        <div class="workspace-field workspace-field--status">
-            <label for="media-type">Type</label>
-            <select id="media-type" name="file_type">
+        <div class="media-toolbar-filters">
+            <select name="file_type" class="media-toolbar-select" title="Filter by type">
                 <option value="">All types</option>
                 <option value="image" {% if file_type == "image" %}selected{% endif %}>Images</option>
                 <option value="document" {% if file_type == "document" %}selected{% endif %}>Documents</option>
@@ -89,38 +51,167 @@
                 <option value="audio" {% if file_type == "audio" %}selected{% endif %}>Audio</option>
                 <option value="other" {% if file_type == "other" %}selected{% endif %}>Other</option>
             </select>
-        </div>
-
-        <div class="workspace-field workspace-field--sort">
-            <label for="media-sort">Sort</label>
-            <select id="media-sort" name="sort">
-                <option value="-created_at" {% if sort_by == "-created_at" %}selected{% endif %}>Newest first</option>
-                <option value="created_at" {% if sort_by == "created_at" %}selected{% endif %}>Oldest first</option>
-                <option value="-file_size" {% if sort_by == "-file_size" %}selected{% endif %}>Largest first</option>
-                <option value="file_size" {% if sort_by == "file_size" %}selected{% endif %}>Smallest first</option>
+            <select name="sort" class="media-toolbar-select" title="Sort by">
+                <option value="-created_at" {% if sort_by == "-created_at" %}selected{% endif %}>Newest</option>
+                <option value="created_at" {% if sort_by == "created_at" %}selected{% endif %}>Oldest</option>
+                <option value="-file_size" {% if sort_by == "-file_size" %}selected{% endif %}>Largest</option>
+                <option value="file_size" {% if sort_by == "file_size" %}selected{% endif %}>Smallest</option>
                 <option value="title" {% if sort_by == "title" %}selected{% endif %}>Title A-Z</option>
             </select>
         </div>
 
-        <div class="workspace-field workspace-field--search">
-            <label for="media-search">Search</label>
-            <input
-                id="media-search"
-                type="search"
-                name="q"
-                value="{{ search }}"
-                placeholder="Search filename, title"
-                data-filter-live
-            >
-        </div>
-
-        <div class="workspace-filter-actions">
-            <button type="submit" class="btn btn-secondary btn-sm">Apply</button>
-            <a href="{% url 'admin_media:list' %}{% if current_path %}?path={{ current_path }}{% endif %}"
-               class="btn btn-ghost btn-sm">Reset</a>
+        <div class="media-toolbar-search">
+            <input type="search" name="q" value="{{ search }}"
+                   placeholder="Search files…"
+                   class="media-toolbar-input"
+                   data-filter-live>
+            <button type="submit" class="btn btn-ghost btn-xs" title="Search">
+                <i class="fas fa-search"></i>
+            </button>
         </div>
     </form>
+
+    <div class="media-toolbar-info">
+        {% if page_obj.paginator.count %}
+            <span class="media-toolbar-count">{{ page_obj.paginator.count }} file{{ page_obj.paginator.count|pluralize }}</span>
+        {% endif %}
+        {% if search or file_type %}
+            <a href="{% url 'admin_media:list' %}{% if current_path %}?path={{ current_path }}{% endif %}"
+               class="btn btn-ghost btn-xs" title="Reset filters">
+                <i class="fas fa-times"></i> Reset
+            </a>
+        {% endif %}
+    </div>
+</div>
+
+{# ── Unified Grid: Folders first, then files ──────────────────────────────── #}
+<section class="media-content-grid" data-media-bulk data-bulk-url="{% url 'admin_media:bulk_action' %}">
+    {% if child_folders or page_obj.object_list %}
+        {# Bulk actions bar (only when files exist) #}
+        {% if page_obj.object_list %}
+        <div class="media-grid-actions">
+            <label class="media-select-all-label">
+                <input type="checkbox" data-select-all-media aria-label="Select all media">
+                <span>Select all</span>
+            </label>
+            <button type="button" class="btn btn-danger btn-xs" data-media-bulk-delete style="display:none" disabled>
+                <i class="fas fa-trash"></i> Delete Selected
+            </button>
+        </div>
+        {% endif %}
+
+        <div class="media-grid">
+            {# ── Sub-folder cards (compact, inside the grid) ──────────────── #}
+            {% for folder in child_folders %}
+                <a href="{% url 'admin_media:list' %}?path={{ folder.path }}"
+                   class="media-folder-card-grid"
+                   hx-get="{% url 'admin_media:list' %}?path={{ folder.path }}"
+                   hx-target="#media-browser-content"
+                   hx-swap="innerHTML"
+                   hx-push-url="true"
+                   title="{{ folder.path }}{% if folder.content %} — {{ folder.content.title }}{% endif %}">
+                    <div class="media-folder-card-grid-icon">
+                        <i class="fas {% if folder.has_children %}fa-folder-open{% else %}fa-folder{% endif %}"></i>
+                    </div>
+                    <div class="media-folder-card-grid-name">{{ folder.name|truncatechars:20 }}</div>
+                    {% if folder.total_file_count %}
+                        <div class="media-folder-card-grid-count">{{ folder.total_file_count }}</div>
+                    {% endif %}
+                </a>
+            {% endfor %}
+
+            {# ── File cards (images, docs, etc.) ──────────────────────────── #}
+            {% for media in page_obj %}
+                <div class="media-card" id="media-{{ media.pk }}">
+                    <div class="media-card-select">
+                        <input type="checkbox" value="{{ media.pk }}" data-select-media aria-label="Select {{ media.original_filename }}">
+                    </div>
+                    <div class="media-card-thumb">
+                        {% if media.is_image and media.file %}
+                            <img src="{{ media.file_url }}" alt="{{ media.alt_text|default:media.original_filename }}" loading="lazy">
+                        {% else %}
+                            <div class="media-card-icon">
+                                {% if media.file_type == "document" %}
+                                    <i class="fas fa-file-pdf"></i>
+                                {% elif media.file_type == "video" %}
+                                    <i class="fas fa-file-video"></i>
+                                {% elif media.file_type == "audio" %}
+                                    <i class="fas fa-file-audio"></i>
+                                {% else %}
+                                    <i class="fas fa-file"></i>
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="media-card-body">
+                        <div class="media-card-name" title="{{ media.original_filename }}">
+                            {{ media.title|default:media.original_filename|truncatechars:30 }}
+                        </div>
+                        <div class="media-card-meta">
+                            <span class="badge badge-muted workspace-status">{{ media.file_type }}</span>
+                            <span class="workspace-muted">{{ media.file_size|filesizeformat }}</span>
+                            {% if media.folder %}<span class="workspace-muted" title="{{ media.folder }}"><i class="fas fa-folder-open"></i></span>{% endif %}
+                        </div>
+                    </div>
+                    <div class="media-card-actions">
+                        <a href="{% url 'admin_media:edit' media.pk %}" class="btn btn-ghost btn-xs" title="Edit">
+                            <i class="fas fa-pen"></i>
+                        </a>
+                        {% if media.is_image and media.file %}
+                            <button type="button"
+                                    class="btn btn-ghost btn-xs"
+                                    hx-get="{% url 'admin_media:detail_partial' media.pk %}"
+                                    hx-target="#media-detail-drawer"
+                                    hx-swap="innerHTML"
+                                    title="Quick view">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        {% endif %}
+                        <a href="{{ media.file_url }}" class="btn btn-ghost btn-xs" target="_blank" rel="noopener" title="Open file">
+                            <i class="fas fa-external-link-alt"></i>
+                        </a>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+
+        {# Pagination #}
+        {% if page_obj.has_other_pages %}
+            <div class="workspace-pagination">
+                <div class="workspace-pagination-info">
+                    Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                    ({{ page_obj.paginator.count }} total)
+                </div>
+                <div class="workspace-pagination-buttons">
+                    {% if page_obj.has_previous %}
+                        <a href="?page={{ page_obj.previous_page_number }}&q={{ search }}&file_type={{ file_type }}&path={{ current_path }}&sort={{ sort_by }}"
+                           class="btn btn-ghost btn-xs"
+                           hx-get="{% url 'admin_media:list' %}?page={{ page_obj.previous_page_number }}&q={{ search }}&file_type={{ file_type }}&path={{ current_path }}&sort={{ sort_by }}"
+                           hx-target="#media-browser-content"
+                           hx-swap="innerHTML">
+                            <i class="fas fa-chevron-left"></i> Prev
+                        </a>
+                    {% endif %}
+                    {% if page_obj.has_next %}
+                        <a href="?page={{ page_obj.next_page_number }}&q={{ search }}&file_type={{ file_type }}&path={{ current_path }}&sort={{ sort_by }}"
+                           class="btn btn-ghost btn-xs"
+                           hx-get="{% url 'admin_media:list' %}?page={{ page_obj.next_page_number }}&q={{ search }}&file_type={{ file_type }}&path={{ current_path }}&sort={{ sort_by }}"
+                           hx-target="#media-browser-content"
+                           hx-swap="innerHTML">
+                            Next <i class="fas fa-chevron-right"></i>
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
+    {% else %}
+        <div class="workspace-empty">
+            <i class="fas fa-photo-film workspace-empty-icon"></i>
+            <p>No media files found.</p>
+            <a href="{% url 'admin_media:upload' %}" class="btn btn-primary btn-sm">Upload Files</a>
+        </div>
+    {% endif %}
 </section>
 
-{# ── File Grid ────────────────────────────────────────────────────────────── #}
-{% include "admin/media/grid.html" %}
+{# Drawer target for quick-view detail #}
+<div id="media-detail-drawer"></div>

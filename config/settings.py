@@ -8,7 +8,5 @@ _env = os.environ.get("DJANGO_ENV", "development").lower()
 
 if _env == "production":
     from .settings.production import *  # noqa: F403
-elif _env == "testing":
-    from .settings.testing import *  # noqa: F403
 else:
     from .settings.development import *  # noqa: F403

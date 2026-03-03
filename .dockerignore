@@ -1,0 +1,54 @@
+# =============================================================================
+# .dockerignore — keep Docker context lean
+# =============================================================================
+
+# Version control
+.git
+.gitignore
+
+# Python / virtual env
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Dev / test artifacts
+htmlcov/
+.coverage
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+pyrightconfig.json
+
+# Runtime / uploads
+media/
+staticfiles/
+logs/
+*.log
+runserver.pid
+db.sqlite3
+
+# CI / docs
+.github/
+docs/
+Agents.md
+Claude.md
+README.md
+
+# Node (if any)
+node_modules/
